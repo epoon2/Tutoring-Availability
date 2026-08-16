@@ -447,7 +447,7 @@ function getConfig() {
     portalTitle:
       process.env.PORTAL_TITLE ||
       "Ethan's Tutoring Availability",
-      
+
     timezoneLabel:
       process.env.TIMEZONE_LABEL ||
       "Pacific Time (PT)",
@@ -827,11 +827,25 @@ function validateEvent(
   ) {
 
     bad(
-      "Event type must be AVAILABLE or BLOCKED."
+      "Please select a session type."
     );
 
   }
 
+  const title =
+    String(
+      event.title ||
+      ""
+    ).trim();
+
+
+  if (!title) {
+
+    bad(
+      "Please enter a title for this event."
+    );
+
+  }
 
   const start =
     normalizeLocalDateTime(
@@ -901,15 +915,10 @@ function validateEvent(
     type,
 
     title:
-      String(
-        event.title ||
-        ""
-      )
-        .trim()
-        .slice(
-          0,
-          100
-        ),
+      title.slice(
+        0,
+        100
+      ),
 
     start,
 
