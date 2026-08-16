@@ -446,8 +446,8 @@ function getConfig() {
   return {
     portalTitle:
       process.env.PORTAL_TITLE ||
-      "Tutoring Availability",
-
+      "Ethan's Tutoring Availability",
+      
     timezoneLabel:
       process.env.TIMEZONE_LABEL ||
       "Pacific Time (PT)",
