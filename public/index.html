@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
 
@@ -21,6 +22,7 @@
   >
 </head>
 
+
 <body>
 
   <div class="app-shell">
@@ -28,11 +30,13 @@
     <header class="topbar">
 
       <div>
+
         <h1 id="portalTitle">
           Ethan's Tutoring Availability
         </h1>
 
         <div class="subline">
+
           <span id="timezoneLabel">
             Pacific Time (PT)
           </span>
@@ -42,8 +46,11 @@
           <span id="updatedLabel">
             Loading…
           </span>
+
         </div>
+
       </div>
+
 
       <div class="header-actions">
 
@@ -86,12 +93,16 @@
     >
 
       <div>
-        <strong>Admin mode</strong>
+
+        <strong>
+          Admin mode
+        </strong>
 
         <span>
           Drag one-time events to move them.
           Click recurring events to edit the series.
         </span>
+
       </div>
 
       <button
@@ -131,16 +142,23 @@
 
       <h2 id="weekLabel"></h2>
 
+
       <div class="legend">
 
         <span>
+
           <i class="legend-swatch available"></i>
+
           Available
+
         </span>
 
         <span>
+
           <i class="legend-swatch blocked"></i>
+
           Blocked Session
+
         </span>
 
       </div>
@@ -154,10 +172,12 @@
       aria-live="polite"
     ></div>
 
+
     <div
       id="calendar"
       class="calendar"
     ></div>
+
 
     <div
       id="agenda"
@@ -166,12 +186,18 @@
 
 
     <section class="help-box">
-      <strong>Public view:</strong>
+
+      <strong>
+        Public view:
+      </strong>
+
       Available times and anonymized blocked sessions are shown.
       Private event names and notes are never shown.
+
     </section>
 
   </div>
+
 
 
   <!-- ADMIN LOGIN -->
@@ -202,9 +228,12 @@
 
       </div>
 
+
       <label class="field">
 
-        <span>Password</span>
+        <span>
+          Password
+        </span>
 
         <input
           id="adminPasswordInput"
@@ -215,10 +244,12 @@
 
       </label>
 
+
       <div
         id="loginError"
         class="form-error"
       ></div>
+
 
       <div class="modal-actions">
 
@@ -241,6 +272,7 @@
     </div>
 
   </div>
+
 
 
   <!-- EVENT EDITOR -->
@@ -278,13 +310,18 @@
       >
 
 
+      <!-- TYPE -->
+
       <label class="field">
 
-        <span>Type</span>
+        <span>
+          Type
+        </span>
 
         <select
           id="eventType"
           class="placeholder-select"
+          required
         >
 
           <option
@@ -309,11 +346,16 @@
       </label>
 
 
+
+      <!-- START AND END -->
+
       <div class="two-col">
 
         <label class="field">
 
-          <span>Starts</span>
+          <span>
+            Starts
+          </span>
 
           <input
             id="eventStart"
@@ -326,7 +368,9 @@
 
         <label class="field">
 
-          <span>Ends</span>
+          <span>
+            Ends
+          </span>
 
           <input
             id="eventEnd"
@@ -339,9 +383,14 @@
       </div>
 
 
+
+      <!-- REPEAT -->
+
       <label class="field">
 
-        <span>Repeat</span>
+        <span>
+          Repeat
+        </span>
 
         <select id="repeatType">
 
@@ -358,6 +407,9 @@
       </label>
 
 
+
+      <!-- RECURRENCE OPTIONS -->
+
       <div
         id="recurrencePanel"
         class="recurrence-panel hidden"
@@ -365,7 +417,9 @@
 
         <div class="repeat-every-row">
 
-          <span>Repeat every</span>
+          <span>
+            Repeat every
+          </span>
 
           <input
             id="repeatInterval"
@@ -375,7 +429,9 @@
             value="1"
           >
 
-          <span>week(s)</span>
+          <span>
+            week(s)
+          </span>
 
         </div>
 
@@ -385,6 +441,7 @@
           <div class="recurrence-label">
             Repeat on
           </div>
+
 
           <div
             id="weekdayPicker"
@@ -475,7 +532,9 @@
               checked
             >
 
-            <span>Never</span>
+            <span>
+              Never
+            </span>
 
           </label>
 
@@ -488,7 +547,9 @@
               value="ON"
             >
 
-            <span>On</span>
+            <span>
+              On
+            </span>
 
             <input
               id="repeatEndDate"
@@ -507,7 +568,9 @@
               value="COUNT"
             >
 
-            <span>After</span>
+            <span>
+              After
+            </span>
 
             <input
               id="repeatCount"
@@ -518,7 +581,9 @@
               disabled
             >
 
-            <span>occurrences</span>
+            <span>
+              occurrences
+            </span>
 
           </label>
 
@@ -527,11 +592,19 @@
       </div>
 
 
+
+      <!-- TITLE -->
+
       <label class="field">
 
         <span>
+
           Title
-          <small>(admin only)</small>
+
+          <small>
+            (admin only)
+          </small>
+
         </span>
 
         <input
@@ -545,11 +618,19 @@
       </label>
 
 
+
+      <!-- NOTES -->
+
       <label class="field">
 
         <span>
+
           Notes
-          <small>(admin only)</small>
+
+          <small>
+            (admin only)
+          </small>
+
         </span>
 
         <textarea
@@ -562,11 +643,60 @@
       </label>
 
 
+
+      <!-- INLINE SCHEDULE CONFLICT -->
+
+      <div
+        id="conflictWarning"
+        class="conflict-warning hidden"
+      >
+
+        <div class="conflict-warning-header">
+
+          <div class="conflict-warning-icon">
+            !
+          </div>
+
+          <div>
+
+            <div class="conflict-warning-title">
+              Schedule conflict
+            </div>
+
+            <div
+              id="conflictWarningSummary"
+              class="conflict-warning-summary"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="conflictWarningList"
+          class="conflict-warning-list"
+        ></div>
+
+
+        <div class="conflict-warning-footer">
+          You can still save this event if the overlap is intentional.
+        </div>
+
+      </div>
+
+
+
+      <!-- NORMAL VALIDATION ERROR -->
+
       <div
         id="eventError"
         class="form-error"
       ></div>
 
+
+
+      <!-- ACTION BUTTONS -->
 
       <div class="modal-actions split">
 
@@ -587,6 +717,15 @@
             Cancel
           </button>
 
+
+          <button
+            id="saveAnywayBtn"
+            class="btn warning hidden"
+          >
+            Save Anyway
+          </button>
+
+
           <button
             id="saveEventBtn"
             class="btn primary"
@@ -601,6 +740,7 @@
     </div>
 
   </div>
+
 
 
   <!-- BLOCKED SESSION ADMIN PANEL -->
@@ -649,6 +789,8 @@
       <div class="blocked-list-columns">
 
 
+        <!-- PAST -->
+
         <section class="blocked-list-column">
 
           <div class="blocked-list-heading">
@@ -681,6 +823,9 @@
 
         </section>
 
+
+
+        <!-- UPCOMING -->
 
         <section class="blocked-list-column">
 

@@ -18,6 +18,10 @@
 
   --danger: #b42318;
 
+  --warning: #d99000;
+  --warning-bg: #fff8e6;
+  --warning-border: #f2cf75;
+
   --hour-height: 64px;
 }
 
@@ -196,6 +200,17 @@ h2 {
 
 .btn.danger:hover {
   background: #ffe5e2;
+}
+
+
+.btn.warning {
+  background: var(--warning);
+  color: #ffffff;
+}
+
+
+.btn.warning:hover {
+  filter: brightness(0.95);
 }
 
 
@@ -528,7 +543,7 @@ button:disabled {
 
 
 /* -----------------------------
-   CALENDAR EVENT CARDS
+   EVENT CARDS
 ----------------------------- */
 
 .event-card {
@@ -716,7 +731,7 @@ button.agenda-item:hover {
 
 
 /* -----------------------------
-   HELP TEXT
+   HELP
 ----------------------------- */
 
 .help-box {
@@ -846,31 +861,18 @@ button.agenda-item:hover {
 
 
 /* -----------------------------
-   EVENT TYPE PLACEHOLDER
+   TYPE PLACEHOLDER
 ----------------------------- */
-
-/*
-  When "Select One" is currently selected,
-  show the select text in muted gray.
-*/
 
 .placeholder-select:invalid {
   color: var(--muted);
 }
 
 
-/*
-  Real selectable options use normal text.
-*/
-
 .placeholder-select option {
   color: var(--text);
 }
 
-
-/*
-  Placeholder option stays gray.
-*/
 
 .placeholder-select option[value=""] {
   color: var(--muted);
@@ -889,7 +891,7 @@ button.agenda-item:hover {
 
 
 /* -----------------------------
-   FORM ERRORS
+   VALIDATION ERRORS
 ----------------------------- */
 
 .form-error {
@@ -900,6 +902,136 @@ button.agenda-item:hover {
   font-size: 13px;
 
   font-weight: 500;
+}
+
+
+/* -----------------------------
+   INLINE CONFLICT WARNING
+----------------------------- */
+
+.conflict-warning {
+  margin-top: 8px;
+  margin-bottom: 14px;
+
+  padding: 13px 14px;
+
+  background: var(--warning-bg);
+
+  border: 1px solid var(--warning-border);
+  border-radius: 10px;
+
+  color: #6f4e00;
+}
+
+
+.conflict-warning-header {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 10px;
+}
+
+
+.conflict-warning-icon {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 22px;
+  height: 22px;
+
+  margin-top: 1px;
+
+  background: #e5a000;
+  color: #ffffff;
+
+  border-radius: 50%;
+
+  font-size: 13px;
+
+  font-weight: 800;
+}
+
+
+.conflict-warning-title {
+  font-size: 14px;
+
+  font-weight: 750;
+}
+
+
+.conflict-warning-summary {
+  margin-top: 2px;
+
+  font-size: 13px;
+
+  line-height: 1.4;
+}
+
+
+.conflict-warning-list {
+  margin-top: 11px;
+
+  overflow: hidden;
+
+  background: #ffffff;
+
+  border: 1px solid #f1d894;
+  border-radius: 8px;
+}
+
+
+.conflict-item {
+  padding: 10px 11px;
+
+  border-bottom: 1px solid #f4e5bc;
+}
+
+
+.conflict-item:last-child {
+  border-bottom: 0;
+}
+
+
+.conflict-item-title {
+  color: var(--text);
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+
+.conflict-item-time {
+  margin-top: 3px;
+
+  color: #815f0b;
+
+  font-size: 12px;
+}
+
+
+.conflict-more {
+  padding: 9px 11px;
+
+  color: var(--muted);
+
+  font-size: 12px;
+
+  font-style: italic;
+}
+
+
+.conflict-warning-footer {
+  margin-top: 10px;
+
+  font-size: 12px;
+
+  line-height: 1.4;
 }
 
 
