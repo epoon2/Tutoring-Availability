@@ -2362,9 +2362,7 @@
 
     openEventModal({
       start,
-      end,
-      type:
-        'AVAILABLE'
+      end
     });
 
   }
@@ -3133,6 +3131,48 @@
 
   async function saveEventFromModal() {
 
+    const type =
+      $('eventType').value;
+
+
+    const title =
+      $('eventTitle').value.trim();
+
+
+    /*
+      Require session type.
+    */
+
+    if (!type) {
+
+      window.alert(
+        'Please select a session type before saving.'
+      );
+
+      $('eventType').focus();
+
+      return;
+
+    }
+
+
+    /*
+      Require event title.
+    */
+
+    if (!title) {
+
+      window.alert(
+        'Please enter a title for this event before saving.'
+      );
+
+      $('eventTitle').focus();
+
+      return;
+
+    }
+
+
     const start =
       $('eventStart').value;
 
@@ -3201,15 +3241,13 @@
       id:
         $('eventId').value,
 
-      type:
-        $('eventType').value,
+      type,
 
       start,
 
       end,
 
-      title:
-        $('eventTitle').value,
+      title,
 
       notes:
         $('eventNotes').value,
