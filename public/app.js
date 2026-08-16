@@ -1,28 +1,56 @@
 (() => {
 
   const state = {
-    weekStart: startOfWeek(new Date()),
 
-    adminPassword: '',
+    weekStart:
+      startOfWeek(
+        new Date()
+      ),
 
-    isAdmin: false,
+    adminPassword:
+      '',
 
-    events: [],
+    isAdmin:
+      false,
+
+    events:
+      [],
 
     config: {
-      portalTitle: 'Tutoring Availability',
-      timezoneLabel: 'Pacific Time (PT)',
-      timezoneId: 'America/Los_Angeles',
-      dayStart: 8,
-      dayEnd: 24
+
+      portalTitle:
+        "Ethan's Tutoring Availability",
+
+      timezoneLabel:
+        'Pacific Time (PT)',
+
+      timezoneId:
+        'America/Los_Angeles',
+
+      dayStart:
+        8,
+
+      dayEnd:
+        24
     },
 
-    draggingId: null
+    draggingId:
+      null,
+
+    /*
+      Stores an event after the server
+      detects a scheduling conflict.
+    */
+    pendingConflictEvent:
+      null
   };
 
 
-  const $ = (id) =>
-    document.getElementById(id);
+  const $ =
+    (id) =>
+      document.getElementById(
+        id
+      );
 
 
   const calendar =
@@ -33,6 +61,12 @@
     $('agenda');
 
 
+
+  /* =========================================================
+     INITIALIZATION
+  ========================================================= */
+
+
   function init() {
 
     bindButtons();
@@ -41,187 +75,229 @@
 
 
     /*
-      Automatically refresh public view.
+      Public pages refresh every
+      30 seconds.
     */
 
-    setInterval(() => {
+    setInterval(
+      () => {
 
-      if (
-        !state.isAdmin &&
-        document.visibilityState === 'visible'
-      ) {
+        if (
+          !state.isAdmin &&
+          document.visibilityState ===
+            'visible'
+        ) {
 
-        loadWeek(true);
+          loadWeek(
+            true
+          );
 
-      }
+        }
 
-    }, 30000);
+      },
+      30000
+    );
 
   }
 
 
+
+  /* =========================================================
+     EVENT LISTENERS
+  ========================================================= */
+
+
   function bindButtons() {
 
-    $('prevWeekBtn').addEventListener(
-      'click',
-      () => {
+    $('prevWeekBtn')
+      .addEventListener(
+        'click',
+        () => {
 
-        state.weekStart =
-          addDays(
-            state.weekStart,
-            -7
-          );
+          state.weekStart =
+            addDays(
+              state.weekStart,
+              -7
+            );
 
-        loadWeek();
-
-      }
-    );
-
-
-    $('nextWeekBtn').addEventListener(
-      'click',
-      () => {
-
-        state.weekStart =
-          addDays(
-            state.weekStart,
-            7
-          );
-
-        loadWeek();
-
-      }
-    );
-
-
-    $('todayBtn').addEventListener(
-      'click',
-      () => {
-
-        state.weekStart =
-          startOfWeek(
-            new Date()
-          );
-
-        loadWeek();
-
-      }
-    );
-
-
-    $('refreshBtn').addEventListener(
-      'click',
-      () => loadWeek()
-    );
-
-
-    $('adminBtn').addEventListener(
-      'click',
-      openAdminLogin
-    );
-
-
-    $('exitAdminBtn').addEventListener(
-      'click',
-      exitAdmin
-    );
-
-
-    $('addBtn').addEventListener(
-      'click',
-      () => openEventModal()
-    );
-
-
-    $('blockedSessionsBtn').addEventListener(
-      'click',
-      openBlockedSessions
-    );
-
-
-    $('closeBlockedDrawerBtn').addEventListener(
-      'click',
-      closeBlockedSessions
-    );
-
-
-    $('blockedDrawerBackdrop').addEventListener(
-      'click',
-      (e) => {
-
-        if (
-          e.target ===
-          $('blockedDrawerBackdrop')
-        ) {
-
-          closeBlockedSessions();
+          loadWeek();
 
         }
-
-      }
-    );
+      );
 
 
-    $('loginSubmitBtn').addEventListener(
-      'click',
-      submitAdminLogin
-    );
+    $('nextWeekBtn')
+      .addEventListener(
+        'click',
+        () => {
 
+          state.weekStart =
+            addDays(
+              state.weekStart,
+              7
+            );
 
-    $('adminPasswordInput').addEventListener(
-      'keydown',
-      (e) => {
-
-        if (
-          e.key === 'Enter'
-        ) {
-
-          submitAdminLogin();
+          loadWeek();
 
         }
-
-      }
-    );
+      );
 
 
-    $('saveEventBtn').addEventListener(
-      'click',
-      saveEventFromModal
-    );
+    $('todayBtn')
+      .addEventListener(
+        'click',
+        () => {
+
+          state.weekStart =
+            startOfWeek(
+              new Date()
+            );
+
+          loadWeek();
+
+        }
+      );
 
 
-    $('deleteEventBtn').addEventListener(
-      'click',
-      deleteEventFromModal
-    );
+    $('refreshBtn')
+      .addEventListener(
+        'click',
+        () =>
+          loadWeek()
+      );
+
+
+    $('adminBtn')
+      .addEventListener(
+        'click',
+        openAdminLogin
+      );
+
+
+    $('exitAdminBtn')
+      .addEventListener(
+        'click',
+        exitAdmin
+      );
+
+
+    $('addBtn')
+      .addEventListener(
+        'click',
+        () =>
+          openEventModal()
+      );
+
+
+    $('blockedSessionsBtn')
+      .addEventListener(
+        'click',
+        openBlockedSessions
+      );
+
+
+    $('closeBlockedDrawerBtn')
+      .addEventListener(
+        'click',
+        closeBlockedSessions
+      );
+
+
+    $('blockedDrawerBackdrop')
+      .addEventListener(
+        'click',
+        (event) => {
+
+          if (
+            event.target ===
+            $('blockedDrawerBackdrop')
+          ) {
+
+            closeBlockedSessions();
+
+          }
+
+        }
+      );
+
+
+    $('loginSubmitBtn')
+      .addEventListener(
+        'click',
+        submitAdminLogin
+      );
+
+
+    $('adminPasswordInput')
+      .addEventListener(
+        'keydown',
+        (event) => {
+
+          if (
+            event.key ===
+            'Enter'
+          ) {
+
+            submitAdminLogin();
+
+          }
+
+        }
+      );
+
+
+    $('saveEventBtn')
+      .addEventListener(
+        'click',
+        saveEventFromModal
+      );
+
+
+    $('saveAnywayBtn')
+      .addEventListener(
+        'click',
+        saveAnywayFromConflict
+      );
+
+
+    $('deleteEventBtn')
+      .addEventListener(
+        'click',
+        deleteEventFromModal
+      );
 
 
     /*
       Recurrence type.
     */
 
-    $('repeatType').addEventListener(
-      'change',
-      () => {
+    $('repeatType')
+      .addEventListener(
+        'change',
+        () => {
 
-        if (
-          $('repeatType').value === 'WEEKLY' &&
-          getSelectedWeekdays().length === 0
-        ) {
+          if (
+            $('repeatType').value ===
+              'WEEKLY' &&
+            getSelectedWeekdays()
+              .length === 0
+          ) {
 
-          selectStartWeekday();
+            selectStartWeekday();
+
+          }
+
+
+          updateRecurrenceUI();
+
+          clearConflictWarning();
 
         }
-
-
-        updateRecurrenceUI();
-
-      }
-    );
+      );
 
 
     /*
-      Weekday buttons.
+      Weekday selection.
     */
 
     document
@@ -235,9 +311,13 @@
             'click',
             () => {
 
-              button.classList.toggle(
-                'selected'
-              );
+              button
+                .classList
+                .toggle(
+                  'selected'
+                );
+
+              clearConflictWarning();
 
             }
           );
@@ -247,7 +327,7 @@
 
 
     /*
-      Recurrence ending options.
+      Recurrence end options.
     */
 
     document
@@ -259,32 +339,76 @@
 
           radio.addEventListener(
             'change',
-            updateRecurrenceUI
+            () => {
+
+              updateRecurrenceUI();
+
+              clearConflictWarning();
+
+            }
           );
 
         }
       );
 
 
-    $('eventStart').addEventListener(
-      'change',
-      () => {
+    $('eventStart')
+      .addEventListener(
+        'change',
+        () => {
 
-        if (
-          $('repeatType').value === 'WEEKLY' &&
-          getSelectedWeekdays().length === 0
-        ) {
+          if (
+            $('repeatType').value ===
+              'WEEKLY' &&
+            getSelectedWeekdays()
+              .length === 0
+          ) {
 
-          selectStartWeekday();
+            selectStartWeekday();
+
+          }
 
         }
-
-      }
-    );
+      );
 
 
     /*
-      Modal close buttons.
+      Any edit invalidates an old
+      conflict warning.
+    */
+
+    [
+      'eventType',
+      'eventStart',
+      'eventEnd',
+      'eventTitle',
+      'eventNotes',
+      'repeatInterval',
+      'repeatEndDate',
+      'repeatCount'
+    ]
+      .forEach(
+        (id) => {
+
+          $(id)
+            .addEventListener(
+              'input',
+              clearConflictWarning
+            );
+
+
+          $(id)
+            .addEventListener(
+              'change',
+              clearConflictWarning
+            );
+
+        }
+      );
+
+
+    /*
+      Standard modal close buttons.
     */
 
     document
@@ -310,7 +434,7 @@
 
 
     /*
-      Clicking outside a modal closes it.
+      Click outside modal.
     */
 
     document
@@ -322,10 +446,11 @@
 
           backdrop.addEventListener(
             'click',
-            (e) => {
+            (event) => {
 
               if (
-                e.target === backdrop
+                event.target ===
+                backdrop
               ) {
 
                 closeModal(
@@ -343,9 +468,11 @@
   }
 
 
-  /*
-    API
-  */
+
+  /* =========================================================
+     API
+  ========================================================= */
+
 
   async function api(
     path,
@@ -354,7 +481,8 @@
 
     const headers =
       new Headers(
-        options.headers || {}
+        options.headers ||
+        {}
       );
 
 
@@ -388,11 +516,15 @@
 
     const response =
       await fetch(
-        '/api' + path,
+        '/api' +
+        path,
         {
           ...options,
+
           headers,
-          cache: 'no-store'
+
+          cache:
+            'no-store'
         }
       );
 
@@ -434,9 +566,11 @@
   }
 
 
-  /*
-    LOAD CALENDAR
-  */
+
+  /* =========================================================
+     LOAD WEEK
+  ========================================================= */
+
 
   async function loadWeek(
     silent = false
@@ -477,7 +611,8 @@
 
 
       state.events =
-        data.events || [];
+        data.events ||
+        [];
 
 
       state.config =
@@ -486,7 +621,8 @@
 
 
       state.isAdmin =
-        data.mode === 'admin';
+        data.mode ===
+        'admin';
 
 
       applyMode();
@@ -494,43 +630,51 @@
       renderAll();
 
 
-      $('portalTitle').textContent =
-        state.config.portalTitle;
+      $('portalTitle')
+        .textContent =
+          state.config
+            .portalTitle;
 
 
       document.title =
-        state.config.portalTitle;
+        state.config
+          .portalTitle;
 
 
-      $('timezoneLabel').textContent =
-        state.config.timezoneLabel;
+      $('timezoneLabel')
+        .textContent =
+          state.config
+            .timezoneLabel;
 
 
-      $('updatedLabel').textContent =
-        data.lastUpdated
-          ? 'Updated ' +
-            formatUpdated(
-              data.lastUpdated
-            )
-          : 'No saved times yet';
+      $('updatedLabel')
+        .textContent =
+          data.lastUpdated
+            ? 'Updated ' +
+              formatUpdated(
+                data.lastUpdated
+              )
+            : 'No saved times yet';
 
 
       if (
         !silent
       ) {
 
-        setStatus('');
+        setStatus(
+          ''
+        );
 
       }
 
-    } catch (err) {
+    } catch (error) {
 
       if (
         !silent
       ) {
 
         handleError(
-          err
+          error
         );
 
       }
@@ -538,6 +682,7 @@
     }
 
   }
+
 
 
   function applyMode() {
@@ -576,6 +721,7 @@
   }
 
 
+
   function renderAll() {
 
     renderWeekLabel();
@@ -587,6 +733,7 @@
   }
 
 
+
   function renderWeekLabel() {
 
     const end =
@@ -596,36 +743,42 @@
       );
 
 
-    $('weekLabel').textContent =
-      state.weekStart.toLocaleDateString(
-        undefined,
-        {
-          month: 'short',
-          day: 'numeric'
-        }
-      ) +
-      ' – ' +
-      end.toLocaleDateString(
-        undefined,
-        {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }
-      );
+    $('weekLabel')
+      .textContent =
+        state.weekStart
+          .toLocaleDateString(
+            undefined,
+            {
+              month:
+                'short',
+
+              day:
+                'numeric'
+            }
+          ) +
+        ' – ' +
+        end.toLocaleDateString(
+          undefined,
+          {
+            month:
+              'short',
+
+            day:
+              'numeric',
+
+            year:
+              'numeric'
+          }
+        );
 
   }
 
 
-  /*
-    ADMIN DISPLAY
 
-    Availability is visually split
-    around blocked sessions.
+  /* =========================================================
+     ADMIN DISPLAY CALCULATION
+  ========================================================= */
 
-    The original availability event
-    remains stored unchanged.
-  */
 
   function getDisplayEvents() {
 
@@ -639,20 +792,27 @@
 
 
     const availability =
-      state.events.filter(
-        (event) =>
-          event.type ===
-          'AVAILABLE'
-      );
+      state.events
+        .filter(
+          (event) =>
+            event.type ===
+            'AVAILABLE'
+        );
 
 
     const blocked =
-      state.events.filter(
-        (event) =>
-          event.type ===
-          'BLOCKED'
-      );
+      state.events
+        .filter(
+          (event) =>
+            event.type ===
+            'BLOCKED'
+        );
 
+
+    /*
+      Blocked events are always
+      displayed in admin mode.
+    */
 
     const displayEvents =
       blocked.map(
@@ -662,8 +822,14 @@
       );
 
 
+    /*
+      Split availability around
+      blocked sessions.
+    */
+
     for (
-      const available of availability
+      const available of
+      availability
     ) {
 
       const availableStart =
@@ -687,7 +853,8 @@
 
 
       for (
-        const block of blocked
+        const block of
+        blocked
       ) {
 
         const blockStart =
@@ -702,7 +869,8 @@
           );
 
 
-        const nextPieces = [];
+        const nextPieces =
+          [];
 
 
         for (
@@ -712,9 +880,15 @@
           ] of pieces
         ) {
 
+          /*
+            No overlap.
+          */
+
           if (
-            blockEnd <= start ||
-            blockStart >= end
+            blockEnd <=
+              start ||
+            blockStart >=
+              end
           ) {
 
             nextPieces.push(
@@ -729,12 +903,18 @@
           }
 
 
+          /*
+            Portion before block.
+          */
+
           if (
-            blockStart > start
+            blockStart >
+            start
           ) {
 
             nextPieces.push([
               start,
+
               Math.min(
                 blockStart,
                 end
@@ -744,8 +924,13 @@
           }
 
 
+          /*
+            Portion after block.
+          */
+
           if (
-            blockEnd < end
+            blockEnd <
+            end
           ) {
 
             nextPieces.push([
@@ -753,6 +938,7 @@
                 blockEnd,
                 start
               ),
+
               end
             ]);
 
@@ -786,6 +972,7 @@
         ) => {
 
           displayEvents.push({
+
             ...available,
 
             displayId:
@@ -804,6 +991,7 @@
               minuteKeyToLocalDateTime(
                 end
               )
+
           });
 
         }
@@ -812,34 +1000,41 @@
     }
 
 
-    return displayEvents.sort(
-      (a, b) =>
-        localDateTimeToMinuteKey(
-          a.start
-        ) -
-        localDateTimeToMinuteKey(
-          b.start
-        )
-    );
+    return displayEvents
+      .sort(
+        (a, b) =>
+          localDateTimeToMinuteKey(
+            a.start
+          ) -
+          localDateTimeToMinuteKey(
+            b.start
+          )
+      );
 
   }
 
 
-  /*
-    CALENDAR
-  */
+
+  /* =========================================================
+     CALENDAR
+  ========================================================= */
+
 
   function renderCalendar() {
 
     const startHour =
       Number(
-        state.config.dayStart ?? 8
+        state.config
+          .dayStart ??
+        8
       );
 
 
     const endHour =
       Number(
-        state.config.dayEnd ?? 24
+        state.config
+          .dayEnd ??
+        24
       );
 
 
@@ -861,6 +1056,10 @@
       '';
 
 
+    /*
+      Top-left corner.
+    */
+
     const corner =
       document.createElement(
         'div'
@@ -875,6 +1074,10 @@
       corner
     );
 
+
+    /*
+      Day headers.
+    */
 
     for (
       let d = 0;
@@ -898,7 +1101,10 @@
       head.className =
         'day-head' +
         (
-          formatDate(date) === today
+          formatDate(
+            date
+          ) ===
+          today
             ? ' today'
             : ''
         );
@@ -909,7 +1115,8 @@
           date.toLocaleDateString(
             undefined,
             {
-              weekday: 'short'
+              weekday:
+                'short'
             }
           )
         }</div>` +
@@ -925,25 +1132,31 @@
     }
 
 
-    const timeCol =
+    /*
+      Time labels.
+    */
+
+    const timeColumn =
       document.createElement(
         'div'
       );
 
 
-    timeCol.className =
+    timeColumn.className =
       'time-column';
 
 
-    timeCol.style.height =
+    timeColumn.style.height =
       totalHeight +
       'px';
 
 
     for (
-      let h = startHour;
-      h <= endHour;
-      h++
+      let hour =
+        startHour;
+      hour <=
+        endHour;
+      hour++
     ) {
 
       const label =
@@ -959,7 +1172,7 @@
       label.style.top =
         (
           (
-            h -
+            hour -
             startHour
           ) *
           64
@@ -969,12 +1182,12 @@
 
       label.textContent =
         formatMinutes(
-          h *
+          hour *
           60
         );
 
 
-      timeCol.appendChild(
+      timeColumn.appendChild(
         label
       );
 
@@ -982,9 +1195,13 @@
 
 
     calendar.appendChild(
-      timeCol
+      timeColumn
     );
 
+
+    /*
+      Day columns.
+    */
 
     for (
       let d = 0;
@@ -1030,13 +1247,15 @@
 
         column.addEventListener(
           'dragover',
-          (e) => {
+          (event) => {
 
-            e.preventDefault();
+            event.preventDefault();
 
-            column.classList.add(
-              'drag-over'
-            );
+            column
+              .classList
+              .add(
+                'drag-over'
+              );
 
           }
         );
@@ -1046,9 +1265,11 @@
           'dragleave',
           () => {
 
-            column.classList.remove(
-              'drag-over'
-            );
+            column
+              .classList
+              .remove(
+                'drag-over'
+              );
 
           }
         );
@@ -1056,21 +1277,27 @@
 
         column.addEventListener(
           'drop',
-          (e) =>
+          (event) => {
+
             handleDrop(
-              e,
+              event,
               column
-            )
+            );
+
+          }
         );
 
 
         column.addEventListener(
           'dblclick',
-          (e) =>
+          (event) => {
+
             handleEmptyDoubleClick(
-              e,
+              event,
               column
-            )
+            );
+
+          }
         );
 
       }
@@ -1117,6 +1344,7 @@
     }
 
   }
+
 
 
   function getSegmentsForDate(
@@ -1176,6 +1404,7 @@
 
 
           return {
+
             event,
 
             startMin:
@@ -1185,6 +1414,7 @@
             endMin:
               segmentEnd -
               dayStart
+
           };
 
         }
@@ -1201,6 +1431,7 @@
       );
 
   }
+
 
 
   function createEventCard(
@@ -1222,8 +1453,10 @@
 
 
     if (
-      segmentEndMin <= visibleStart ||
-      segmentStartMin >= visibleEnd
+      segmentEndMin <=
+        visibleStart ||
+      segmentStartMin >=
+        visibleEnd
     ) {
 
       return null;
@@ -1279,7 +1512,8 @@
     card.className =
       'event-card ' +
       (
-        event.type === 'BLOCKED'
+        event.type ===
+        'BLOCKED'
           ? 'blocked'
           : 'available'
       ) +
@@ -1289,7 +1523,8 @@
           : ''
       ) +
       (
-        height < 40
+        height <
+        40
           ? ' compact'
           : ''
       );
@@ -1305,18 +1540,25 @@
       'px';
 
 
+    /*
+      Public users never see
+      private blocked titles.
+    */
+
     const title =
       state.isAdmin
         ? (
             event.title ||
             (
-              event.type === 'BLOCKED'
+              event.type ===
+              'BLOCKED'
                 ? 'Blocked Session'
                 : 'Available'
             )
           )
         : (
-            event.type === 'BLOCKED'
+            event.type ===
+            'BLOCKED'
               ? 'Blocked Session'
               : 'Available'
           );
@@ -1362,6 +1604,10 @@
     );
 
 
+    /*
+      Admin interaction.
+    */
+
     if (
       state.isAdmin
     ) {
@@ -1374,9 +1620,15 @@
 
       const recurring =
         Boolean(
-          original?.recurrence
+          original
+            ?.recurrence
         );
 
+
+      /*
+        Only one-time events can
+        be dragged.
+      */
 
       if (
         !recurring
@@ -1388,20 +1640,24 @@
 
         card.addEventListener(
           'dragstart',
-          (e) => {
+          (dragEvent) => {
 
             state.draggingId =
               original.id;
 
 
-            e.dataTransfer.effectAllowed =
-              'move';
+            dragEvent
+              .dataTransfer
+              .effectAllowed =
+                'move';
 
 
-            e.dataTransfer.setData(
-              'text/plain',
-              original.id
-            );
+            dragEvent
+              .dataTransfer
+              .setData(
+                'text/plain',
+                original.id
+              );
 
           }
         );
@@ -1420,10 +1676,15 @@
                 '.drag-over'
               )
               .forEach(
-                (element) =>
-                  element.classList.remove(
-                    'drag-over'
-                  )
+                (element) => {
+
+                  element
+                    .classList
+                    .remove(
+                      'drag-over'
+                    );
+
+                }
               );
 
           }
@@ -1460,6 +1721,7 @@
   }
 
 
+
   function getOriginalEvent(
     event
   ) {
@@ -1475,7 +1737,8 @@
           (
             item.masterId ||
             item.id
-          ) === id
+          ) ===
+          id
       );
 
 
@@ -1485,9 +1748,11 @@
   }
 
 
-  /*
-    MOBILE AGENDA
-  */
+
+  /* =========================================================
+     MOBILE AGENDA
+  ========================================================= */
+
 
   function renderAgenda() {
 
@@ -1540,9 +1805,14 @@
         date.toLocaleDateString(
           undefined,
           {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric'
+            weekday:
+              'long',
+
+            month:
+              'short',
+
+            day:
+              'numeric'
           }
         );
 
@@ -1596,7 +1866,8 @@
             item.className =
               'agenda-item ' +
               (
-                event.type === 'BLOCKED'
+                event.type ===
+                'BLOCKED'
                   ? 'blocked'
                   : 'available'
               );
@@ -1631,13 +1902,15 @@
                 ? (
                     event.title ||
                     (
-                      event.type === 'BLOCKED'
+                      event.type ===
+                      'BLOCKED'
                         ? 'Blocked Session'
                         : 'Available'
                     )
                   )
                 : (
-                    event.type === 'BLOCKED'
+                    event.type ===
+                    'BLOCKED'
                       ? 'Blocked Session'
                       : 'Available'
                   );
@@ -1662,7 +1935,8 @@
 
 
             right.textContent =
-              event.type === 'BLOCKED'
+              event.type ===
+              'BLOCKED'
                 ? 'Blocked'
                 : 'Open';
 
@@ -1718,9 +1992,11 @@
   }
 
 
-  /*
-    BLOCKED SESSION ADMIN PANEL
-  */
+
+  /* =========================================================
+     BLOCKED SESSION DRAWER
+  ========================================================= */
+
 
   async function openBlockedSessions() {
 
@@ -1740,16 +2016,19 @@
       );
 
 
-    $('blockedListStatus').textContent =
-      'Loading blocked sessions…';
+    $('blockedListStatus')
+      .textContent =
+        'Loading blocked sessions…';
 
 
-    $('pastBlockedList').innerHTML =
-      '';
+    $('pastBlockedList')
+      .innerHTML =
+        '';
 
 
-    $('upcomingBlockedList').innerHTML =
-      '';
+    $('upcomingBlockedList')
+      .innerHTML =
+        '';
 
 
     try {
@@ -1759,8 +2038,8 @@
 
 
       /*
-        Display one year backward
-        and one year forward.
+        One year backward and
+        one year forward.
       */
 
       const startDate =
@@ -1768,10 +2047,11 @@
           nowKey -
           365 *
           1440
-        ).slice(
-          0,
-          10
-        );
+        )
+          .slice(
+            0,
+            10
+          );
 
 
       const endDate =
@@ -1779,10 +2059,11 @@
           nowKey +
           365 *
           1440
-        ).slice(
-          0,
-          10
-        );
+        )
+          .slice(
+            0,
+            10
+          );
 
 
       const data =
@@ -1792,7 +2073,8 @@
 
 
       if (
-        data.mode !== 'admin'
+        data.mode !==
+        'admin'
       ) {
 
         throw new Error(
@@ -1815,11 +2097,11 @@
 
 
       /*
-        Past events:
-        already ended.
+        Past:
+        event has ended.
 
-        Current events:
-        remain in upcoming.
+        Current event:
+        stays under Upcoming.
       */
 
       const past =
@@ -1862,12 +2144,14 @@
           );
 
 
-      $('pastBlockedCount').textContent =
-        past.length;
+      $('pastBlockedCount')
+        .textContent =
+          past.length;
 
 
-      $('upcomingBlockedCount').textContent =
-        upcoming.length;
+      $('upcomingBlockedCount')
+        .textContent =
+          upcoming.length;
 
 
       renderBlockedSessionList(
@@ -1884,17 +2168,20 @@
       );
 
 
-      $('blockedListStatus').textContent =
-        '';
+      $('blockedListStatus')
+        .textContent =
+          '';
 
-    } catch (err) {
+    } catch (error) {
 
-      $('blockedListStatus').textContent =
-        err.message;
+      $('blockedListStatus')
+        .textContent =
+          error.message;
 
     }
 
   }
+
 
 
   function closeBlockedSessions() {
@@ -1906,6 +2193,7 @@
       );
 
   }
+
 
 
   function renderBlockedSessionList(
@@ -1947,7 +2235,8 @@
 
 
     for (
-      const event of events
+      const event of
+      events
     ) {
 
       const startKey =
@@ -1963,8 +2252,10 @@
 
 
       const current =
-        startKey <= nowKey &&
-        endKey > nowKey;
+        startKey <=
+          nowKey &&
+        endKey >
+          nowKey;
 
 
       const button =
@@ -2105,9 +2396,11 @@
   }
 
 
-  /*
-    DRAG ONE-TIME EVENTS
-  */
+
+  /* =========================================================
+     DRAGGING
+  ========================================================= */
+
 
   async function handleDrop(
     event,
@@ -2117,15 +2410,19 @@
     event.preventDefault();
 
 
-    column.classList.remove(
-      'drag-over'
-    );
+    column
+      .classList
+      .remove(
+        'drag-over'
+      );
 
 
     const id =
-      event.dataTransfer.getData(
-        'text/plain'
-      ) ||
+      event
+        .dataTransfer
+        .getData(
+          'text/plain'
+        ) ||
       state.draggingId;
 
 
@@ -2135,7 +2432,8 @@
           (
             item.masterId ||
             item.id
-          ) === id
+          ) ===
+          id
       );
 
 
@@ -2162,7 +2460,8 @@
 
 
     const rect =
-      column.getBoundingClientRect();
+      column
+        .getBoundingClientRect();
 
 
     const y =
@@ -2178,7 +2477,8 @@
 
     const startHour =
       Number(
-        state.config.dayStart ??
+        state.config
+          .dayStart ??
         8
       );
 
@@ -2232,6 +2532,32 @@
       );
 
 
+    const movedEvent = {
+
+      id:
+        storedEvent.id,
+
+      type:
+        storedEvent.type,
+
+      title:
+        storedEvent.title,
+
+      notes:
+        storedEvent.notes,
+
+      start:
+        newStart,
+
+      end:
+        newEnd,
+
+      recurrence:
+        null
+
+    };
+
+
     try {
 
       setStatus(
@@ -2239,55 +2565,68 @@
       );
 
 
-      const result =
-        await saveEventWithConflictCheck({
-          id:
-            storedEvent.id,
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
 
-          type:
-            storedEvent.type,
+          body:
+            JSON.stringify(
+              movedEvent
+            )
+        }
+      );
 
-          title:
-            storedEvent.title,
 
-          notes:
-            storedEvent.notes,
+      await loadWeek();
 
-          start:
-            newStart,
+    } catch (error) {
 
-          end:
-            newEnd,
+      /*
+        Conflict while dragging.
 
-          recurrence:
-            null
-        });
-
+        Open the editor with the new
+        proposed time and show the
+        warning there.
+      */
 
       if (
-        !result
+        error.status ===
+          409 &&
+        error.data?.code ===
+          'BLOCKED_CONFLICT'
       ) {
 
-        setStatus(
-          'Move cancelled.'
+        openEventModal(
+          movedEvent
         );
+
+
+        showConflictWarning(
+          error.data,
+          movedEvent
+        );
+
+
+        setStatus(
+          'Move not saved yet because of a schedule conflict.'
+        );
+
 
         return;
 
       }
 
 
-      await loadWeek();
-
-    } catch (err) {
-
       handleError(
-        err
+        error
       );
 
     }
 
   }
+
 
 
   function handleEmptyDoubleClick(
@@ -2307,7 +2646,8 @@
 
 
     const rect =
-      column.getBoundingClientRect();
+      column
+        .getBoundingClientRect();
 
 
     const y =
@@ -2323,7 +2663,8 @@
 
     const startHour =
       Number(
-        state.config.dayStart ??
+        state.config
+          .dayStart ??
         8
       );
 
@@ -2360,6 +2701,13 @@
       );
 
 
+    /*
+      Do not automatically assign
+      Available.
+
+      Type begins as Select One.
+    */
+
     openEventModal({
       start,
       end
@@ -2368,18 +2716,22 @@
   }
 
 
-  /*
-    ADMIN LOGIN
-  */
+
+  /* =========================================================
+     ADMIN LOGIN
+  ========================================================= */
+
 
   function openAdminLogin() {
 
-    $('loginError').textContent =
-      '';
+    $('loginError')
+      .textContent =
+        '';
 
 
-    $('adminPasswordInput').value =
-      '';
+    $('adminPasswordInput')
+      .value =
+        '';
 
 
     openModal(
@@ -2388,27 +2740,34 @@
 
 
     setTimeout(
-      () =>
+      () => {
+
         $('adminPasswordInput')
-          .focus(),
+          .focus();
+
+      },
       50
     );
 
   }
 
 
+
   async function submitAdminLogin() {
 
     const password =
-      $('adminPasswordInput').value;
+      $('adminPasswordInput')
+        .value;
 
 
-    $('loginError').textContent =
-      '';
+    $('loginError')
+      .textContent =
+        '';
 
 
-    $('loginSubmitBtn').disabled =
-      true;
+    $('loginSubmitBtn')
+      .disabled =
+        true;
 
 
     try {
@@ -2437,7 +2796,7 @@
 
       await loadWeek();
 
-    } catch (err) {
+    } catch (error) {
 
       state.adminPassword =
         '';
@@ -2447,17 +2806,20 @@
         false;
 
 
-      $('loginError').textContent =
-        err.message;
+      $('loginError')
+        .textContent =
+          error.message;
 
     } finally {
 
-      $('loginSubmitBtn').disabled =
-        false;
+      $('loginSubmitBtn')
+        .disabled =
+          false;
 
     }
 
   }
+
 
 
   function exitAdmin() {
@@ -2478,9 +2840,11 @@
   }
 
 
-  /*
-    RECURRENCE FORM
-  */
+
+  /* =========================================================
+     RECURRENCE FORM
+  ========================================================= */
+
 
   function getSelectedWeekdays() {
 
@@ -2502,6 +2866,7 @@
       );
 
   }
+
 
 
   function setSelectedWeekdays(
@@ -2526,14 +2891,17 @@
       .forEach(
         (button) => {
 
-          button.classList.toggle(
-            'selected',
-            selected.has(
-              Number(
-                button.dataset.day
+          button
+            .classList
+            .toggle(
+              'selected',
+
+              selected.has(
+                Number(
+                  button.dataset.day
+                )
               )
-            )
-          );
+            );
 
         }
       );
@@ -2541,11 +2909,13 @@
   }
 
 
+
   function getStartWeekday() {
 
     const key =
       localDateTimeToMinuteKey(
-        $('eventStart').value
+        $('eventStart')
+          .value
       );
 
 
@@ -2554,7 +2924,8 @@
       null
     ) {
 
-      return new Date().getDay();
+      return new Date()
+        .getDay();
 
     }
 
@@ -2562,9 +2933,11 @@
     return new Date(
       key *
       60000
-    ).getUTCDay();
+    )
+      .getUTCDay();
 
   }
+
 
 
   function selectStartWeekday() {
@@ -2574,6 +2947,7 @@
     ]);
 
   }
+
 
 
   function getRepeatEndType() {
@@ -2586,6 +2960,7 @@
     );
 
   }
+
 
 
   function setRepeatEndType(
@@ -2610,10 +2985,12 @@
   }
 
 
+
   function updateRecurrenceUI() {
 
     const weekly =
-      $('repeatType').value ===
+      $('repeatType')
+        .value ===
       'WEEKLY';
 
 
@@ -2638,22 +3015,26 @@
       getRepeatEndType();
 
 
-    $('repeatEndDate').disabled =
-      endType !==
-      'ON';
+    $('repeatEndDate')
+      .disabled =
+        endType !==
+        'ON';
 
 
-    $('repeatCount').disabled =
-      endType !==
-      'COUNT';
+    $('repeatCount')
+      .disabled =
+        endType !==
+        'COUNT';
 
   }
+
 
 
   function getRecurrenceFromForm() {
 
     if (
-      $('repeatType').value ===
+      $('repeatType')
+        .value ===
       'NONE'
     ) {
 
@@ -2679,7 +3060,8 @@
 
     const interval =
       Number(
-        $('repeatInterval').value
+        $('repeatInterval')
+          .value
       );
 
 
@@ -2687,8 +3069,10 @@
       !Number.isInteger(
         interval
       ) ||
-      interval < 1 ||
-      interval > 52
+      interval <
+        1 ||
+      interval >
+        52
     ) {
 
       throw new Error(
@@ -2703,6 +3087,7 @@
 
 
     const recurrence = {
+
       frequency:
         'WEEKLY',
 
@@ -2711,6 +3096,7 @@
       weekdays,
 
       endType
+
     };
 
 
@@ -2720,7 +3106,8 @@
     ) {
 
       if (
-        !$('repeatEndDate').value
+        !$('repeatEndDate')
+          .value
       ) {
 
         throw new Error(
@@ -2731,7 +3118,8 @@
 
 
       recurrence.until =
-        $('repeatEndDate').value;
+        $('repeatEndDate')
+          .value;
 
     }
 
@@ -2743,7 +3131,8 @@
 
       const count =
         Number(
-          $('repeatCount').value
+          $('repeatCount')
+            .value
         );
 
 
@@ -2751,8 +3140,10 @@
         !Number.isInteger(
           count
         ) ||
-        count < 1 ||
-        count > 999
+        count <
+          1 ||
+        count >
+          999
       ) {
 
         throw new Error(
@@ -2773,9 +3164,11 @@
   }
 
 
-  /*
-    EVENT EDITOR
-  */
+
+  /* =========================================================
+     EVENT MODAL
+  ========================================================= */
+
 
   function openEventModal(
     event
@@ -2835,59 +3228,75 @@
       defaultEnd;
 
 
-    $('eventModalTitle').textContent =
-      isEdit
-        ? (
-            event.recurrence
-              ? 'Edit recurring event'
-              : 'Edit time'
-          )
-        : 'Add time';
+    $('eventModalTitle')
+      .textContent =
+        isEdit
+          ? (
+              event.recurrence
+                ? 'Edit recurring event'
+                : 'Edit time'
+            )
+          : 'Add time';
 
 
-    $('eventId').value =
-      isEdit
-        ? (
-            event.masterId ||
-            event.id
-          )
-        : '';
+    $('eventId')
+      .value =
+        isEdit
+          ? (
+              event.masterId ||
+              event.id
+            )
+          : '';
 
 
-    $('eventType').value =
-      (
-        event &&
-        event.type
-      ) ||
-      '';
+    /*
+      New events intentionally
+      begin with Select One.
+    */
+
+    $('eventType')
+      .value =
+        (
+          event &&
+          event.type
+        ) ||
+        '';
 
 
-    $('eventStart').value =
-      originalStart;
+    $('eventStart')
+      .value =
+        originalStart;
 
 
-    $('eventEnd').value =
-      originalEnd;
+    $('eventEnd')
+      .value =
+        originalEnd;
 
 
-    $('eventTitle').value =
-      (
-        event &&
-        event.title
-      ) ||
-      '';
+    $('eventTitle')
+      .value =
+        (
+          event &&
+          event.title
+        ) ||
+        '';
 
 
-    $('eventNotes').value =
-      (
-        event &&
-        event.notes
-      ) ||
-      '';
+    $('eventNotes')
+      .value =
+        (
+          event &&
+          event.notes
+        ) ||
+        '';
 
 
-    $('eventError').textContent =
-      '';
+    $('eventError')
+      .textContent =
+        '';
+
+
+    clearConflictWarning();
 
 
     $('deleteEventBtn')
@@ -2908,13 +3317,15 @@
       'WEEKLY'
     ) {
 
-      $('repeatType').value =
-        'WEEKLY';
+      $('repeatType')
+        .value =
+          'WEEKLY';
 
 
-      $('repeatInterval').value =
-        recurrence.interval ||
-        1;
+      $('repeatInterval')
+        .value =
+          recurrence.interval ||
+          1;
 
 
       setSelectedWeekdays(
@@ -2929,23 +3340,27 @@
       );
 
 
-      $('repeatEndDate').value =
-        recurrence.until ||
-        '';
+      $('repeatEndDate')
+        .value =
+          recurrence.until ||
+          '';
 
 
-      $('repeatCount').value =
-        recurrence.count ||
-        10;
+      $('repeatCount')
+        .value =
+          recurrence.count ||
+          10;
 
     } else {
 
-      $('repeatType').value =
-        'NONE';
+      $('repeatType')
+        .value =
+          'NONE';
 
 
-      $('repeatInterval').value =
-        1;
+      $('repeatInterval')
+        .value =
+          1;
 
 
       setSelectedWeekdays([
@@ -2958,12 +3373,14 @@
       );
 
 
-      $('repeatEndDate').value =
-        '';
+      $('repeatEndDate')
+        .value =
+          '';
 
 
-      $('repeatCount').value =
-        10;
+      $('repeatCount')
+        .value =
+          10;
 
     }
 
@@ -2978,84 +3395,60 @@
   }
 
 
-  /*
-    SAVE WITH CONFLICT WARNING
-  */
 
-  async function saveEventWithConflictCheck(
-    event
-  ) {
+  /* =========================================================
+     INLINE CONFLICT WARNING
+  ========================================================= */
 
-    try {
 
-      return await api(
-        '/events',
-        {
-          method:
-            'POST',
+  function clearConflictWarning() {
 
-          body:
-            JSON.stringify(
-              event
-            )
-        }
+    state.pendingConflictEvent =
+      null;
+
+
+    $('conflictWarning')
+      .classList
+      .add(
+        'hidden'
       );
 
-    } catch (err) {
 
-      if (
-        err.status ===
-          409 &&
-        err.data?.code ===
-          'BLOCKED_CONFLICT'
-      ) {
-
-        const proceed =
-          window.confirm(
-            buildConflictWarning(
-              err.data
-            )
-          );
+    $('conflictWarningSummary')
+      .textContent =
+        '';
 
 
-        if (
-          !proceed
-        ) {
-
-          return null;
-
-        }
+    $('conflictWarningList')
+      .innerHTML =
+        '';
 
 
-        return await api(
-          '/events',
-          {
-            method:
-              'POST',
-
-            body:
-              JSON.stringify({
-                ...event,
-
-                forceConflict:
-                  true
-              })
-          }
-        );
-
-      }
+    $('saveAnywayBtn')
+      .classList
+      .add(
+        'hidden'
+      );
 
 
-      throw err;
-
-    }
+    $('saveEventBtn')
+      .classList
+      .remove(
+        'hidden'
+      );
 
   }
 
 
-  function buildConflictWarning(
-    data
+
+  function showConflictWarning(
+    data,
+    event
   ) {
+
+    state.pendingConflictEvent =
+      event;
+
 
     const conflicts =
       data.conflicts ||
@@ -3067,16 +3460,25 @@
       conflicts.length;
 
 
-    let message =
-      'Schedule conflict\n\n';
+    $('eventError')
+      .textContent =
+        '';
 
 
-    message +=
-      `This event overlaps with ${
-        total === 1
-          ? 'an existing blocked session'
-          : `${total} existing blocked sessions`
-      }:\n\n`;
+    $('conflictWarningSummary')
+      .textContent =
+        total ===
+        1
+          ? 'This event overlaps with an existing blocked session.'
+          : `This event overlaps with ${total} existing blocked sessions.`;
+
+
+    const list =
+      $('conflictWarningList');
+
+
+    list.innerHTML =
+      '';
 
 
     const shown =
@@ -3086,24 +3488,64 @@
       );
 
 
-    shown.forEach(
-      (conflict) => {
+    for (
+      const conflict of
+      shown
+    ) {
 
-        message +=
-          `${
-            conflict.title ||
-            'Blocked Session'
-          }\n`;
+      const item =
+        document.createElement(
+          'div'
+        );
 
 
-        message +=
-          `${formatBlockedEventRange(
-            conflict.start,
-            conflict.end
-          )}\n\n`;
+      item.className =
+        'conflict-item';
 
-      }
-    );
+
+      const title =
+        document.createElement(
+          'div'
+        );
+
+
+      title.className =
+        'conflict-item-title';
+
+
+      title.textContent =
+        conflict.title ||
+        'Blocked Session';
+
+
+      const time =
+        document.createElement(
+          'div'
+        );
+
+
+      time.className =
+        'conflict-item-time';
+
+
+      time.textContent =
+        formatBlockedEventRange(
+          conflict.start,
+          conflict.end
+        );
+
+
+      item.append(
+        title,
+        time
+      );
+
+
+      list.appendChild(
+        item
+      );
+
+    }
 
 
     if (
@@ -3111,49 +3553,195 @@
       shown.length
     ) {
 
-      message +=
-        `...and ${
-          total -
-          shown.length
-        } more conflict(s).\n\n`;
+      const more =
+        document.createElement(
+          'div'
+        );
+
+
+      more.className =
+        'conflict-more';
+
+
+      const remaining =
+        total -
+        shown.length;
+
+
+      more.textContent =
+        `And ${remaining} more conflict${
+          remaining ===
+          1
+            ? ''
+            : 's'
+        }.`;
+
+
+      list.appendChild(
+        more
+      );
 
     }
 
 
-    message +=
-      'Are you sure you want to save this event anyway?';
+    $('conflictWarning')
+      .classList
+      .remove(
+        'hidden'
+      );
 
 
-    return message;
+    /*
+      Replace normal Save button
+      with Save Anyway.
+    */
+
+    $('saveEventBtn')
+      .classList
+      .add(
+        'hidden'
+      );
+
+
+    $('saveAnywayBtn')
+      .classList
+      .remove(
+        'hidden'
+      );
+
+
+    $('conflictWarning')
+      .scrollIntoView({
+        behavior:
+          'smooth',
+
+        block:
+          'nearest'
+      });
 
   }
+
+
+
+  async function saveAnywayFromConflict() {
+
+    const event =
+      state.pendingConflictEvent;
+
+
+    if (
+      !event
+    ) {
+
+      return;
+
+    }
+
+
+    $('eventError')
+      .textContent =
+        '';
+
+
+    $('saveAnywayBtn')
+      .disabled =
+        true;
+
+
+    try {
+
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
+
+          body:
+            JSON.stringify({
+              ...event,
+
+              forceConflict:
+                true
+            })
+        }
+      );
+
+
+      clearConflictWarning();
+
+
+      closeModal(
+        'eventModal'
+      );
+
+
+      await loadWeek();
+
+    } catch (error) {
+
+      $('eventError')
+        .textContent =
+          error.message;
+
+    } finally {
+
+      $('saveAnywayBtn')
+        .disabled =
+          false;
+
+    }
+
+  }
+
+
+
+  /* =========================================================
+     SAVE EVENT
+  ========================================================= */
 
 
   async function saveEventFromModal() {
 
     /*
-      Clear any previous error message.
+      Clear any existing standard
+      validation error.
     */
-    $('eventError').textContent = '';
+
+    $('eventError')
+      .textContent =
+        '';
+
+
+    clearConflictWarning();
 
 
     const type =
-      $('eventType').value;
+      $('eventType')
+        .value;
 
 
     const title =
-      $('eventTitle').value.trim();
+      $('eventTitle')
+        .value
+        .trim();
 
 
     /*
-      Require session type.
+      TYPE REQUIRED
     */
-    if (!type) {
 
-      $('eventError').textContent =
-        'Please select a session type before saving.';
+    if (
+      !type
+    ) {
 
-      $('eventType').focus();
+      $('eventError')
+        .textContent =
+          'Please select a session type before saving.';
+
+
+      $('eventType')
+        .focus();
+
 
       return;
 
@@ -3161,14 +3749,21 @@
 
 
     /*
-      Require title.
+      TITLE REQUIRED
     */
-    if (!title) {
 
-      $('eventError').textContent =
-        'Please enter a title for this event before saving.';
+    if (
+      !title
+    ) {
 
-      $('eventTitle').focus();
+      $('eventError')
+        .textContent =
+          'Please enter a title for this event before saving.';
+
+
+      $('eventTitle')
+        .focus();
+
 
       return;
 
@@ -3176,11 +3771,13 @@
 
 
     const start =
-      $('eventStart').value;
+      $('eventStart')
+        .value;
 
 
     const end =
-      $('eventEnd').value;
+      $('eventEnd')
+        .value;
 
 
     const startKey =
@@ -3195,25 +3792,40 @@
       );
 
 
+    /*
+      VALID TIME REQUIRED
+    */
+
     if (
-      startKey == null ||
-      endKey == null
+      startKey ==
+        null ||
+      endKey ==
+        null
     ) {
 
-      $('eventError').textContent =
-        'Please enter a valid start and end date/time.';
+      $('eventError')
+        .textContent =
+          'Please enter a valid start and end date/time.';
+
 
       return;
 
     }
 
 
+    /*
+      END AFTER START
+    */
+
     if (
-      endKey <= startKey
+      endKey <=
+      startKey
     ) {
 
-      $('eventError').textContent =
-        'The end date/time must be after the start date/time.';
+      $('eventError')
+        .textContent =
+          'The end date/time must be after the start date/time.';
+
 
       return;
 
@@ -3228,10 +3840,12 @@
       recurrence =
         getRecurrenceFromForm();
 
-    } catch (err) {
+    } catch (error) {
 
-      $('eventError').textContent =
-        err.message;
+      $('eventError')
+        .textContent =
+          error.message;
+
 
       return;
 
@@ -3241,7 +3855,8 @@
     const event = {
 
       id:
-        $('eventId').value,
+        $('eventId')
+          .value,
 
       type,
 
@@ -3252,30 +3867,40 @@
       title,
 
       notes:
-        $('eventNotes').value,
+        $('eventNotes')
+          .value,
 
       recurrence
 
     };
 
 
-    $('saveEventBtn').disabled =
-      true;
+    $('saveEventBtn')
+      .disabled =
+        true;
 
 
     try {
 
-      const result =
-        await saveEventWithConflictCheck(
-          event
-        );
+      /*
+        Normal save attempt.
+      */
+
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
+
+          body:
+            JSON.stringify(
+              event
+            )
+        }
+      );
 
 
-      if (!result) {
-
-        return;
-
-      }
+      clearConflictWarning();
 
 
       closeModal(
@@ -3285,25 +3910,59 @@
 
       await loadWeek();
 
-    } catch (err) {
+    } catch (error) {
 
-      $('eventError').textContent =
-        err.message;
+      /*
+        Schedule conflict.
+
+        Do not use browser confirm().
+        Display the warning in the form.
+      */
+
+      if (
+        error.status ===
+          409 &&
+        error.data?.code ===
+          'BLOCKED_CONFLICT'
+      ) {
+
+        showConflictWarning(
+          error.data,
+          event
+        );
+
+
+        return;
+
+      }
+
+
+      $('eventError')
+        .textContent =
+          error.message;
 
     } finally {
 
-      $('saveEventBtn').disabled =
-        false;
+      $('saveEventBtn')
+        .disabled =
+          false;
 
     }
 
   }
 
 
+
+  /* =========================================================
+     DELETE
+  ========================================================= */
+
+
   async function deleteEventFromModal() {
 
     const id =
-      $('eventId').value;
+      $('eventId')
+        .value;
 
 
     if (
@@ -3316,9 +3975,18 @@
 
 
     const recurring =
-      $('repeatType').value ===
+      $('repeatType')
+        .value ===
       'WEEKLY';
 
+
+    /*
+      This is currently the only browser
+      confirmation still used.
+
+      It is separate from schedule
+      conflict warnings.
+    */
 
     const message =
       recurring
@@ -3337,8 +4005,9 @@
     }
 
 
-    $('deleteEventBtn').disabled =
-      true;
+    $('deleteEventBtn')
+      .disabled =
+        true;
 
 
     try {
@@ -3362,24 +4031,28 @@
 
       await loadWeek();
 
-    } catch (err) {
+    } catch (error) {
 
-      $('eventError').textContent =
-        err.message;
+      $('eventError')
+        .textContent =
+          error.message;
 
     } finally {
 
-      $('deleteEventBtn').disabled =
-        false;
+      $('deleteEventBtn')
+        .disabled =
+          false;
 
     }
 
   }
 
 
-  /*
-    DATE DISPLAY
-  */
+
+  /* =========================================================
+     DATE DISPLAY
+  ========================================================= */
+
 
   function formatBlockedEventRange(
     start,
@@ -3424,57 +4097,60 @@
 
 
     const dateText =
-      startDate.toLocaleDateString(
-        undefined,
-        {
-          timeZone:
-            'UTC',
+      startDate
+        .toLocaleDateString(
+          undefined,
+          {
+            timeZone:
+              'UTC',
 
-          weekday:
-            'short',
+            weekday:
+              'short',
 
-          month:
-            'short',
+            month:
+              'short',
 
-          day:
-            'numeric',
+            day:
+              'numeric',
 
-          year:
-            'numeric'
-        }
-      );
+            year:
+              'numeric'
+          }
+        );
 
 
     const startTime =
-      startDate.toLocaleTimeString(
-        undefined,
-        {
-          timeZone:
-            'UTC',
+      startDate
+        .toLocaleTimeString(
+          undefined,
+          {
+            timeZone:
+              'UTC',
 
-          hour:
-            'numeric',
+            hour:
+              'numeric',
 
-          minute:
-            '2-digit'
-        }
-      );
+            minute:
+              '2-digit'
+          }
+        );
 
 
     const endTime =
-      endDate.toLocaleTimeString(
-        undefined,
-        {
-          timeZone:
-            'UTC',
+      endDate
+        .toLocaleTimeString(
+          undefined,
+          {
+            timeZone:
+              'UTC',
 
-          hour:
-            'numeric',
+            hour:
+              'numeric',
 
-          minute:
-            '2-digit'
-        }
-      );
+            minute:
+              '2-digit'
+          }
+        );
 
 
     if (
@@ -3490,25 +4166,26 @@
 
 
     const endDateText =
-      endDate.toLocaleDateString(
-        undefined,
-        {
-          timeZone:
-            'UTC',
+      endDate
+        .toLocaleDateString(
+          undefined,
+          {
+            timeZone:
+              'UTC',
 
-          weekday:
-            'short',
+            weekday:
+              'short',
 
-          month:
-            'short',
+            month:
+              'short',
 
-          day:
-            'numeric',
+            day:
+              'numeric',
 
-          year:
-            'numeric'
-        }
-      );
+            year:
+              'numeric'
+          }
+        );
 
 
     return (
@@ -3519,15 +4196,17 @@
   }
 
 
-  /*
-    Gets current wall-clock time
-    in the portal timezone.
-  */
+
+  /* =========================================================
+     PORTAL CURRENT TIME
+  ========================================================= */
+
 
   function getPortalNowMinuteKey() {
 
     const timezone =
-      state.config.timezoneId ||
+      state.config
+        .timezoneId ||
       'America/Los_Angeles';
 
 
@@ -3560,16 +4239,19 @@
 
 
     const parts =
-      formatter.formatToParts(
-        new Date()
-      );
+      formatter
+        .formatToParts(
+          new Date()
+        );
 
 
-    const values = {};
+    const values =
+      {};
 
 
     for (
-      const part of parts
+      const part of
+      parts
     ) {
 
       if (
@@ -3594,9 +4276,11 @@
   }
 
 
-  /*
-    MODALS
-  */
+
+  /* =========================================================
+     MODALS
+  ========================================================= */
+
 
   function openModal(
     id
@@ -3609,6 +4293,7 @@
       );
 
   }
+
 
 
   function closeModal(
@@ -3624,36 +4309,44 @@
   }
 
 
-  /*
-    STATUS
-  */
+
+  /* =========================================================
+     STATUS
+  ========================================================= */
+
 
   function setStatus(
     text
   ) {
 
-    $('status').textContent =
-      text ||
-      '';
+    $('status')
+      .textContent =
+        text ||
+        '';
 
   }
 
 
+
   function handleError(
-    err
+    error
   ) {
 
     setStatus(
-      err.message ||
-      String(err)
+      error.message ||
+      String(
+        error
+      )
     );
 
   }
 
 
-  /*
-    DATE UTILITIES
-  */
+
+  /* =========================================================
+     DATE UTILITIES
+  ========================================================= */
+
 
   function startOfWeek(
     date
@@ -3676,6 +4369,7 @@
     return result;
 
   }
+
 
 
   function addDays(
@@ -3702,6 +4396,7 @@
   }
 
 
+
   function formatDate(
     date
   ) {
@@ -3724,6 +4419,7 @@
     );
 
   }
+
 
 
   function formatMinutes(
@@ -3754,7 +4450,8 @@
 
 
     const suffix =
-      hour24 >= 12
+      hour24 >=
+      12
         ? 'PM'
         : 'AM';
 
@@ -3783,6 +4480,7 @@
     );
 
   }
+
 
 
   function localDateTimeToMinuteKey(
@@ -3837,12 +4535,18 @@
 
 
     if (
-      month < 1 ||
-      month > 12 ||
-      hour < 0 ||
-      hour > 23 ||
-      minute < 0 ||
-      minute > 59
+      month <
+        1 ||
+      month >
+        12 ||
+      hour <
+        0 ||
+      hour >
+        23 ||
+      minute <
+        0 ||
+      minute >
+        59
     ) {
 
       return null;
@@ -3850,7 +4554,7 @@
     }
 
 
-    const ms =
+    const milliseconds =
       Date.UTC(
         year,
         month -
@@ -3863,16 +4567,22 @@
 
     const check =
       new Date(
-        ms
+        milliseconds
       );
 
 
     if (
-      check.getUTCFullYear() !== year ||
-      check.getUTCMonth() !== month - 1 ||
-      check.getUTCDate() !== day ||
-      check.getUTCHours() !== hour ||
-      check.getUTCMinutes() !== minute
+      check.getUTCFullYear() !==
+        year ||
+      check.getUTCMonth() !==
+        month -
+        1 ||
+      check.getUTCDate() !==
+        day ||
+      check.getUTCHours() !==
+        hour ||
+      check.getUTCMinutes() !==
+        minute
     ) {
 
       return null;
@@ -3881,11 +4591,12 @@
 
 
     return Math.floor(
-      ms /
+      milliseconds /
       60000
     );
 
   }
+
 
 
   function minuteKeyToLocalDateTime(
@@ -3931,12 +4642,13 @@
   }
 
 
+
   function dateAndMinutesToLocalDateTime(
     dateStr,
     minutes
   ) {
 
-    const start =
+    const dayStart =
       localDateTimeToMinuteKey(
         dateStr +
         'T00:00'
@@ -3944,11 +4656,12 @@
 
 
     return minuteKeyToLocalDateTime(
-      start +
+      dayStart +
       minutes
     );
 
   }
+
 
 
   function formatUpdated(
@@ -3983,6 +4696,7 @@
         );
 
   }
+
 
 
   init();
