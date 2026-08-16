@@ -854,3 +854,128 @@ button.agenda-item:hover {
     align-items: flex-start;
   }
 }
+
+/* -----------------------------
+   RECURRENCE
+----------------------------- */
+
+.recurrence-panel {
+  margin-bottom: 16px;
+
+  padding: 14px;
+
+  background: #f8f9fc;
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.repeat-every-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-bottom: 18px;
+
+  font-size: 14px;
+}
+
+.repeat-every-row input {
+  width: 64px;
+
+  padding: 8px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  text-align: center;
+}
+
+.recurrence-section {
+  margin-top: 14px;
+}
+
+.recurrence-label {
+  margin-bottom: 9px;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  color: var(--text);
+}
+
+
+/* Weekday buttons */
+
+.weekday-picker {
+  display: flex;
+  gap: 7px;
+}
+
+.weekday-btn {
+  width: 34px;
+  height: 34px;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: #e7eaf0;
+  color: var(--muted);
+
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+.weekday-btn:hover {
+  background: #dce1ea;
+}
+
+.weekday-btn.selected {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+
+/* Ends section */
+
+.recurrence-end-row {
+  min-height: 42px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  font-size: 14px;
+}
+
+.recurrence-end-row > input[type="radio"] {
+  width: 18px;
+  height: 18px;
+
+  accent-color: var(--accent);
+}
+
+.recurrence-end-row input[type="date"] {
+  margin-left: auto;
+
+  padding: 8px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.recurrence-end-row input[type="number"] {
+  width: 70px;
+
+  padding: 8px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.recurrence-end-row input:disabled {
+  opacity: 0.5;
+  background: #eef0f4;
+}
