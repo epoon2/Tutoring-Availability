@@ -3131,6 +3131,12 @@
 
   async function saveEventFromModal() {
 
+    /*
+      Clear any previous error message.
+    */
+    $('eventError').textContent = '';
+
+
     const type =
       $('eventType').value;
 
@@ -3142,12 +3148,10 @@
     /*
       Require session type.
     */
-
     if (!type) {
 
-      window.alert(
-        'Please select a session type before saving.'
-      );
+      $('eventError').textContent =
+        'Please select a session type before saving.';
 
       $('eventType').focus();
 
@@ -3157,14 +3161,12 @@
 
 
     /*
-      Require event title.
+      Require title.
     */
-
     if (!title) {
 
-      window.alert(
-        'Please enter a title for this event before saving.'
-      );
+      $('eventError').textContent =
+        'Please enter a title for this event before saving.';
 
       $('eventTitle').focus();
 
@@ -3199,7 +3201,7 @@
     ) {
 
       $('eventError').textContent =
-        'Enter a valid start and end date/time.';
+        'Please enter a valid start and end date/time.';
 
       return;
 
@@ -3207,12 +3209,11 @@
 
 
     if (
-      endKey <=
-      startKey
+      endKey <= startKey
     ) {
 
       $('eventError').textContent =
-        'End date/time must be after start date/time.';
+        'The end date/time must be after the start date/time.';
 
       return;
 
@@ -3238,6 +3239,7 @@
 
 
     const event = {
+
       id:
         $('eventId').value,
 
@@ -3253,11 +3255,8 @@
         $('eventNotes').value,
 
       recurrence
+
     };
-
-
-    $('eventError').textContent =
-      '';
 
 
     $('saveEventBtn').disabled =
@@ -3272,9 +3271,7 @@
         );
 
 
-      if (
-        !result
-      ) {
+      if (!result) {
 
         return;
 
