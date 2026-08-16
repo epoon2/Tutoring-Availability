@@ -115,7 +115,7 @@ export default async (req) => {
         events:
           admin
             ? ranged
-            : buildPublicAvailability(
+            : buildPublicSchedule(
                 ranged
               ),
 
@@ -644,85 +644,160 @@ function bad(message) {
   throw err;
 }
 
-function buildPublicAvailability(
-  events
-) {
-  const available =
+function buildPublicSchedule(events) {
+  const available = mergeIntervals(
+    events
+      .filter(
+        (e) =>
+          e.type === "AVAILABLE"
+      )
+      .map(
+        (e) => [
+          localDateTimeToMinuteKey(e.start),
+          localDateTimeToMinuteKey(e.end)
+        ]
+      )
+  );
+
+  const blocked = mergeIntervals(
+    events
+      .filter(
+        (e) =>
+          e.type === "BLOCKED"
+      )
+      .map(
+        (e) => [
+          localDateTimeToMinuteKey(e.start),
+          localDateTimeToMinuteKey(e.end)
+        ]
+      )
+  );
+
+  /*
+    Calculate the portions that remain available
+    after blocked sessions are removed.
+  */
+  const open = subtractIntervals(
+    available,
+    blocked
+  );
+
+  /*
+    Only show blocked sessions publicly when they
+    overlap a time that was originally marked available.
+
+    This prevents random private events outside your
+    tutoring availability from appearing publicly.
+  */
+  const publicBlocked = [];
+
+  for (const block of blocked) {
+    for (const avail of available) {
+      const start = Math.max(
+        block[0],
+        avail[0]
+      );
+
+      const end = Math.min(
+        block[1],
+        avail[1]
+      );
+
+      if (start < end) {
+        publicBlocked.push([
+          start,
+          end
+        ]);
+      }
+    }
+  }
+
+  const mergedPublicBlocked =
     mergeIntervals(
-      events
-        .filter(
-          (e) =>
-            e.type ===
-            "AVAILABLE"
-        )
-        .map(
-          (e) => [
-            localDateTimeToMinuteKey(
-              e.start
-            ),
-            localDateTimeToMinuteKey(
-              e.end
-            )
-          ]
-        )
+      publicBlocked
     );
 
-  const blocked =
-    mergeIntervals(
-      events
-        .filter(
-          (e) =>
-            e.type ===
-            "BLOCKED"
-        )
-        .map(
-          (e) => [
-            localDateTimeToMinuteKey(
-              e.start
-            ),
-            localDateTimeToMinuteKey(
-              e.end
-            )
-          ]
-        )
-    );
+  const output = [];
 
-  const open =
-    subtractIntervals(
-      available,
-      blocked
-    );
+  /*
+    Public available sections.
+  */
+  open.forEach(
+    (range, index) => {
+      output.push({
+        id:
+          `public-available-${index}-${range[0]}`,
 
-  return open.map(
-    (
-      range,
-      index
-    ) => ({
-      id:
-        `public-${index}-${range[0]}`,
+        type:
+          "AVAILABLE",
 
-      type:
-        "AVAILABLE",
+        title:
+          "Available",
 
-      title:
-        "Available",
+        start:
+          minuteKeyToLocalDateTime(
+            range[0]
+          ),
 
-      start:
-        minuteKeyToLocalDateTime(
-          range[0]
-        ),
+        end:
+          minuteKeyToLocalDateTime(
+            range[1]
+          ),
 
-      end:
-        minuteKeyToLocalDateTime(
-          range[1]
-        ),
+        notes:
+          "",
 
-      notes:
-        "",
+        updatedAt:
+          ""
+      });
+    }
+  );
 
-      updatedAt:
-        ""
-    })
+  /*
+    Public blocked sections.
+
+    Notice that the original event title and notes
+    are NEVER included.
+  */
+  mergedPublicBlocked.forEach(
+    (range, index) => {
+      output.push({
+        id:
+          `public-blocked-${index}-${range[0]}`,
+
+        type:
+          "BLOCKED",
+
+        title:
+          "Blocked Session",
+
+        start:
+          minuteKeyToLocalDateTime(
+            range[0]
+          ),
+
+        end:
+          minuteKeyToLocalDateTime(
+            range[1]
+          ),
+
+        notes:
+          "",
+
+        updatedAt:
+          ""
+      });
+    }
+  );
+
+  return output.sort(
+    (a, b) =>
+      localDateTimeToMinuteKey(
+        a.start
+      ) -
+      localDateTimeToMinuteKey(
+        b.start
+      )
   );
 }
 

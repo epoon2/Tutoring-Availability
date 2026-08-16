@@ -558,11 +558,15 @@
             ev.title ||
             (
               ev.type === 'BLOCKED'
-                ? 'Blocked'
+                ? 'Blocked Session'
                 : 'Available'
             )
           )
-        : 'Available';
+        : (
+            ev.type === 'BLOCKED'
+              ? 'Blocked Session'
+              : 'Available'
+          );
 
     const titleEl =
       document.createElement('div');
@@ -766,11 +770,15 @@
                     ev.title ||
                     (
                       ev.type === 'BLOCKED'
-                        ? 'Blocked'
+                        ? 'Blocked Session'
                         : 'Available'
                     )
                   )
-                : 'Available';
+                : (
+                    ev.type === 'BLOCKED'
+                      ? 'Blocked Session'
+                      : 'Available'
+                  );
 
             meta.className =
               'meta';
