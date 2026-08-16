@@ -22,6 +22,10 @@
 }
 
 
+/* -----------------------------
+   GLOBAL
+----------------------------- */
+
 * {
   box-sizing: border-box;
 }
@@ -62,6 +66,10 @@ button {
 }
 
 
+/* -----------------------------
+   MAIN LAYOUT
+----------------------------- */
+
 .app-shell {
   max-width: 1220px;
 
@@ -71,7 +79,9 @@ button {
 }
 
 
-/* HEADER */
+/* -----------------------------
+   HEADER
+----------------------------- */
 
 .topbar {
   display: flex;
@@ -124,7 +134,9 @@ h2 {
 }
 
 
-/* BUTTONS */
+/* -----------------------------
+   BUTTONS
+----------------------------- */
 
 .btn,
 .icon-btn,
@@ -241,7 +253,9 @@ button:disabled {
 }
 
 
-/* ADMIN */
+/* -----------------------------
+   ADMIN BANNER
+----------------------------- */
 
 .admin-banner {
   display: flex;
@@ -264,7 +278,9 @@ button:disabled {
 }
 
 
-/* CALENDAR TOOLBAR */
+/* -----------------------------
+   CALENDAR TOOLBAR
+----------------------------- */
 
 .calendar-toolbar {
   display: flex;
@@ -289,7 +305,9 @@ button:disabled {
 }
 
 
-/* LEGEND */
+/* -----------------------------
+   LEGEND
+----------------------------- */
 
 .legend {
   display: flex;
@@ -331,7 +349,9 @@ button:disabled {
 }
 
 
-/* STATUS */
+/* -----------------------------
+   STATUS
+----------------------------- */
 
 .status {
   min-height: 22px;
@@ -344,7 +364,9 @@ button:disabled {
 }
 
 
-/* CALENDAR */
+/* -----------------------------
+   CALENDAR
+----------------------------- */
 
 .calendar {
   display: grid;
@@ -375,6 +397,10 @@ button:disabled {
   border-bottom: 1px solid var(--border);
 }
 
+
+/* -----------------------------
+   DAY HEADERS
+----------------------------- */
 
 .day-head {
   min-width: 120px;
@@ -415,6 +441,10 @@ button:disabled {
 }
 
 
+/* -----------------------------
+   TIME COLUMN
+----------------------------- */
+
 .time-column {
   position: relative;
 
@@ -444,6 +474,10 @@ button:disabled {
   font-size: 11px;
 }
 
+
+/* -----------------------------
+   DAY COLUMNS
+----------------------------- */
 
 .day-column {
   position: relative;
@@ -493,7 +527,9 @@ button:disabled {
 }
 
 
-/* EVENTS */
+/* -----------------------------
+   CALENDAR EVENT CARDS
+----------------------------- */
 
 .event-card {
   position: absolute;
@@ -580,7 +616,9 @@ button:disabled {
 }
 
 
-/* MOBILE AGENDA */
+/* -----------------------------
+   MOBILE AGENDA
+----------------------------- */
 
 .agenda {
   display: none;
@@ -677,7 +715,9 @@ button.agenda-item:hover {
 }
 
 
-/* HELP */
+/* -----------------------------
+   HELP TEXT
+----------------------------- */
 
 .help-box {
   margin-top: 14px;
@@ -688,7 +728,9 @@ button.agenda-item:hover {
 }
 
 
-/* MODALS */
+/* -----------------------------
+   MODALS
+----------------------------- */
 
 .modal-backdrop {
   position: fixed;
@@ -744,7 +786,9 @@ button.agenda-item:hover {
 }
 
 
-/* FORMS */
+/* -----------------------------
+   FORM FIELDS
+----------------------------- */
 
 .field {
   display: block;
@@ -801,6 +845,38 @@ button.agenda-item:hover {
 }
 
 
+/* -----------------------------
+   EVENT TYPE PLACEHOLDER
+----------------------------- */
+
+/*
+  When "Select One" is currently selected,
+  show the select text in muted gray.
+*/
+
+.placeholder-select:invalid {
+  color: var(--muted);
+}
+
+
+/*
+  Real selectable options use normal text.
+*/
+
+.placeholder-select option {
+  color: var(--text);
+}
+
+
+/*
+  Placeholder option stays gray.
+*/
+
+.placeholder-select option[value=""] {
+  color: var(--muted);
+}
+
+
 .two-col {
   display: grid;
 
@@ -812,14 +888,24 @@ button.agenda-item:hover {
 }
 
 
+/* -----------------------------
+   FORM ERRORS
+----------------------------- */
+
 .form-error {
   min-height: 20px;
 
   color: var(--danger);
 
   font-size: 13px;
+
+  font-weight: 500;
 }
 
+
+/* -----------------------------
+   MODAL ACTIONS
+----------------------------- */
 
 .modal-actions {
   display: flex;
@@ -837,7 +923,9 @@ button.agenda-item:hover {
 }
 
 
-/* RECURRENCE */
+/* -----------------------------
+   RECURRENCE
+----------------------------- */
 
 .recurrence-panel {
   margin-bottom: 16px;
@@ -974,7 +1062,9 @@ button.agenda-item:hover {
 }
 
 
-/* BLOCKED SESSION DRAWER */
+/* -----------------------------
+   BLOCKED SESSION DRAWER
+----------------------------- */
 
 .drawer-backdrop {
   position: fixed;
@@ -1199,7 +1289,9 @@ button.agenda-item:hover {
 }
 
 
-/* MOBILE */
+/* -----------------------------
+   MOBILE
+----------------------------- */
 
 @media (max-width: 760px) {
 
@@ -1207,9 +1299,11 @@ button.agenda-item:hover {
     padding: 14px;
   }
 
+
   .topbar {
     flex-direction: column;
   }
+
 
   .header-actions {
     width: 100%;
@@ -1217,11 +1311,13 @@ button.agenda-item:hover {
     flex-wrap: wrap;
   }
 
+
   .calendar-toolbar {
     flex-wrap: wrap;
 
     border-radius: 12px;
   }
+
 
   .calendar-toolbar h2 {
     order: 3;
@@ -1231,17 +1327,21 @@ button.agenda-item:hover {
     margin: 4px 0 0;
   }
 
+
   .legend {
     margin-left: auto;
   }
+
 
   .calendar {
     display: none;
   }
 
+
   .agenda {
     display: block;
   }
+
 
   .two-col {
     grid-template-columns: 1fr;
@@ -1249,9 +1349,11 @@ button.agenda-item:hover {
     gap: 0;
   }
 
+
   .admin-banner {
     align-items: flex-start;
   }
+
 
   .blocked-drawer {
     width: 100%;
@@ -1259,9 +1361,11 @@ button.agenda-item:hover {
     padding: 14px;
   }
 
+
   .blocked-list-columns {
     grid-template-columns: 1fr;
   }
+
 
   .blocked-session-list {
     max-height: 420px;
