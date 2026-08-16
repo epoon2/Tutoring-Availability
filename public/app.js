@@ -12,6 +12,7 @@
     config: {
       portalTitle: 'Tutoring Availability',
       timezoneLabel: 'Pacific Time (PT)',
+      timezoneId: 'America/Los_Angeles',
       dayStart: 8,
       dayEnd: 24
     },
@@ -23,31 +24,39 @@
   const $ = (id) =>
     document.getElementById(id);
 
+
   const calendar =
     $('calendar');
+
 
   const agenda =
     $('agenda');
 
 
   function init() {
+
     bindButtons();
 
     loadWeek();
 
+
     /*
-      Public pages automatically refresh
-      every 30 seconds.
+      Automatically refresh public view.
     */
 
     setInterval(() => {
+
       if (
         !state.isAdmin &&
         document.visibilityState === 'visible'
       ) {
+
         loadWeek(true);
+
       }
+
     }, 30000);
+
   }
 
 
@@ -56,6 +65,7 @@
     $('prevWeekBtn').addEventListener(
       'click',
       () => {
+
         state.weekStart =
           addDays(
             state.weekStart,
@@ -63,6 +73,7 @@
           );
 
         loadWeek();
+
       }
     );
 
@@ -70,6 +81,7 @@
     $('nextWeekBtn').addEventListener(
       'click',
       () => {
+
         state.weekStart =
           addDays(
             state.weekStart,
@@ -77,6 +89,7 @@
           );
 
         loadWeek();
+
       }
     );
 
@@ -84,12 +97,14 @@
     $('todayBtn').addEventListener(
       'click',
       () => {
+
         state.weekStart =
           startOfWeek(
             new Date()
           );
 
         loadWeek();
+
       }
     );
 
@@ -118,6 +133,35 @@
     );
 
 
+    $('blockedSessionsBtn').addEventListener(
+      'click',
+      openBlockedSessions
+    );
+
+
+    $('closeBlockedDrawerBtn').addEventListener(
+      'click',
+      closeBlockedSessions
+    );
+
+
+    $('blockedDrawerBackdrop').addEventListener(
+      'click',
+      (e) => {
+
+        if (
+          e.target ===
+          $('blockedDrawerBackdrop')
+        ) {
+
+          closeBlockedSessions();
+
+        }
+
+      }
+    );
+
+
     $('loginSubmitBtn').addEventListener(
       'click',
       submitAdminLogin
@@ -127,9 +171,15 @@
     $('adminPasswordInput').addEventListener(
       'keydown',
       (e) => {
-        if (e.key === 'Enter') {
+
+        if (
+          e.key === 'Enter'
+        ) {
+
           submitAdminLogin();
+
         }
+
       }
     );
 
@@ -147,7 +197,7 @@
 
 
     /*
-      Recurrence type
+      Recurrence type.
     */
 
     $('repeatType').addEventListener(
@@ -158,59 +208,63 @@
           $('repeatType').value === 'WEEKLY' &&
           getSelectedWeekdays().length === 0
         ) {
+
           selectStartWeekday();
+
         }
 
+
         updateRecurrenceUI();
+
       }
     );
 
 
     /*
-      Weekday selection
+      Weekday buttons.
     */
 
     document
-      .querySelectorAll('.weekday-btn')
-      .forEach((button) => {
+      .querySelectorAll(
+        '.weekday-btn'
+      )
+      .forEach(
+        (button) => {
 
-        button.addEventListener(
-          'click',
-          () => {
+          button.addEventListener(
+            'click',
+            () => {
 
-            button.classList.toggle(
-              'selected'
-            );
+              button.classList.toggle(
+                'selected'
+              );
 
-          }
-        );
+            }
+          );
 
-      });
+        }
+      );
 
 
     /*
-      Recurrence end type
+      Recurrence ending options.
     */
 
     document
       .querySelectorAll(
         'input[name="repeatEndType"]'
       )
-      .forEach((radio) => {
+      .forEach(
+        (radio) => {
 
-        radio.addEventListener(
-          'change',
-          updateRecurrenceUI
-        );
+          radio.addEventListener(
+            'change',
+            updateRecurrenceUI
+          );
 
-      });
+        }
+      );
 
-
-    /*
-      If start date changes and weekly
-      recurrence has no selected days,
-      select the new start weekday.
-    */
 
     $('eventStart').addEventListener(
       'change',
@@ -220,7 +274,9 @@
           $('repeatType').value === 'WEEKLY' &&
           getSelectedWeekdays().length === 0
         ) {
+
           selectStartWeekday();
+
         }
 
       }
@@ -228,47 +284,61 @@
 
 
     /*
-      Close buttons
+      Modal close buttons.
     */
 
     document
-      .querySelectorAll('[data-close]')
-      .forEach((btn) => {
+      .querySelectorAll(
+        '[data-close]'
+      )
+      .forEach(
+        (button) => {
 
-        btn.addEventListener(
-          'click',
-          () => {
-            closeModal(
-              btn.dataset.close
-            );
-          }
-        );
+          button.addEventListener(
+            'click',
+            () => {
 
-      });
+              closeModal(
+                button.dataset.close
+              );
+
+            }
+          );
+
+        }
+      );
 
 
     /*
-      Clicking outside modal
+      Clicking outside a modal closes it.
     */
 
     document
-      .querySelectorAll('.modal-backdrop')
-      .forEach((backdrop) => {
+      .querySelectorAll(
+        '.modal-backdrop'
+      )
+      .forEach(
+        (backdrop) => {
 
-        backdrop.addEventListener(
-          'click',
-          (e) => {
+          backdrop.addEventListener(
+            'click',
+            (e) => {
 
-            if (e.target === backdrop) {
-              closeModal(
-                backdrop.id
-              );
+              if (
+                e.target === backdrop
+              ) {
+
+                closeModal(
+                  backdrop.id
+                );
+
+              }
+
             }
+          );
 
-          }
-        );
-
-      });
+        }
+      );
 
   }
 
@@ -292,21 +362,27 @@
       state.isAdmin &&
       state.adminPassword
     ) {
+
       headers.set(
         'x-admin-password',
         state.adminPassword
       );
+
     }
 
 
     if (
       options.body &&
-      !headers.has('Content-Type')
+      !headers.has(
+        'Content-Type'
+      )
     ) {
+
       headers.set(
         'Content-Type',
         'application/json'
       );
+
     }
 
 
@@ -329,30 +405,51 @@
         );
 
 
-    if (!response.ok) {
-      throw new Error(
-        data.error ||
-        `Request failed (${response.status})`
-      );
+    if (
+      !response.ok
+    ) {
+
+      const error =
+        new Error(
+          data.error ||
+          `Request failed (${response.status})`
+        );
+
+
+      error.status =
+        response.status;
+
+
+      error.data =
+        data;
+
+
+      throw error;
+
     }
 
 
     return data;
+
   }
 
 
   /*
-    LOAD WEEK
+    LOAD CALENDAR
   */
 
   async function loadWeek(
     silent = false
   ) {
 
-    if (!silent) {
+    if (
+      !silent
+    ) {
+
       setStatus(
         'Loading…'
       );
+
     }
 
 
@@ -418,14 +515,24 @@
           : 'No saved times yet';
 
 
-      if (!silent) {
+      if (
+        !silent
+      ) {
+
         setStatus('');
+
       }
 
     } catch (err) {
 
-      if (!silent) {
-        handleError(err);
+      if (
+        !silent
+      ) {
+
+        handleError(
+          err
+        );
+
       }
 
     }
@@ -451,6 +558,14 @@
       );
 
 
+    $('blockedSessionsBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
+      );
+
+
     $('adminBtn')
       .classList
       .toggle(
@@ -462,9 +577,13 @@
 
 
   function renderAll() {
+
     renderWeekLabel();
+
     renderCalendar();
+
     renderAgenda();
+
   }
 
 
@@ -478,14 +597,13 @@
 
 
     $('weekLabel').textContent =
-      state.weekStart
-        .toLocaleDateString(
-          undefined,
-          {
-            month: 'short',
-            day: 'numeric'
-          }
-        ) +
+      state.weekStart.toLocaleDateString(
+        undefined,
+        {
+          month: 'short',
+          day: 'numeric'
+        }
+      ) +
       ' – ' +
       end.toLocaleDateString(
         undefined,
@@ -502,39 +620,39 @@
   /*
     ADMIN DISPLAY
 
-    Public data already comes from the
-    backend in its final form.
+    Availability is visually split
+    around blocked sessions.
 
-    In admin mode, availability is
-    visually split around blocked
-    sessions while the original
-    availability record stays intact.
+    The original availability event
+    remains stored unchanged.
   */
 
   function getDisplayEvents() {
 
-    if (!state.isAdmin) {
+    if (
+      !state.isAdmin
+    ) {
+
       return state.events;
+
     }
 
 
     const availability =
       state.events.filter(
         (event) =>
-          event.type === 'AVAILABLE'
+          event.type ===
+          'AVAILABLE'
       );
 
 
     const blocked =
       state.events.filter(
         (event) =>
-          event.type === 'BLOCKED'
+          event.type ===
+          'BLOCKED'
       );
 
-
-    /*
-      Always display blocked events.
-    */
 
     const displayEvents =
       blocked.map(
@@ -594,26 +712,22 @@
           ] of pieces
         ) {
 
-          /*
-            No overlap.
-          */
-
           if (
             blockEnd <= start ||
             blockStart >= end
           ) {
 
             nextPieces.push(
-              [start, end]
+              [
+                start,
+                end
+              ]
             );
 
             continue;
+
           }
 
-
-          /*
-            Keep portion before block.
-          */
 
           if (
             blockStart > start
@@ -621,7 +735,6 @@
 
             nextPieces.push([
               start,
-
               Math.min(
                 blockStart,
                 end
@@ -630,10 +743,6 @@
 
           }
 
-
-          /*
-            Keep portion after block.
-          */
 
           if (
             blockEnd < end
@@ -644,7 +753,6 @@
                 blockEnd,
                 start
               ),
-
               end
             ]);
 
@@ -657,8 +765,12 @@
           nextPieces;
 
 
-        if (!pieces.length) {
+        if (
+          !pieces.length
+        ) {
+
           break;
+
         }
 
       }
@@ -674,13 +786,7 @@
         ) => {
 
           displayEvents.push({
-
             ...available,
-
-            /*
-              Unique display ID while keeping
-              the master event ID separately.
-            */
 
             displayId:
               `${available.id}-fragment-${start}-${index}`,
@@ -698,7 +804,6 @@
               minuteKeyToLocalDateTime(
                 end
               )
-
           });
 
         }
@@ -752,12 +857,9 @@
       );
 
 
-    calendar.innerHTML = '';
+    calendar.innerHTML =
+      '';
 
-
-    /*
-      Top-left corner.
-    */
 
     const corner =
       document.createElement(
@@ -773,10 +875,6 @@
       corner
     );
 
-
-    /*
-      Day headers.
-    */
 
     for (
       let d = 0;
@@ -827,10 +925,6 @@
     }
 
 
-    /*
-      Time labels.
-    */
-
     const timeCol =
       document.createElement(
         'div'
@@ -875,7 +969,8 @@
 
       label.textContent =
         formatMinutes(
-          h * 60
+          h *
+          60
         );
 
 
@@ -890,10 +985,6 @@
       timeCol
     );
 
-
-    /*
-      Days.
-    */
 
     for (
       let d = 0;
@@ -914,34 +1005,36 @@
         );
 
 
-      const col =
+      const column =
         document.createElement(
           'div'
         );
 
 
-      col.className =
+      column.className =
         'day-column';
 
 
-      col.dataset.date =
+      column.dataset.date =
         dateStr;
 
 
-      col.style.height =
+      column.style.height =
         totalHeight +
         'px';
 
 
-      if (state.isAdmin) {
+      if (
+        state.isAdmin
+      ) {
 
-        col.addEventListener(
+        column.addEventListener(
           'dragover',
           (e) => {
 
             e.preventDefault();
 
-            col.classList.add(
+            column.classList.add(
               'drag-over'
             );
 
@@ -949,11 +1042,11 @@
         );
 
 
-        col.addEventListener(
+        column.addEventListener(
           'dragleave',
           () => {
 
-            col.classList.remove(
+            column.classList.remove(
               'drag-over'
             );
 
@@ -961,29 +1054,23 @@
         );
 
 
-        col.addEventListener(
+        column.addEventListener(
           'drop',
-          (e) => {
-
+          (e) =>
             handleDrop(
               e,
-              col
-            );
-
-          }
+              column
+            )
         );
 
 
-        col.addEventListener(
+        column.addEventListener(
           'dblclick',
-          (e) => {
-
+          (e) =>
             handleEmptyDoubleClick(
               e,
-              col
-            );
-
-          }
+              column
+            )
         );
 
       }
@@ -1009,10 +1096,14 @@
               );
 
 
-            if (card) {
-              col.appendChild(
+            if (
+              card
+            ) {
+
+              column.appendChild(
                 card
               );
+
             }
 
           }
@@ -1020,18 +1111,13 @@
 
 
       calendar.appendChild(
-        col
+        column
       );
 
     }
 
   }
 
-
-  /*
-    Split events across individual
-    calendar dates.
-  */
 
   function getSegmentsForDate(
     dateStr
@@ -1083,7 +1169,9 @@
             segmentStart >=
             segmentEnd
           ) {
+
             return null;
+
           }
 
 
@@ -1101,7 +1189,9 @@
 
         }
       )
-      .filter(Boolean)
+      .filter(
+        Boolean
+      )
       .sort(
         (a, b) =>
           a.startMin -
@@ -1114,7 +1204,7 @@
 
 
   function createEventCard(
-    ev,
+    event,
     segmentStartMin,
     segmentEndMin,
     startHour,
@@ -1122,20 +1212,22 @@
   ) {
 
     const visibleStart =
-      startHour * 60;
+      startHour *
+      60;
 
 
     const visibleEnd =
-      endHour * 60;
+      endHour *
+      60;
 
 
     if (
-      segmentEndMin <=
-        visibleStart ||
-      segmentStartMin >=
-        visibleEnd
+      segmentEndMin <= visibleStart ||
+      segmentStartMin >= visibleEnd
     ) {
+
       return null;
+
     }
 
 
@@ -1187,7 +1279,7 @@
     card.className =
       'event-card ' +
       (
-        ev.type === 'BLOCKED'
+        event.type === 'BLOCKED'
           ? 'blocked'
           : 'available'
       ) +
@@ -1213,62 +1305,48 @@
       'px';
 
 
-    card.dataset.id =
-      ev.masterId ||
-      ev.id;
-
-
-    /*
-      TITLE
-
-      Admin sees actual private title.
-
-      Public always gets anonymized
-      blocked-session name.
-    */
-
     const title =
       state.isAdmin
         ? (
-            ev.title ||
+            event.title ||
             (
-              ev.type === 'BLOCKED'
+              event.type === 'BLOCKED'
                 ? 'Blocked Session'
                 : 'Available'
             )
           )
         : (
-            ev.type === 'BLOCKED'
+            event.type === 'BLOCKED'
               ? 'Blocked Session'
               : 'Available'
           );
 
 
-    const titleEl =
+    const titleElement =
       document.createElement(
         'div'
       );
 
 
-    titleEl.className =
+    titleElement.className =
       'event-title';
 
 
-    titleEl.textContent =
+    titleElement.textContent =
       title;
 
 
-    const timeEl =
+    const timeElement =
       document.createElement(
         'div'
       );
 
 
-    timeEl.className =
+    timeElement.className =
       'event-time';
 
 
-    timeEl.textContent =
+    timeElement.textContent =
       formatMinutes(
         segmentStartMin
       ) +
@@ -1279,20 +1357,18 @@
 
 
     card.append(
-      titleEl,
-      timeEl
+      titleElement,
+      timeElement
     );
 
 
-    /*
-      ADMIN INTERACTION
-    */
-
-    if (state.isAdmin) {
+    if (
+      state.isAdmin
+    ) {
 
       const original =
         getOriginalEvent(
-          ev
+          event
         );
 
 
@@ -1302,13 +1378,9 @@
         );
 
 
-      /*
-        One-time events can be dragged.
-        Recurring events are edited by
-        clicking them.
-      */
-
-      if (!recurring) {
+      if (
+        !recurring
+      ) {
 
         card.draggable =
           true;
@@ -1348,8 +1420,8 @@
                 '.drag-over'
               )
               .forEach(
-                (x) =>
-                  x.classList.remove(
+                (element) =>
+                  element.classList.remove(
                     'drag-over'
                   )
               );
@@ -1384,25 +1456,20 @@
 
 
     return card;
+
   }
 
 
-  /*
-    Find the original logical event
-    from a displayed fragment or
-    recurring occurrence.
-  */
-
   function getOriginalEvent(
-    ev
+    event
   ) {
 
     const id =
-      ev.masterId ||
-      ev.id;
+      event.masterId ||
+      event.id;
 
 
-    const matching =
+    const match =
       state.events.find(
         (item) =>
           (
@@ -1412,7 +1479,9 @@
       );
 
 
-    return matching || ev;
+    return match ||
+      event;
+
   }
 
 
@@ -1422,7 +1491,8 @@
 
   function renderAgenda() {
 
-    agenda.innerHTML = '';
+    agenda.innerHTML =
+      '';
 
 
     for (
@@ -1460,13 +1530,13 @@
         'agenda-day';
 
 
-      const h =
+      const heading =
         document.createElement(
           'h3'
         );
 
 
-      h.textContent =
+      heading.textContent =
         date.toLocaleDateString(
           undefined,
           {
@@ -1478,11 +1548,13 @@
 
 
       section.appendChild(
-        h
+        heading
       );
 
 
-      if (!segments.length) {
+      if (
+        !segments.length
+      ) {
 
         const empty =
           document.createElement(
@@ -1508,7 +1580,7 @@
 
         segments.forEach(
           ({
-            event: ev,
+            event,
             startMin,
             endMin
           }) => {
@@ -1524,7 +1596,7 @@
             item.className =
               'agenda-item ' +
               (
-                ev.type === 'BLOCKED'
+                event.type === 'BLOCKED'
                   ? 'blocked'
                   : 'available'
               );
@@ -1536,7 +1608,7 @@
               );
 
 
-            const strong =
+            const title =
               document.createElement(
                 'strong'
               );
@@ -1554,18 +1626,18 @@
               );
 
 
-            strong.textContent =
+            title.textContent =
               state.isAdmin
                 ? (
-                    ev.title ||
+                    event.title ||
                     (
-                      ev.type === 'BLOCKED'
+                      event.type === 'BLOCKED'
                         ? 'Blocked Session'
                         : 'Available'
                     )
                   )
                 : (
-                    ev.type === 'BLOCKED'
+                    event.type === 'BLOCKED'
                       ? 'Blocked Session'
                       : 'Available'
                   );
@@ -1590,13 +1662,13 @@
 
 
             right.textContent =
-              ev.type === 'BLOCKED'
+              event.type === 'BLOCKED'
                 ? 'Blocked'
                 : 'Open';
 
 
             left.append(
-              strong,
+              title,
               meta
             );
 
@@ -1607,7 +1679,9 @@
             );
 
 
-            if (state.isAdmin) {
+            if (
+              state.isAdmin
+            ) {
 
               item.addEventListener(
                 'click',
@@ -1615,7 +1689,7 @@
 
                   openEventModal(
                     getOriginalEvent(
-                      ev
+                      event
                     )
                   );
 
@@ -1645,30 +1719,417 @@
 
 
   /*
-    DRAG ONE-TIME EVENT
+    BLOCKED SESSION ADMIN PANEL
+  */
+
+  async function openBlockedSessions() {
+
+    if (
+      !state.isAdmin
+    ) {
+
+      return;
+
+    }
+
+
+    $('blockedDrawerBackdrop')
+      .classList
+      .remove(
+        'hidden'
+      );
+
+
+    $('blockedListStatus').textContent =
+      'Loading blocked sessions…';
+
+
+    $('pastBlockedList').innerHTML =
+      '';
+
+
+    $('upcomingBlockedList').innerHTML =
+      '';
+
+
+    try {
+
+      const nowKey =
+        getPortalNowMinuteKey();
+
+
+      /*
+        Display one year backward
+        and one year forward.
+      */
+
+      const startDate =
+        minuteKeyToLocalDateTime(
+          nowKey -
+          365 *
+          1440
+        ).slice(
+          0,
+          10
+        );
+
+
+      const endDate =
+        minuteKeyToLocalDateTime(
+          nowKey +
+          365 *
+          1440
+        ).slice(
+          0,
+          10
+        );
+
+
+      const data =
+        await api(
+          `/events?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`
+        );
+
+
+      if (
+        data.mode !== 'admin'
+      ) {
+
+        throw new Error(
+          'Admin access is no longer active. Please log in again.'
+        );
+
+      }
+
+
+      const blocked =
+        (
+          data.events ||
+          []
+        )
+          .filter(
+            (event) =>
+              event.type ===
+              'BLOCKED'
+          );
+
+
+      /*
+        Past events:
+        already ended.
+
+        Current events:
+        remain in upcoming.
+      */
+
+      const past =
+        blocked
+          .filter(
+            (event) =>
+              localDateTimeToMinuteKey(
+                event.end
+              ) <=
+              nowKey
+          )
+          .sort(
+            (a, b) =>
+              localDateTimeToMinuteKey(
+                b.end
+              ) -
+              localDateTimeToMinuteKey(
+                a.end
+              )
+          );
+
+
+      const upcoming =
+        blocked
+          .filter(
+            (event) =>
+              localDateTimeToMinuteKey(
+                event.end
+              ) >
+              nowKey
+          )
+          .sort(
+            (a, b) =>
+              localDateTimeToMinuteKey(
+                a.start
+              ) -
+              localDateTimeToMinuteKey(
+                b.start
+              )
+          );
+
+
+      $('pastBlockedCount').textContent =
+        past.length;
+
+
+      $('upcomingBlockedCount').textContent =
+        upcoming.length;
+
+
+      renderBlockedSessionList(
+        $('pastBlockedList'),
+        past,
+        nowKey
+      );
+
+
+      renderBlockedSessionList(
+        $('upcomingBlockedList'),
+        upcoming,
+        nowKey
+      );
+
+
+      $('blockedListStatus').textContent =
+        '';
+
+    } catch (err) {
+
+      $('blockedListStatus').textContent =
+        err.message;
+
+    }
+
+  }
+
+
+  function closeBlockedSessions() {
+
+    $('blockedDrawerBackdrop')
+      .classList
+      .add(
+        'hidden'
+      );
+
+  }
+
+
+  function renderBlockedSessionList(
+    container,
+    events,
+    nowKey
+  ) {
+
+    container.innerHTML =
+      '';
+
+
+    if (
+      !events.length
+    ) {
+
+      const empty =
+        document.createElement(
+          'div'
+        );
+
+
+      empty.className =
+        'blocked-list-empty';
+
+
+      empty.textContent =
+        'No blocked sessions';
+
+
+      container.appendChild(
+        empty
+      );
+
+
+      return;
+
+    }
+
+
+    for (
+      const event of events
+    ) {
+
+      const startKey =
+        localDateTimeToMinuteKey(
+          event.start
+        );
+
+
+      const endKey =
+        localDateTimeToMinuteKey(
+          event.end
+        );
+
+
+      const current =
+        startKey <= nowKey &&
+        endKey > nowKey;
+
+
+      const button =
+        document.createElement(
+          'button'
+        );
+
+
+      button.type =
+        'button';
+
+
+      button.className =
+        'blocked-session-item' +
+        (
+          current
+            ? ' current'
+            : ''
+        );
+
+
+      const title =
+        document.createElement(
+          'div'
+        );
+
+
+      title.className =
+        'blocked-session-title';
+
+
+      title.textContent =
+        event.title ||
+        'Blocked Session';
+
+
+      const time =
+        document.createElement(
+          'div'
+        );
+
+
+      time.className =
+        'blocked-session-time';
+
+
+      time.textContent =
+        formatBlockedEventRange(
+          event.start,
+          event.end
+        );
+
+
+      const meta =
+        document.createElement(
+          'div'
+        );
+
+
+      meta.className =
+        'blocked-session-meta';
+
+
+      if (
+        current
+      ) {
+
+        const currentBadge =
+          document.createElement(
+            'span'
+          );
+
+
+        currentBadge.textContent =
+          'Happening now';
+
+
+        meta.appendChild(
+          currentBadge
+        );
+
+      }
+
+
+      if (
+        event.recurrence
+      ) {
+
+        const recurringBadge =
+          document.createElement(
+            'span'
+          );
+
+
+        recurringBadge.className =
+          'recurring-badge';
+
+
+        recurringBadge.textContent =
+          '↻ Recurring';
+
+
+        meta.appendChild(
+          recurringBadge
+        );
+
+      }
+
+
+      button.append(
+        title,
+        time,
+        meta
+      );
+
+
+      button.addEventListener(
+        'click',
+        () => {
+
+          closeBlockedSessions();
+
+
+          openEventModal(
+            event
+          );
+
+        }
+      );
+
+
+      container.appendChild(
+        button
+      );
+
+    }
+
+  }
+
+
+  /*
+    DRAG ONE-TIME EVENTS
   */
 
   async function handleDrop(
-    e,
-    col
+    event,
+    column
   ) {
 
-    e.preventDefault();
+    event.preventDefault();
 
 
-    col.classList.remove(
+    column.classList.remove(
       'drag-over'
     );
 
 
     const id =
-      e.dataTransfer.getData(
+      event.dataTransfer.getData(
         'text/plain'
       ) ||
       state.draggingId;
 
 
-    const ev =
+    const storedEvent =
       state.events.find(
         (item) =>
           (
@@ -1678,23 +2139,30 @@
       );
 
 
-    if (!ev) {
+    if (
+      !storedEvent
+    ) {
+
       return;
+
     }
 
 
-    if (ev.recurrence) {
+    if (
+      storedEvent.recurrence
+    ) {
 
       setStatus(
         'Recurring events must be edited by clicking them.'
       );
 
       return;
+
     }
 
 
     const rect =
-      col.getBoundingClientRect();
+      column.getBoundingClientRect();
 
 
     const y =
@@ -1702,8 +2170,8 @@
         0,
         Math.min(
           rect.height,
-          e.clientY -
-            rect.top
+          event.clientY -
+          rect.top
         )
       );
 
@@ -1715,12 +2183,9 @@
       );
 
 
-    /*
-      One-minute precision.
-    */
-
     const newStartMinuteOfDay =
-      startHour * 60 +
+      startHour *
+      60 +
       Math.round(
         (
           y /
@@ -1732,13 +2197,13 @@
 
     const oldStartKey =
       localDateTimeToMinuteKey(
-        ev.start
+        storedEvent.start
       );
 
 
     const oldEndKey =
       localDateTimeToMinuteKey(
-        ev.end
+        storedEvent.end
       );
 
 
@@ -1749,7 +2214,7 @@
 
     const newStart =
       dateAndMinutesToLocalDateTime(
-        col.dataset.date,
+        column.dataset.date,
         newStartMinuteOfDay
       );
 
@@ -1774,56 +2239,75 @@
       );
 
 
-      await api(
-        '/events',
-        {
-          method: 'POST',
+      const result =
+        await saveEventWithConflictCheck({
+          id:
+            storedEvent.id,
 
-          body:
-            JSON.stringify({
-              id: ev.id,
-              type: ev.type,
-              title: ev.title,
-              notes: ev.notes,
-              start: newStart,
-              end: newEnd,
-              recurrence: null
-            })
-        }
-      );
+          type:
+            storedEvent.type,
+
+          title:
+            storedEvent.title,
+
+          notes:
+            storedEvent.notes,
+
+          start:
+            newStart,
+
+          end:
+            newEnd,
+
+          recurrence:
+            null
+        });
+
+
+      if (
+        !result
+      ) {
+
+        setStatus(
+          'Move cancelled.'
+        );
+
+        return;
+
+      }
 
 
       await loadWeek();
 
     } catch (err) {
 
-      handleError(err);
+      handleError(
+        err
+      );
 
     }
 
   }
 
 
-  /*
-    DOUBLE-CLICK EMPTY CALENDAR
-  */
-
   function handleEmptyDoubleClick(
-    e,
-    col
+    event,
+    column
   ) {
 
     if (
-      e.target.closest(
+      event.target.closest(
         '.event-card'
       )
     ) {
+
       return;
+
     }
 
 
     const rect =
-      col.getBoundingClientRect();
+      column.getBoundingClientRect();
 
 
     const y =
@@ -1831,8 +2315,8 @@
         0,
         Math.min(
           rect.height,
-          e.clientY -
-            rect.top
+          event.clientY -
+          rect.top
         )
       );
 
@@ -1845,7 +2329,8 @@
 
 
     const startMinuteOfDay =
-      startHour * 60 +
+      startHour *
+      60 +
       Math.round(
         (
           y /
@@ -1857,7 +2342,7 @@
 
     const start =
       dateAndMinutesToLocalDateTime(
-        col.dataset.date,
+        column.dataset.date,
         startMinuteOfDay
       );
 
@@ -1878,7 +2363,8 @@
     openEventModal({
       start,
       end,
-      type: 'AVAILABLE'
+      type:
+        'AVAILABLE'
     });
 
   }
@@ -1940,7 +2426,8 @@
       await api(
         '/login',
         {
-          method: 'POST'
+          method:
+            'POST'
         }
       );
 
@@ -1976,6 +2463,9 @@
 
 
   function exitAdmin() {
+
+    closeBlockedSessions();
+
 
     state.isAdmin =
       false;
@@ -2023,7 +2513,8 @@
     const selected =
       new Set(
         (
-          days || []
+          days ||
+          []
         ).map(
           Number
         )
@@ -2039,7 +2530,6 @@
 
           button.classList.toggle(
             'selected',
-
             selected.has(
               Number(
                 button.dataset.day
@@ -2055,18 +2545,19 @@
 
   function getStartWeekday() {
 
-    const value =
-      $('eventStart').value;
-
-
     const key =
       localDateTimeToMinuteKey(
-        value
+        $('eventStart').value
       );
 
 
-    if (key == null) {
+    if (
+      key ==
+      null
+    ) {
+
       return new Date().getDay();
+
     }
 
 
@@ -2109,9 +2600,13 @@
       );
 
 
-    if (radio) {
+    if (
+      radio
+    ) {
+
       radio.checked =
         true;
+
     }
 
   }
@@ -2132,8 +2627,12 @@
       );
 
 
-    if (!weekly) {
+    if (
+      !weekly
+    ) {
+
       return;
+
     }
 
 
@@ -2142,11 +2641,13 @@
 
 
     $('repeatEndDate').disabled =
-      endType !== 'ON';
+      endType !==
+      'ON';
 
 
     $('repeatCount').disabled =
-      endType !== 'COUNT';
+      endType !==
+      'COUNT';
 
   }
 
@@ -2157,7 +2658,9 @@
       $('repeatType').value ===
       'NONE'
     ) {
+
       return null;
+
     }
 
 
@@ -2165,7 +2668,9 @@
       getSelectedWeekdays();
 
 
-    if (!weekdays.length) {
+    if (
+      !weekdays.length
+    ) {
 
       throw new Error(
         'Select at least one day of the week.'
@@ -2181,7 +2686,9 @@
 
 
     if (
-      !Number.isInteger(interval) ||
+      !Number.isInteger(
+        interval
+      ) ||
       interval < 1 ||
       interval > 52
     ) {
@@ -2198,15 +2705,20 @@
 
 
     const recurrence = {
-      frequency: 'WEEKLY',
+      frequency:
+        'WEEKLY',
+
       interval,
+
       weekdays,
+
       endType
     };
 
 
     if (
-      endType === 'ON'
+      endType ===
+      'ON'
     ) {
 
       if (
@@ -2227,7 +2739,8 @@
 
 
     if (
-      endType === 'COUNT'
+      endType ===
+      'COUNT'
     ) {
 
       const count =
@@ -2237,7 +2750,9 @@
 
 
       if (
-        !Number.isInteger(count) ||
+        !Number.isInteger(
+          count
+        ) ||
         count < 1 ||
         count > 999
       ) {
@@ -2256,26 +2771,31 @@
 
 
     return recurrence;
+
   }
 
 
   /*
-    EVENT MODAL
+    EVENT EDITOR
   */
 
   function openEventModal(
-    ev
+    event
   ) {
 
-    if (!state.isAdmin) {
+    if (
+      !state.isAdmin
+    ) {
+
       return;
+
     }
 
 
     const isEdit =
       Boolean(
-        ev &&
-        ev.id
+        event &&
+        event.id
       );
 
 
@@ -2295,17 +2815,12 @@
       'T16:00';
 
 
-    /*
-      For recurring occurrences, use
-      the original series date/time.
-    */
-
     const originalStart =
       (
-        ev &&
+        event &&
         (
-          ev.seriesStart ||
-          ev.start
+          event.seriesStart ||
+          event.start
         )
       ) ||
       defaultStart;
@@ -2313,10 +2828,10 @@
 
     const originalEnd =
       (
-        ev &&
+        event &&
         (
-          ev.seriesEnd ||
-          ev.end
+          event.seriesEnd ||
+          event.end
         )
       ) ||
       defaultEnd;
@@ -2325,7 +2840,7 @@
     $('eventModalTitle').textContent =
       isEdit
         ? (
-            ev.recurrence
+            event.recurrence
               ? 'Edit recurring event'
               : 'Edit time'
           )
@@ -2335,16 +2850,16 @@
     $('eventId').value =
       isEdit
         ? (
-            ev.masterId ||
-            ev.id
+            event.masterId ||
+            event.id
           )
         : '';
 
 
     $('eventType').value =
       (
-        ev &&
-        ev.type
+        event &&
+        event.type
       ) ||
       'AVAILABLE';
 
@@ -2359,16 +2874,16 @@
 
     $('eventTitle').value =
       (
-        ev &&
-        ev.title
+        event &&
+        event.title
       ) ||
       '';
 
 
     $('eventNotes').value =
       (
-        ev &&
-        ev.notes
+        event &&
+        event.notes
       ) ||
       '';
 
@@ -2385,12 +2900,8 @@
       );
 
 
-    /*
-      Recurrence settings.
-    */
-
     const recurrence =
-      ev?.recurrence ||
+      event?.recurrence ||
       null;
 
 
@@ -2470,8 +2981,155 @@
 
 
   /*
-    SAVE EVENT
+    SAVE WITH CONFLICT WARNING
   */
+
+  async function saveEventWithConflictCheck(
+    event
+  ) {
+
+    try {
+
+      return await api(
+        '/events',
+        {
+          method:
+            'POST',
+
+          body:
+            JSON.stringify(
+              event
+            )
+        }
+      );
+
+    } catch (err) {
+
+      if (
+        err.status ===
+          409 &&
+        err.data?.code ===
+          'BLOCKED_CONFLICT'
+      ) {
+
+        const proceed =
+          window.confirm(
+            buildConflictWarning(
+              err.data
+            )
+          );
+
+
+        if (
+          !proceed
+        ) {
+
+          return null;
+
+        }
+
+
+        return await api(
+          '/events',
+          {
+            method:
+              'POST',
+
+            body:
+              JSON.stringify({
+                ...event,
+
+                forceConflict:
+                  true
+              })
+          }
+        );
+
+      }
+
+
+      throw err;
+
+    }
+
+  }
+
+
+  function buildConflictWarning(
+    data
+  ) {
+
+    const conflicts =
+      data.conflicts ||
+      [];
+
+
+    const total =
+      data.totalConflicts ||
+      conflicts.length;
+
+
+    let message =
+      'Schedule conflict\n\n';
+
+
+    message +=
+      `This event overlaps with ${
+        total === 1
+          ? 'an existing blocked session'
+          : `${total} existing blocked sessions`
+      }:\n\n`;
+
+
+    const shown =
+      conflicts.slice(
+        0,
+        6
+      );
+
+
+    shown.forEach(
+      (conflict) => {
+
+        message +=
+          `${
+            conflict.title ||
+            'Blocked Session'
+          }\n`;
+
+
+        message +=
+          `${formatBlockedEventRange(
+            conflict.start,
+            conflict.end
+          )}\n\n`;
+
+      }
+    );
+
+
+    if (
+      total >
+      shown.length
+    ) {
+
+      message +=
+        `...and ${
+          total -
+          shown.length
+        } more conflict(s).\n\n`;
+
+    }
+
+
+    message +=
+      'Are you sure you want to save this event anyway?';
+
+
+    return message;
+
+  }
+
 
   async function saveEventFromModal() {
 
@@ -2504,6 +3162,7 @@
         'Enter a valid start and end date/time.';
 
       return;
+
     }
 
 
@@ -2516,6 +3175,7 @@
         'End date/time must be after start date/time.';
 
       return;
+
     }
 
 
@@ -2533,11 +3193,11 @@
         err.message;
 
       return;
+
     }
 
 
     const event = {
-
       id:
         $('eventId').value,
 
@@ -2568,17 +3228,19 @@
 
     try {
 
-      await api(
-        '/events',
-        {
-          method: 'POST',
+      const result =
+        await saveEventWithConflictCheck(
+          event
+        );
 
-          body:
-            JSON.stringify(
-              event
-            )
-        }
-      );
+
+      if (
+        !result
+      ) {
+
+        return;
+
+      }
 
 
       closeModal(
@@ -2603,18 +3265,18 @@
   }
 
 
-  /*
-    DELETE EVENT / RECURRING SERIES
-  */
-
   async function deleteEventFromModal() {
 
     const id =
       $('eventId').value;
 
 
-    if (!id) {
+    if (
+      !id
+    ) {
+
       return;
+
     }
 
 
@@ -2630,9 +3292,13 @@
 
 
     if (
-      !confirm(message)
+      !confirm(
+        message
+      )
     ) {
+
       return;
+
     }
 
 
@@ -2644,9 +3310,12 @@
 
       await api(
         '/events/' +
-        encodeURIComponent(id),
+        encodeURIComponent(
+          id
+        ),
         {
-          method: 'DELETE'
+          method:
+            'DELETE'
         }
       );
 
@@ -2674,10 +3343,229 @@
 
 
   /*
+    DATE DISPLAY
+  */
+
+  function formatBlockedEventRange(
+    start,
+    end
+  ) {
+
+    const startKey =
+      localDateTimeToMinuteKey(
+        start
+      );
+
+
+    const endKey =
+      localDateTimeToMinuteKey(
+        end
+      );
+
+
+    const startDate =
+      new Date(
+        startKey *
+        60000
+      );
+
+
+    const endDate =
+      new Date(
+        endKey *
+        60000
+      );
+
+
+    const sameDay =
+      start.slice(
+        0,
+        10
+      ) ===
+      end.slice(
+        0,
+        10
+      );
+
+
+    const dateText =
+      startDate.toLocaleDateString(
+        undefined,
+        {
+          timeZone:
+            'UTC',
+
+          weekday:
+            'short',
+
+          month:
+            'short',
+
+          day:
+            'numeric',
+
+          year:
+            'numeric'
+        }
+      );
+
+
+    const startTime =
+      startDate.toLocaleTimeString(
+        undefined,
+        {
+          timeZone:
+            'UTC',
+
+          hour:
+            'numeric',
+
+          minute:
+            '2-digit'
+        }
+      );
+
+
+    const endTime =
+      endDate.toLocaleTimeString(
+        undefined,
+        {
+          timeZone:
+            'UTC',
+
+          hour:
+            'numeric',
+
+          minute:
+            '2-digit'
+        }
+      );
+
+
+    if (
+      sameDay
+    ) {
+
+      return (
+        `${dateText} · ` +
+        `${startTime} – ${endTime}`
+      );
+
+    }
+
+
+    const endDateText =
+      endDate.toLocaleDateString(
+        undefined,
+        {
+          timeZone:
+            'UTC',
+
+          weekday:
+            'short',
+
+          month:
+            'short',
+
+          day:
+            'numeric',
+
+          year:
+            'numeric'
+        }
+      );
+
+
+    return (
+      `${dateText} ${startTime} – ` +
+      `${endDateText} ${endTime}`
+    );
+
+  }
+
+
+  /*
+    Gets current wall-clock time
+    in the portal timezone.
+  */
+
+  function getPortalNowMinuteKey() {
+
+    const timezone =
+      state.config.timezoneId ||
+      'America/Los_Angeles';
+
+
+    const formatter =
+      new Intl.DateTimeFormat(
+        'en-US',
+        {
+          timeZone:
+            timezone,
+
+          year:
+            'numeric',
+
+          month:
+            '2-digit',
+
+          day:
+            '2-digit',
+
+          hour:
+            '2-digit',
+
+          minute:
+            '2-digit',
+
+          hourCycle:
+            'h23'
+        }
+      );
+
+
+    const parts =
+      formatter.formatToParts(
+        new Date()
+      );
+
+
+    const values = {};
+
+
+    for (
+      const part of parts
+    ) {
+
+      if (
+        part.type !==
+        'literal'
+      ) {
+
+        values[
+          part.type
+        ] =
+          part.value;
+
+      }
+
+    }
+
+
+    return localDateTimeToMinuteKey(
+      `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`
+    );
+
+  }
+
+
+  /*
     MODALS
   */
 
-  function openModal(id) {
+  function openModal(
+    id
+  ) {
 
     $(id)
       .classList
@@ -2688,7 +3576,9 @@
   }
 
 
-  function closeModal(id) {
+  function closeModal(
+    id
+  ) {
 
     $(id)
       .classList
@@ -2703,7 +3593,9 @@
     STATUS
   */
 
-  function setStatus(text) {
+  function setStatus(
+    text
+  ) {
 
     $('status').textContent =
       text ||
@@ -2712,7 +3604,9 @@
   }
 
 
-  function handleError(err) {
+  function handleError(
+    err
+  ) {
 
     setStatus(
       err.message ||
@@ -2726,9 +3620,11 @@
     DATE UTILITIES
   */
 
-  function startOfWeek(date) {
+  function startOfWeek(
+    date
+  ) {
 
-    const d =
+    const result =
       new Date(
         date.getFullYear(),
         date.getMonth(),
@@ -2736,13 +3632,14 @@
       );
 
 
-    d.setDate(
-      d.getDate() -
-      d.getDay()
+    result.setDate(
+      result.getDate() -
+      result.getDay()
     );
 
 
-    return d;
+    return result;
+
   }
 
 
@@ -2751,7 +3648,7 @@
     amount
   ) {
 
-    const d =
+    const result =
       new Date(
         date.getFullYear(),
         date.getMonth(),
@@ -2759,17 +3656,20 @@
       );
 
 
-    d.setDate(
-      d.getDate() +
+    result.setDate(
+      result.getDate() +
       amount
     );
 
 
-    return d;
+    return result;
+
   }
 
 
-  function formatDate(date) {
+  function formatDate(
+    date
+  ) {
 
     return (
       `${date.getFullYear()}-` +
@@ -2791,12 +3691,14 @@
   }
 
 
-  function formatMinutes(min) {
+  function formatMinutes(
+    minutes
+  ) {
 
     const normalized =
       (
         (
-          min %
+          minutes %
           1440
         ) +
         1440
@@ -2804,40 +3706,41 @@
       1440;
 
 
-    const h24 =
+    const hour24 =
       Math.floor(
         normalized /
         60
       );
 
 
-    const m =
+    const minute =
       normalized %
       60;
 
 
     const suffix =
-      h24 >= 12
+      hour24 >= 12
         ? 'PM'
         : 'AM';
 
 
-    const h =
-      h24 %
+    const hour =
+      hour24 %
       12 ||
       12;
 
 
     return (
-      h +
+      hour +
       (
-        m
+        minute
           ? ':' +
-            String(m)
-              .padStart(
-                2,
-                '0'
-              )
+            String(
+              minute
+            ).padStart(
+              2,
+              '0'
+            )
           : ''
       ) +
       ' ' +
@@ -2846,15 +3749,6 @@
 
   }
 
-
-  /*
-    Convert YYYY-MM-DDTHH:MM into
-    an integer minute key.
-
-    UTC is deliberately used here
-    only as a timezone-neutral way
-    of handling calendar arithmetic.
-  */
 
   function localDateTimeToMinuteKey(
     value
@@ -2868,8 +3762,12 @@
         );
 
 
-    if (!match) {
+    if (
+      !match
+    ) {
+
       return null;
+
     }
 
 
@@ -2911,7 +3809,9 @@
       minute < 0 ||
       minute > 59
     ) {
+
       return null;
+
     }
 
 
@@ -2927,7 +3827,9 @@
 
 
     const check =
-      new Date(ms);
+      new Date(
+        ms
+      );
 
 
     if (
@@ -2937,7 +3839,9 @@
       check.getUTCHours() !== hour ||
       check.getUTCMinutes() !== minute
     ) {
+
       return null;
+
     }
 
 
@@ -2953,7 +3857,7 @@
     key
   ) {
 
-    const d =
+    const date =
       new Date(
         key *
         60000
@@ -2961,28 +3865,28 @@
 
 
     return (
-      `${d.getUTCFullYear()}-` +
+      `${date.getUTCFullYear()}-` +
       `${String(
-        d.getUTCMonth() +
+        date.getUTCMonth() +
         1
       ).padStart(
         2,
         '0'
       )}-` +
       `${String(
-        d.getUTCDate()
+        date.getUTCDate()
       ).padStart(
         2,
         '0'
       )}T` +
       `${String(
-        d.getUTCHours()
+        date.getUTCHours()
       ).padStart(
         2,
         '0'
       )}:` +
       `${String(
-        d.getUTCMinutes()
+        date.getUTCMinutes()
       ).padStart(
         2,
         '0'
@@ -2997,7 +3901,7 @@
     minutes
   ) {
 
-    const dayStart =
+    const start =
       localDateTimeToMinuteKey(
         dateStr +
         'T00:00'
@@ -3005,7 +3909,7 @@
 
 
     return minuteKeyToLocalDateTime(
-      dayStart +
+      start +
       minutes
     );
 
@@ -3016,21 +3920,30 @@
     iso
   ) {
 
-    const d =
-      new Date(iso);
+    const date =
+      new Date(
+        iso
+      );
 
 
     return Number.isNaN(
-      d.getTime()
+      date.getTime()
     )
       ? iso
-      : d.toLocaleString(
+      : date.toLocaleString(
           undefined,
           {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
+            month:
+              'short',
+
+            day:
+              'numeric',
+
+            hour:
+              'numeric',
+
+            minute:
+              '2-digit'
           }
         );
 

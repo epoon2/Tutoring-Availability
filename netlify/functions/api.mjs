@@ -69,17 +69,25 @@ export default async (req) => {
         );
 
 
-      if (startDate) {
+      if (
+        startDate
+      ) {
+
         validateDate(
           startDate
         );
+
       }
 
 
-      if (endDate) {
+      if (
+        endDate
+      ) {
+
         validateDate(
           endDate
         );
+
       }
 
 
@@ -104,11 +112,6 @@ export default async (req) => {
           : Infinity;
 
 
-      /*
-        Expand recurring master events
-        into occurrences for this week.
-      */
-
       const ranged =
         expandEventsForRange(
           events,
@@ -118,23 +121,22 @@ export default async (req) => {
 
 
       /*
-        Determine last update from the
-        original master events that have
-        an occurrence in this range.
+        Use overall last update,
+        not only the currently displayed week.
       */
 
       const lastUpdated =
-        ranged.reduce(
+        events.reduce(
           (
             latest,
-            e
+            event
           ) =>
             (
-              e.updatedAt &&
-              e.updatedAt >
+              event.updatedAt &&
+              event.updatedAt >
               latest
             )
-              ? e.updatedAt
+              ? event.updatedAt
               : latest,
           ""
         );
@@ -147,18 +149,8 @@ export default async (req) => {
             ? "admin"
             : "public",
 
-
         config:
           getConfig(),
-
-
-        /*
-          Admin receives private titles.
-
-          Public receives only calculated
-          availability and anonymized
-          blocked sessions.
-        */
 
         events:
           admin
@@ -166,7 +158,6 @@ export default async (req) => {
             : buildPublicSchedule(
                 ranged
               ),
-
 
         lastUpdated
 
@@ -176,7 +167,7 @@ export default async (req) => {
 
 
     /*
-      ADMIN LOGIN CHECK
+      ADMIN LOGIN
     */
 
     if (
@@ -190,7 +181,8 @@ export default async (req) => {
 
 
       return json({
-        ok: true
+        ok:
+          true
       });
 
     }
@@ -210,9 +202,18 @@ export default async (req) => {
       );
 
 
+      const body =
+        await req.json();
+
+
+      const forceConflict =
+        body?.forceConflict ===
+        true;
+
+
       const incoming =
         validateEvent(
-          await req.json()
+          body
         );
 
 
@@ -220,27 +221,16 @@ export default async (req) => {
         await readEvents();
 
 
-      const now =
-        new Date()
-          .toISOString();
-
-
       const id =
         incoming.id ||
         crypto.randomUUID();
 
 
-      const nextEvent = {
-        ...incoming,
-        id,
-        updatedAt: now
-      };
-
-
       const index =
         events.findIndex(
-          (e) =>
-            e.id === id
+          (event) =>
+            event.id ===
+            id
         );
 
 
@@ -260,11 +250,66 @@ export default async (req) => {
       }
 
 
+      /*
+        Check for overlapping blocked
+        sessions before saving.
+      */
+
+      const conflictResult =
+        findBlockedConflicts(
+          incoming,
+          events
+        );
+
+
+      if (
+        !forceConflict &&
+        conflictResult.total >
+        0
+      ) {
+
+        return json(
+          {
+            code:
+              "BLOCKED_CONFLICT",
+
+            error:
+              "This event overlaps an existing blocked session.",
+
+            totalConflicts:
+              conflictResult.total,
+
+            conflicts:
+              conflictResult.conflicts
+          },
+          409
+        );
+
+      }
+
+
+      const now =
+        new Date()
+          .toISOString();
+
+
+      const nextEvent = {
+        ...incoming,
+
+        id,
+
+        updatedAt:
+          now
+      };
+
+
       if (
         index >= 0
       ) {
 
-        events[index] =
+        events[
+          index
+        ] =
           nextEvent;
 
       } else {
@@ -283,15 +328,15 @@ export default async (req) => {
 
       return json({
         id,
-        updatedAt: now
+        updatedAt:
+          now
       });
 
     }
 
 
     /*
-      DELETE EVENT OR ENTIRE
-      RECURRING SERIES
+      DELETE EVENT / SERIES
     */
 
     if (
@@ -320,8 +365,9 @@ export default async (req) => {
 
       const next =
         events.filter(
-          (e) =>
-            e.id !== id
+          (event) =>
+            event.id !==
+            id
         );
 
 
@@ -347,7 +393,8 @@ export default async (req) => {
 
 
       return json({
-        ok: true
+        ok:
+          true
       });
 
     }
@@ -377,7 +424,8 @@ export default async (req) => {
     return json(
       {
         error:
-          status === 500
+          status ===
+          500
             ? "Something went wrong on the server."
             : err.message
       },
@@ -396,7 +444,6 @@ export default async (req) => {
 function getConfig() {
 
   return {
-
     portalTitle:
       process.env.PORTAL_TITLE ||
       "Tutoring Availability",
@@ -405,10 +452,14 @@ function getConfig() {
       process.env.TIMEZONE_LABEL ||
       "Pacific Time (PT)",
 
-    dayStart: 8,
+    timezoneId:
+      "America/Los_Angeles",
 
-    dayEnd: 24
+    dayStart:
+      8,
 
+    dayEnd:
+      24
   };
 
 }
@@ -430,8 +481,11 @@ async function readEvents() {
     await store.get(
       EVENTS_KEY,
       {
-        type: "json",
-        consistency: "strong"
+        type:
+          "json",
+
+        consistency:
+          "strong"
       }
     );
 
@@ -450,16 +504,18 @@ async function readEvents() {
 
 
   /*
-    Migrate original startMin/endMin
-    event format if needed.
+    Migrate original event format.
   */
 
   const legacy =
     await store.get(
       LEGACY_EVENTS_KEY,
       {
-        type: "json",
-        consistency: "strong"
+        type:
+          "json",
+
+        consistency:
+          "strong"
       }
     );
 
@@ -468,7 +524,8 @@ async function readEvents() {
     !Array.isArray(
       legacy
     ) ||
-    legacy.length === 0
+    legacy.length ===
+    0
   ) {
 
     return [];
@@ -493,6 +550,7 @@ async function readEvents() {
 
 
   return migrated;
+
 }
 
 
@@ -514,11 +572,6 @@ async function writeEvents(
 }
 
 
-/*
-  Make older v2 events compatible
-  with recurrence field.
-*/
-
 function normalizeStoredEvent(
   event
 ) {
@@ -535,7 +588,7 @@ function normalizeStoredEvent(
 
 
 /*
-  MIGRATE V1 EVENTS
+  MIGRATE OLD date/startMin/endMin DATA
 */
 
 function migrateLegacyEvent(
@@ -544,8 +597,12 @@ function migrateLegacyEvent(
 
   try {
 
-    if (!event?.date) {
+    if (
+      !event?.date
+    ) {
+
       return null;
+
     }
 
 
@@ -575,22 +632,7 @@ function migrateLegacyEvent(
     }
 
 
-    const start =
-      dateAndMinutesToLocalDateTime(
-        event.date,
-        startMin
-      );
-
-
-    const end =
-      dateAndMinutesToLocalDateTime(
-        event.date,
-        endMin
-      );
-
-
     return {
-
       id:
         String(
           event.id ||
@@ -609,9 +651,17 @@ function migrateLegacyEvent(
           ""
         ),
 
-      start,
+      start:
+        dateAndMinutesToLocalDateTime(
+          event.date,
+          startMin
+        ),
 
-      end,
+      end:
+        dateAndMinutesToLocalDateTime(
+          event.date,
+          endMin
+        ),
 
       notes:
         String(
@@ -619,7 +669,8 @@ function migrateLegacyEvent(
           ""
         ),
 
-      recurrence: null,
+      recurrence:
+        null,
 
       updatedAt:
         String(
@@ -627,7 +678,6 @@ function migrateLegacyEvent(
           new Date()
             .toISOString()
         )
-
     };
 
   } catch {
@@ -640,7 +690,7 @@ function migrateLegacyEvent(
 
 
 /*
-  AUTHENTICATION
+  AUTH
 */
 
 function requireAdmin(
@@ -651,17 +701,17 @@ function requireAdmin(
     !process.env.ADMIN_PASSWORD
   ) {
 
-    const err =
+    const error =
       new Error(
-        "ADMIN_PASSWORD is not configured in Netlify yet."
+        "ADMIN_PASSWORD is not configured in Netlify."
       );
 
 
-    err.status =
+    error.status =
       503;
 
 
-    throw err;
+    throw error;
 
   }
 
@@ -672,17 +722,17 @@ function requireAdmin(
     )
   ) {
 
-    const err =
+    const error =
       new Error(
         "Incorrect admin password."
       );
 
 
-    err.status =
+    error.status =
       401;
 
 
-    throw err;
+    throw error;
 
   }
 
@@ -715,24 +765,24 @@ function hasValidAdminPassword(
   }
 
 
-  const a =
+  const expectedBuffer =
     Buffer.from(
       expected
     );
 
 
-  const b =
+  const suppliedBuffer =
     Buffer.from(
       supplied
     );
 
 
   return (
-    a.length ===
-      b.length &&
+    expectedBuffer.length ===
+      suppliedBuffer.length &&
     crypto.timingSafeEqual(
-      a,
-      b
+      expectedBuffer,
+      suppliedBuffer
     )
   );
 
@@ -771,7 +821,9 @@ function validateEvent(
     ![
       "AVAILABLE",
       "BLOCKED"
-    ].includes(type)
+    ].includes(
+      type
+    )
   ) {
 
     bad(
@@ -806,8 +858,10 @@ function validateEvent(
 
 
   if (
-    startKey == null ||
-    endKey == null
+    startKey ==
+      null ||
+    endKey ==
+      null
   ) {
 
     bad(
@@ -837,7 +891,6 @@ function validateEvent(
 
 
   return {
-
     id:
       event.id
         ? String(
@@ -874,7 +927,6 @@ function validateEvent(
         ),
 
     recurrence
-
   };
 
 }
@@ -889,8 +941,12 @@ function validateRecurrence(
   start
 ) {
 
-  if (!recurrence) {
+  if (
+    !recurrence
+  ) {
+
     return null;
+
   }
 
 
@@ -944,8 +1000,10 @@ function validateRecurrence(
           Number.isInteger(
             day
           ) &&
-          day >= 0 &&
-          day <= 6
+          day >=
+            0 &&
+          day <=
+            6
       )
       .sort(
         (a, b) =>
@@ -978,7 +1036,6 @@ function validateRecurrence(
 
 
   const result = {
-
     frequency:
       "WEEKLY",
 
@@ -987,7 +1044,6 @@ function validateRecurrence(
     weekdays,
 
     endType
-
   };
 
 
@@ -1055,12 +1111,12 @@ function validateRecurrence(
 
 
   return result;
+
 }
 
 
 /*
-  EXPAND MASTER EVENTS FOR
-  REQUESTED CALENDAR RANGE
+  EXPAND EVENTS FOR REQUESTED RANGE
 */
 
 function expandEventsForRange(
@@ -1069,16 +1125,13 @@ function expandEventsForRange(
   rangeEnd
 ) {
 
-  const output = [];
+  const output =
+    [];
 
 
   for (
     const event of events
   ) {
-
-    /*
-      NORMAL ONE-TIME EVENT
-    */
 
     if (
       !event.recurrence ||
@@ -1116,12 +1169,9 @@ function expandEventsForRange(
 
 
       continue;
+
     }
 
-
-    /*
-      WEEKLY RECURRING EVENT
-    */
 
     output.push(
       ...expandWeeklyEvent(
@@ -1142,15 +1192,7 @@ function expandEventsForRange(
 
 
 /*
-  WEEKLY SERIES EXPANSION
-
-  Example:
-
-  Start Monday 4 PM
-  Repeat Monday/Wednesday/Friday
-
-  Produces one occurrence on each
-  selected day.
+  WEEKLY RECURRENCE
 */
 
 function expandWeeklyEvent(
@@ -1198,24 +1240,12 @@ function expandWeeklyEvent(
     startDayKey;
 
 
-  /*
-    Sunday = 0
-    Monday = 1
-    ...
-    Saturday = 6
-  */
-
   const startWeekday =
     new Date(
       startDayKey *
       60000
     ).getUTCDay();
 
-
-  /*
-    Beginning of the week containing
-    the first event.
-  */
 
   const anchorWeek =
     startDayKey -
@@ -1255,7 +1285,8 @@ function expandWeeklyEvent(
     );
 
 
-  const output = [];
+  const output =
+    [];
 
 
   let occurrenceNumber =
@@ -1263,13 +1294,13 @@ function expandWeeklyEvent(
 
 
   /*
-    Supports up to about 100 years
-    of weekly recurrence.
+    10,000 recurrence cycles is far
+    more than needed for this portal.
   */
 
   for (
     let cycle = 0;
-    cycle < 5200;
+    cycle < 10000;
     cycle++
   ) {
 
@@ -1280,16 +1311,6 @@ function expandWeeklyEvent(
       7 *
       1440;
 
-
-    /*
-      Once this recurrence week is
-      beyond the requested range,
-      we can stop unless we still
-      need to count occurrences.
-
-      COUNT series must continue only
-      until its count is exhausted.
-    */
 
     if (
       recurrence.endType !==
@@ -1316,11 +1337,6 @@ function expandWeeklyEvent(
         startTime;
 
 
-      /*
-        Never create an occurrence
-        before the original series start.
-      */
-
       if (
         occurrenceStart <
         seriesStart
@@ -1330,10 +1346,6 @@ function expandWeeklyEvent(
 
       }
 
-
-      /*
-        End-on-date limit.
-      */
 
       if (
         occurrenceStart >=
@@ -1347,10 +1359,6 @@ function expandWeeklyEvent(
 
       occurrenceNumber++;
 
-
-      /*
-        Count limit.
-      */
 
       if (
         recurrence.endType ===
@@ -1369,11 +1377,6 @@ function expandWeeklyEvent(
         duration;
 
 
-      /*
-        Only send occurrences that
-        overlap the requested week.
-      */
-
       if (
         occurrenceStart <
           rangeEnd &&
@@ -1382,28 +1385,10 @@ function expandWeeklyEvent(
       ) {
 
         output.push({
-
-          /*
-            Event details.
-          */
-
           ...event,
-
-
-          /*
-            Keep master ID so clicking
-            an occurrence edits/deletes
-            the entire series.
-          */
 
           masterId:
             event.id,
-
-
-          /*
-            Each rendered occurrence gets
-            the occurrence start/end.
-          */
 
           start:
             minuteKeyToLocalDateTime(
@@ -1415,12 +1400,6 @@ function expandWeeklyEvent(
               occurrenceEnd
             ),
 
-
-          /*
-            Original series values are
-            preserved for the editor.
-          */
-
           seriesStart:
             event.start,
 
@@ -1431,16 +1410,10 @@ function expandWeeklyEvent(
             minuteKeyToLocalDateTime(
               occurrenceStart
             )
-
         });
 
       }
 
-
-      /*
-        Optimization for count-based
-        series once the count is reached.
-      */
 
       if (
         recurrence.endType ===
@@ -1455,101 +1428,321 @@ function expandWeeklyEvent(
 
     }
 
+  }
 
-    /*
-      Normal series do not need to
-      continue searching once we have
-      passed the requested range.
-    */
 
-    if (
-      recurrence.endType !==
-        "COUNT" &&
-      weekStart >
-        rangeEnd
+  return output;
+
+}
+
+
+/*
+  CONFLICT DETECTION
+
+  Checks whether the event being
+  saved overlaps an existing
+  BLOCKED event.
+
+  Recurring events are checked
+  up to one year forward.
+*/
+
+function findBlockedConflicts(
+  incoming,
+  storedEvents
+) {
+
+  const incomingStart =
+    localDateTimeToMinuteKey(
+      incoming.start
+    );
+
+
+  const incomingEnd =
+    localDateTimeToMinuteKey(
+      incoming.end
+    );
+
+
+  let rangeEnd =
+    incoming.recurrence
+      ? incomingStart +
+        366 *
+        1440
+      : incomingEnd;
+
+
+  if (
+    incoming.recurrence?.endType ===
+    "ON"
+  ) {
+
+    const recurrenceEnd =
+      localDateTimeToMinuteKey(
+        `${
+          addDaysToDate(
+            incoming.recurrence.until,
+            1
+          )
+        }T00:00`
+      );
+
+
+    rangeEnd =
+      Math.min(
+        rangeEnd,
+        recurrenceEnd
+      );
+
+  }
+
+
+  const candidates =
+    expandEventsForRange(
+      [
+        {
+          ...incoming,
+
+          id:
+            incoming.id ||
+            "__candidate__"
+        }
+      ],
+      incomingStart,
+      rangeEnd
+    );
+
+
+  /*
+    Do not compare an edited event
+    against itself.
+  */
+
+  const blockedMasters =
+    storedEvents.filter(
+      (event) =>
+        event.type ===
+          "BLOCKED" &&
+        (
+          !incoming.id ||
+          event.id !==
+            incoming.id
+        )
+    );
+
+
+  if (
+    !blockedMasters.length
+  ) {
+
+    return {
+      total:
+        0,
+
+      conflicts:
+        []
+    };
+
+  }
+
+
+  const blockedOccurrences =
+    expandEventsForRange(
+      blockedMasters,
+      incomingStart,
+      rangeEnd
+    );
+
+
+  const conflicts =
+    [];
+
+
+  const seen =
+    new Set();
+
+
+  for (
+    const candidate of candidates
+  ) {
+
+    const candidateStart =
+      localDateTimeToMinuteKey(
+        candidate.start
+      );
+
+
+    const candidateEnd =
+      localDateTimeToMinuteKey(
+        candidate.end
+      );
+
+
+    for (
+      const blocked of blockedOccurrences
     ) {
 
-      break;
+      const blockedStart =
+        localDateTimeToMinuteKey(
+          blocked.start
+        );
+
+
+      const blockedEnd =
+        localDateTimeToMinuteKey(
+          blocked.end
+        );
+
+
+      if (
+        candidateStart <
+          blockedEnd &&
+        candidateEnd >
+          blockedStart
+      ) {
+
+        const key =
+          `${
+            blocked.masterId ||
+            blocked.id
+          }|${blocked.start}|${candidate.start}`;
+
+
+        if (
+          seen.has(
+            key
+          )
+        ) {
+
+          continue;
+
+        }
+
+
+        seen.add(
+          key
+        );
+
+
+        conflicts.push({
+          id:
+            blocked.masterId ||
+            blocked.id,
+
+          title:
+            blocked.title ||
+            "Blocked Session",
+
+          start:
+            blocked.start,
+
+          end:
+            blocked.end,
+
+          overlapStart:
+            minuteKeyToLocalDateTime(
+              Math.max(
+                candidateStart,
+                blockedStart
+              )
+            ),
+
+          overlapEnd:
+            minuteKeyToLocalDateTime(
+              Math.min(
+                candidateEnd,
+                blockedEnd
+              )
+            )
+        });
+
+      }
 
     }
 
   }
 
 
-  return output;
+  conflicts.sort(
+    (a, b) =>
+      localDateTimeToMinuteKey(
+        a.start
+      ) -
+      localDateTimeToMinuteKey(
+        b.start
+      )
+  );
+
+
+  return {
+    total:
+      conflicts.length,
+
+    conflicts:
+      conflicts.slice(
+        0,
+        20
+      )
+  };
+
 }
 
 
 /*
   PUBLIC SCHEDULE
 
-  Public sees:
-  green availability
-  red "Blocked Session"
-
-  Private titles and notes are never
-  included in this response.
+  Private titles are removed here
+  on the server before data is sent
+  to public visitors.
 */
 
 function buildPublicSchedule(
   events
 ) {
 
-  /*
-    Merge all availability.
-  */
-
   const available =
     mergeIntervals(
       events
         .filter(
-          (e) =>
-            e.type ===
+          (event) =>
+            event.type ===
             "AVAILABLE"
         )
         .map(
-          (e) => [
+          (event) => [
             localDateTimeToMinuteKey(
-              e.start
+              event.start
             ),
 
             localDateTimeToMinuteKey(
-              e.end
+              event.end
             )
           ]
         )
     );
 
-
-  /*
-    Merge blocked sessions.
-  */
 
   const blocked =
     mergeIntervals(
       events
         .filter(
-          (e) =>
-            e.type ===
+          (event) =>
+            event.type ===
             "BLOCKED"
         )
         .map(
-          (e) => [
+          (event) => [
             localDateTimeToMinuteKey(
-              e.start
+              event.start
             ),
 
             localDateTimeToMinuteKey(
-              e.end
+              event.end
             )
           ]
         )
     );
 
-
-  /*
-    Availability minus blocked sessions.
-  */
 
   const open =
     subtractIntervals(
@@ -1559,22 +1752,13 @@ function buildPublicSchedule(
 
 
   /*
-    Only display blocked sessions publicly
-    where they overlap an availability
-    period.
-
-    Example:
-
-    Available 7:30-12
-    Blocked 8:30-9:30
-
-    Public gets:
-    7:30-8:30 Available
-    8:30-9:30 Blocked Session
-    9:30-12 Available
+    Only show blocked sessions publicly
+    where they overlap a period that was
+    marked as tutoring availability.
   */
 
-  const publicBlocked = [];
+  const publicBlocked =
+    [];
 
 
   for (
@@ -1582,20 +1766,20 @@ function buildPublicSchedule(
   ) {
 
     for (
-      const avail of available
+      const availability of available
     ) {
 
       const start =
         Math.max(
           block[0],
-          avail[0]
+          availability[0]
         );
 
 
       const end =
         Math.min(
           block[1],
-          avail[1]
+          availability[1]
         );
 
 
@@ -1622,12 +1806,9 @@ function buildPublicSchedule(
     );
 
 
-  const output = [];
+  const output =
+    [];
 
-
-  /*
-    Available sections.
-  */
 
   open.forEach(
     (
@@ -1636,7 +1817,6 @@ function buildPublicSchedule(
     ) => {
 
       output.push({
-
         id:
           `public-available-${index}-${range[0]}`,
 
@@ -1664,16 +1844,11 @@ function buildPublicSchedule(
 
         updatedAt:
           ""
-
       });
 
     }
   );
 
-
-  /*
-    Anonymized blocked sections.
-  */
 
   mergedPublicBlocked.forEach(
     (
@@ -1682,7 +1857,6 @@ function buildPublicSchedule(
     ) => {
 
       output.push({
-
         id:
           `public-blocked-${index}-${range[0]}`,
 
@@ -1710,7 +1884,6 @@ function buildPublicSchedule(
 
         updatedAt:
           ""
-
       });
 
     }
@@ -1725,7 +1898,7 @@ function buildPublicSchedule(
 
 
 /*
-  INTERVAL UTILITIES
+  INTERVAL HELPERS
 */
 
 function mergeIntervals(
@@ -1744,24 +1917,24 @@ function mergeIntervals(
   const sorted =
     intervals
       .filter(
-        (x) =>
+        (range) =>
           Number.isFinite(
-            x[0]
+            range[0]
           ) &&
           Number.isFinite(
-            x[1]
+            range[1]
           ) &&
-          x[1] >
-          x[0]
+          range[1] >
+          range[0]
       )
       .map(
-        (x) => [
+        (range) => [
           Number(
-            x[0]
+            range[0]
           ),
 
           Number(
-            x[1]
+            range[1]
           )
         ]
       )
@@ -1796,7 +1969,9 @@ function mergeIntervals(
   ) {
 
     const current =
-      sorted[i];
+      sorted[
+        i
+      ];
 
 
     const last =
@@ -1829,6 +2004,7 @@ function mergeIntervals(
 
 
   return merged;
+
 }
 
 
@@ -1839,8 +2015,8 @@ function subtractIntervals(
 
   let result =
     available.map(
-      (x) =>
-        x.slice()
+      (range) =>
+        range.slice()
     );
 
 
@@ -1848,16 +2024,13 @@ function subtractIntervals(
     const block of blocked
   ) {
 
-    const next = [];
+    const next =
+      [];
 
 
     for (
       const open of result
     ) {
-
-      /*
-        No overlap.
-      */
 
       if (
         block[1] <=
@@ -1875,32 +2048,22 @@ function subtractIntervals(
       }
 
 
-      /*
-        Portion before block.
-      */
-
       if (
         block[0] >
         open[0]
       ) {
 
         next.push([
-
           open[0],
 
           Math.min(
             block[0],
             open[1]
           )
-
         ]);
 
       }
 
-
-      /*
-        Portion after block.
-      */
 
       if (
         block[1] <
@@ -1908,14 +2071,12 @@ function subtractIntervals(
       ) {
 
         next.push([
-
           Math.max(
             block[1],
             open[0]
           ),
 
           open[1]
-
         ]);
 
       }
@@ -1925,15 +2086,16 @@ function subtractIntervals(
 
     result =
       next.filter(
-        (x) =>
-          x[1] >
-          x[0]
+        (range) =>
+          range[1] >
+          range[0]
       );
 
   }
 
 
   return result;
+
 }
 
 
@@ -2024,7 +2186,8 @@ function normalizeLocalDateTime(
 
 
 /*
-  DATE/TIME TO INTEGER MINUTE KEY
+  YYYY-MM-DDTHH:MM
+  TO MINUTE KEY
 */
 
 function localDateTimeToMinuteKey(
@@ -2039,8 +2202,12 @@ function localDateTimeToMinuteKey(
       );
 
 
-  if (!match) {
+  if (
+    !match
+  ) {
+
     return null;
+
   }
 
 
@@ -2100,7 +2267,9 @@ function localDateTimeToMinuteKey(
 
 
   const check =
-    new Date(ms);
+    new Date(
+      ms
+    );
 
 
   if (
@@ -2128,7 +2297,7 @@ function minuteKeyToLocalDateTime(
   key
 ) {
 
-  const d =
+  const date =
     new Date(
       key *
       60000
@@ -2136,32 +2305,28 @@ function minuteKeyToLocalDateTime(
 
 
   return (
-    `${d.getUTCFullYear()}-` +
-
+    `${date.getUTCFullYear()}-` +
     `${String(
-      d.getUTCMonth() +
+      date.getUTCMonth() +
       1
     ).padStart(
       2,
       "0"
     )}-` +
-
     `${String(
-      d.getUTCDate()
+      date.getUTCDate()
     ).padStart(
       2,
       "0"
     )}T` +
-
     `${String(
-      d.getUTCHours()
+      date.getUTCHours()
     ).padStart(
       2,
       "0"
     )}:` +
-
     `${String(
-      d.getUTCMinutes()
+      date.getUTCMinutes()
     ).padStart(
       2,
       "0"
@@ -2221,23 +2386,23 @@ function bad(
   message
 ) {
 
-  const err =
+  const error =
     new Error(
       message
     );
 
 
-  err.status =
+  error.status =
     400;
 
 
-  throw err;
+  throw error;
 
 }
 
 
 /*
-  JSON RESPONSE
+  JSON
 */
 
 function json(
@@ -2265,5 +2430,6 @@ function json(
 */
 
 export const config = {
-  path: "/api/*"
+  path:
+    "/api/*"
 };
