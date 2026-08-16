@@ -62,6 +62,13 @@
         </button>
 
         <button
+          id="blockedSessionsBtn"
+          class="btn secondary hidden"
+        >
+          Blocked Sessions
+        </button>
+
+        <button
           id="addBtn"
           class="btn primary hidden"
         >
@@ -131,7 +138,7 @@
           Available
         </span>
 
-        <span id="blockedLegend">
+        <span>
           <i class="legend-swatch blocked"></i>
           Blocked Session
         </span>
@@ -195,7 +202,6 @@
 
       </div>
 
-
       <label class="field">
 
         <span>Password</span>
@@ -209,12 +215,10 @@
 
       </label>
 
-
       <div
         id="loginError"
         class="form-error"
       ></div>
-
 
       <div class="modal-actions">
 
@@ -274,8 +278,6 @@
       >
 
 
-      <!-- TYPE -->
-
       <label class="field">
 
         <span>Type</span>
@@ -294,8 +296,6 @@
 
       </label>
 
-
-      <!-- START / END -->
 
       <div class="two-col">
 
@@ -327,8 +327,6 @@
       </div>
 
 
-      <!-- REPEAT -->
-
       <label class="field">
 
         <span>Repeat</span>
@@ -347,8 +345,6 @@
 
       </label>
 
-
-      <!-- RECURRENCE OPTIONS -->
 
       <div
         id="recurrencePanel"
@@ -519,8 +515,6 @@
       </div>
 
 
-      <!-- TITLE -->
-
       <label class="field">
 
         <span>
@@ -532,13 +526,11 @@
           id="eventTitle"
           type="text"
           maxlength="100"
-          placeholder="e.g. Jayden tutoring, Class, Work"
+          placeholder="e.g. Jayden Tutoring, Class, Work"
         >
 
       </label>
 
-
-      <!-- NOTES -->
 
       <label class="field">
 
@@ -594,6 +586,124 @@
       </div>
 
     </div>
+
+  </div>
+
+
+  <!-- BLOCKED SESSION ADMIN PANEL -->
+
+  <div
+    id="blockedDrawerBackdrop"
+    class="drawer-backdrop hidden"
+  >
+
+    <aside
+      id="blockedDrawer"
+      class="blocked-drawer"
+    >
+
+      <div class="blocked-drawer-header">
+
+        <div>
+
+          <h2>
+            Blocked Sessions
+          </h2>
+
+          <div class="blocked-drawer-subtitle">
+            Past and upcoming blocked events
+          </div>
+
+        </div>
+
+        <button
+          id="closeBlockedDrawerBtn"
+          class="close-btn"
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div
+        id="blockedListStatus"
+        class="status"
+      ></div>
+
+
+      <div class="blocked-list-columns">
+
+
+        <section class="blocked-list-column">
+
+          <div class="blocked-list-heading">
+
+            <div>
+
+              <h3>
+                Past
+              </h3>
+
+              <span>
+                Most recent first
+              </span>
+
+            </div>
+
+            <span
+              id="pastBlockedCount"
+              class="blocked-count"
+            >
+              0
+            </span>
+
+          </div>
+
+          <div
+            id="pastBlockedList"
+            class="blocked-session-list"
+          ></div>
+
+        </section>
+
+
+        <section class="blocked-list-column">
+
+          <div class="blocked-list-heading">
+
+            <div>
+
+              <h3>
+                Upcoming
+              </h3>
+
+              <span>
+                Soonest first
+              </span>
+
+            </div>
+
+            <span
+              id="upcomingBlockedCount"
+              class="blocked-count"
+            >
+              0
+            </span>
+
+          </div>
+
+          <div
+            id="upcomingBlockedList"
+            class="blocked-session-list"
+          ></div>
+
+        </section>
+
+      </div>
+
+    </aside>
 
   </div>
 
