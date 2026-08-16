@@ -635,7 +635,18 @@
       card.addEventListener(
         'click',
         () => {
-          openEventModal(ev);
+          // A displayed availability block may only be a fragment
+          // of the original availability.
+          //
+          // Find the original stored event before opening the editor.
+          const originalEvent =
+            state.events.find(
+              event => event.id === ev.id
+            ) || ev;
+
+          openEventModal(
+            originalEvent
+          );
         }
       );
     }
@@ -819,6 +830,108 @@
     }
   }
 
+  function getDisplayEvents() {
+    // Public data is already calculated by the backend,
+    // so we can display it exactly as received.
+    if (!state.isAdmin) {
+      return state.events;
+    }
+
+    const availability = state.events.filter(
+      event => event.type === 'AVAILABLE'
+    );
+
+    const blocked = state.events.filter(
+      event => event.type === 'BLOCKED'
+    );
+
+    // Blocked events themselves should still appear in admin mode.
+    const displayEvents = blocked.map(event => ({
+      ...event
+    }));
+
+    // Take each availability block and subtract every blocked event from it.
+    for (const available of availability) {
+      const availableStart = localDateTimeToMinuteKey(
+        available.start
+      );
+
+      const availableEnd = localDateTimeToMinuteKey(
+        available.end
+      );
+
+      let pieces = [
+        [availableStart, availableEnd]
+      ];
+
+      for (const block of blocked) {
+        const blockStart = localDateTimeToMinuteKey(
+          block.start
+        );
+
+        const blockEnd = localDateTimeToMinuteKey(
+          block.end
+        );
+
+        const nextPieces = [];
+
+        for (const [start, end] of pieces) {
+          // No overlap.
+          if (
+            blockEnd <= start ||
+            blockStart >= end
+          ) {
+            nextPieces.push([start, end]);
+            continue;
+          }
+
+          // Keep the part before the blocked session.
+          if (blockStart > start) {
+            nextPieces.push([
+              start,
+              Math.min(blockStart, end)
+            ]);
+          }
+
+          // Keep the part after the blocked session.
+          if (blockEnd < end) {
+            nextPieces.push([
+              Math.max(blockEnd, start),
+              end
+            ]);
+          }
+        }
+
+        pieces = nextPieces;
+
+        if (!pieces.length) {
+          break;
+        }
+      }
+
+      // Turn the remaining pieces back into display events.
+      pieces.forEach(([start, end]) => {
+        displayEvents.push({
+          ...available,
+
+          // Keep the same ID so clicking this fragment
+          // can still find the original availability event.
+          id: available.id,
+
+          start: minuteKeyToLocalDateTime(start),
+          end: minuteKeyToLocalDateTime(end)
+        });
+      });
+    }
+
+    return displayEvents.sort((a, b) => {
+      return (
+        localDateTimeToMinuteKey(a.start) -
+        localDateTimeToMinuteKey(b.start)
+      );
+    });
+  }
+
   function getSegmentsForDate(
     dateStr
   ) {
@@ -830,7 +943,7 @@
     const dayEnd =
       dayStart + 1440;
 
-    return state.events
+    return getDisplayEvents()
       .map((event) => {
         const eventStart =
           localDateTimeToMinuteKey(
