@@ -12,8 +12,13 @@
     <header class="topbar">
       <div>
         <h1 id="portalTitle">Tutoring Availability</h1>
-        <div class="subline"><span id="timezoneLabel">Pacific Time (PT)</span><span>•</span><span id="updatedLabel">Loading…</span></div>
+        <div class="subline">
+          <span id="timezoneLabel">Pacific Time (PT)</span>
+          <span>•</span>
+          <span id="updatedLabel">Loading…</span>
+        </div>
       </div>
+
       <div class="header-actions">
         <button id="refreshBtn" class="btn secondary">Refresh</button>
         <button id="adminBtn" class="btn secondary">Admin</button>
@@ -22,7 +27,11 @@
     </header>
 
     <section id="adminBanner" class="admin-banner hidden">
-      <div><strong>Admin mode</strong><span> Drag events to move them. Double-click an empty time to add one.</span></div>
+      <div>
+        <strong>Admin mode</strong>
+        <span> Drag events to move them. Double-click an empty time to add one.</span>
+      </div>
+
       <button id="exitAdminBtn" class="text-btn">Public view</button>
     </section>
 
@@ -30,45 +39,206 @@
       <button id="prevWeekBtn" class="icon-btn" aria-label="Previous week">‹</button>
       <button id="todayBtn" class="btn secondary small">Today</button>
       <button id="nextWeekBtn" class="icon-btn" aria-label="Next week">›</button>
+
       <h2 id="weekLabel"></h2>
+
       <div class="legend">
-        <span><i class="legend-swatch available"></i>Available</span>
-        <span id="blockedLegend" class="hidden"><i class="legend-swatch blocked"></i>Blocked/private</span>
+        <span>
+          <i class="legend-swatch available"></i>
+          Available
+        </span>
+
+        <span id="blockedLegend" class="hidden">
+          <i class="legend-swatch blocked"></i>
+          Blocked/private
+        </span>
       </div>
     </section>
 
     <div id="status" class="status" aria-live="polite"></div>
+
     <div id="calendar" class="calendar"></div>
+
     <div id="agenda" class="agenda"></div>
 
-    <section class="help-box"><strong>Public view:</strong> Only your open tutoring times are shown. Private events and blocked times are hidden.</section>
+    <section class="help-box">
+      <strong>Public view:</strong>
+      Only your open tutoring times are shown. Private events and blocked times are hidden.
+    </section>
   </div>
 
-  <div id="loginModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div
+    id="loginModal"
+    class="modal-backdrop hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="loginTitle"
+  >
     <div class="modal-card small-modal">
-      <div class="modal-header"><h2 id="loginTitle">Admin access</h2><button class="close-btn" data-close="loginModal" aria-label="Close">×</button></div>
-      <label class="field"><span>Password</span><input id="adminPasswordInput" type="password" autocomplete="current-password" placeholder="Admin password"></label>
+
+      <div class="modal-header">
+        <h2 id="loginTitle">Admin access</h2>
+
+        <button
+          class="close-btn"
+          data-close="loginModal"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <label class="field">
+        <span>Password</span>
+
+        <input
+          id="adminPasswordInput"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Admin password"
+        >
+      </label>
+
       <div id="loginError" class="form-error"></div>
-      <div class="modal-actions"><button class="btn secondary" data-close="loginModal">Cancel</button><button id="loginSubmitBtn" class="btn primary">Enter admin mode</button></div>
+
+      <div class="modal-actions">
+        <button
+          class="btn secondary"
+          data-close="loginModal"
+        >
+          Cancel
+        </button>
+
+        <button
+          id="loginSubmitBtn"
+          class="btn primary"
+        >
+          Enter admin mode
+        </button>
+      </div>
+
     </div>
   </div>
 
-  <div id="eventModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+  <div
+    id="eventModal"
+    class="modal-backdrop hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="eventModalTitle"
+  >
     <div class="modal-card">
-      <div class="modal-header"><h2 id="eventModalTitle">Add time</h2><button class="close-btn" data-close="eventModal" aria-label="Close">×</button></div>
+
+      <div class="modal-header">
+        <h2 id="eventModalTitle">Add time</h2>
+
+        <button
+          class="close-btn"
+          data-close="eventModal"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
       <input id="eventId" type="hidden">
+
+      <label class="field">
+        <span>Type</span>
+
+        <select id="eventType">
+          <option value="AVAILABLE">
+            Available
+          </option>
+
+          <option value="BLOCKED">
+            Blocked / private event
+          </option>
+        </select>
+      </label>
+
       <div class="two-col">
-        <label class="field"><span>Type</span><select id="eventType"><option value="AVAILABLE">Available</option><option value="BLOCKED">Blocked / private event</option></select></label>
-        <label class="field"><span>Date</span><input id="eventDate" type="date"></label>
+
+        <label class="field">
+          <span>Starts</span>
+
+          <input
+            id="eventStart"
+            type="datetime-local"
+            step="60"
+          >
+        </label>
+
+        <label class="field">
+          <span>Ends</span>
+
+          <input
+            id="eventEnd"
+            type="datetime-local"
+            step="60"
+          >
+        </label>
+
       </div>
-      <div class="two-col">
-        <label class="field"><span>Start</span><input id="eventStart" type="time" step="900"></label>
-        <label class="field"><span>End</span><input id="eventEnd" type="time" step="900"></label>
-      </div>
-      <label class="field"><span>Title <small>(admin only)</small></span><input id="eventTitle" type="text" maxlength="100" placeholder="e.g. Open tutoring, Class, Jayden session"></label>
-      <label class="field"><span>Notes <small>(admin only)</small></span><textarea id="eventNotes" rows="3" maxlength="500" placeholder="Optional"></textarea></label>
+
+      <label class="field">
+        <span>
+          Title
+          <small>(admin only)</small>
+        </span>
+
+        <input
+          id="eventTitle"
+          type="text"
+          maxlength="100"
+          placeholder="e.g. Open tutoring, Class, Jayden session"
+        >
+      </label>
+
+      <label class="field">
+        <span>
+          Notes
+          <small>(admin only)</small>
+        </span>
+
+        <textarea
+          id="eventNotes"
+          rows="3"
+          maxlength="500"
+          placeholder="Optional"
+        ></textarea>
+      </label>
+
       <div id="eventError" class="form-error"></div>
-      <div class="modal-actions split"><button id="deleteEventBtn" class="btn danger hidden">Delete</button><div class="right-actions"><button class="btn secondary" data-close="eventModal">Cancel</button><button id="saveEventBtn" class="btn primary">Save</button></div></div>
+
+      <div class="modal-actions split">
+
+        <button
+          id="deleteEventBtn"
+          class="btn danger hidden"
+        >
+          Delete
+        </button>
+
+        <div class="right-actions">
+
+          <button
+            class="btn secondary"
+            data-close="eventModal"
+          >
+            Cancel
+          </button>
+
+          <button
+            id="saveEventBtn"
+            class="btn primary"
+          >
+            Save
+          </button>
+
+        </div>
+      </div>
+
     </div>
   </div>
 
