@@ -2859,7 +2859,7 @@
         event &&
         event.type
       ) ||
-      'AVAILABLE';
+      '';
 
 
     $('eventStart').value =
