@@ -37,21 +37,37 @@
     draggingId:
       null,
 
-    /*
-      Stores an event after the server
-      detects a scheduling conflict.
-    */
     pendingConflictEvent:
-      null
+      null,
+
+    /*
+      Timestamp of the last public
+      revalidation, used to rate limit
+      the refresh below.
+    */
+    lastRefresh:
+      0
   };
 
+
+  /*
+    Public pages revalidate at most this
+    often. The server tags the public
+    response for the CDN and a write
+    purges that tag, so refreshing faster
+    than this does not make the page
+    fresher, it only spends function
+    invocations.
+  */
+
+  const REFRESH_INTERVAL_MS =
+    5 * 60 * 1000;
 
   const $ =
     (id) =>
       document.getElementById(
         id
       );
-
 
   const calendar =
     $('calendar');
@@ -75,27 +91,69 @@
 
 
     /*
-      Public pages refresh every
-      30 seconds.
+      Check often, act rarely. The
+      guard inside maybeRefresh is what
+      actually decides.
     */
 
     setInterval(
-      () => {
+      maybeRefresh,
+      60000
+    );
 
-        if (
-          !state.isAdmin &&
-          document.visibilityState ===
-            'visible'
-        ) {
 
-          loadWeek(
-            true
-          );
+    /*
+      Coming back to the tab is the
+      moment a stale page is actually
+      noticed, so revalidate then too.
+    */
 
-        }
+    document.addEventListener(
+      'visibilitychange',
+      maybeRefresh
+    );
 
-      },
-      30000
+  }
+
+
+  function maybeRefresh() {
+
+    if (
+      state.isAdmin
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      document.visibilityState !==
+      'visible'
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      Date.now() -
+      state.lastRefresh <
+      REFRESH_INTERVAL_MS
+    ) {
+
+      return;
+
+    }
+
+
+    state.lastRefresh =
+      Date.now();
+
+
+    loadWeek(
+      true
     );
 
   }

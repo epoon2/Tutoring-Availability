@@ -2,12 +2,17 @@ import {
   getStore
 } from "@netlify/blobs";
 
+import {
+  purgeCache
+} from "@netlify/functions";
+
 import crypto from "node:crypto";
 
 
 const STORE_NAME =
   "tutoring-availability";
 
+const EVENTS_CACHE_TAG = "events";
 
 const EVENTS_KEY =
   "events-v2";
@@ -161,7 +166,13 @@ export default async (req) => {
 
         lastUpdated
 
-      });
+      },
+        200,
+        publicCacheHeaders(
+          req,
+          admin
+        )
+      );
 
     }
 
@@ -571,6 +582,13 @@ async function writeEvents(
 
 }
 
+await store.setJSON(EVENTS_KEY, events);
+
+try {
+  await purgeCache({ tags: [EVENTS_CACHE_TAG] });
+} catch (error) {
+  console.error("Cache purge failed", error);
+}
 
 function normalizeStoredEvent(
   event
@@ -2414,25 +2432,28 @@ function bad(
   JSON
 */
 
-function json(
-  body,
-  status = 200
-) {
-
-  return Response.json(
-    body,
-    {
-      status,
-
-      headers: {
-        "Cache-Control":
-          "no-store"
-      }
+function json(body, status = 200, extraHeaders = {}) {
+  return Response.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+      ...extraHeaders          // spread last, so it can override
     }
-  );
-
+  });
 }
 
+function publicCacheHeaders(req, admin) {
+  if (admin || req.headers.get("x-admin-password")) {
+    return {};                       // admin, or anyone carrying the header: never cache
+  }
+  return {
+    "Cache-Control": "public, max-age=0, must-revalidate",
+    "Netlify-CDN-Cache-Control":
+      "public, s-maxage=600, stale-while-revalidate=60, durable",
+    "Netlify-Cache-Tag": EVENTS_CACHE_TAG,
+    "Vary": "x-admin-password"
+  };
+}
 
 /*
   NETLIFY ROUTE
