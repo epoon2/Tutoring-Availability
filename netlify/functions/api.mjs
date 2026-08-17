@@ -580,14 +580,13 @@ async function writeEvents(
     events
   );
 
-}
 
-await store.setJSON(EVENTS_KEY, events);
+  try {
+    await purgeCache({ tags: [EVENTS_CACHE_TAG] });
+  } catch (error) {
+    console.error("Cache purge failed", error);
+  }
 
-try {
-  await purgeCache({ tags: [EVENTS_CACHE_TAG] });
-} catch (error) {
-  console.error("Cache purge failed", error);
 }
 
 function normalizeStoredEvent(
