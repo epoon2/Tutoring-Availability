@@ -428,6 +428,113 @@ export default async (req) => {
 
 
     /*
+      REVIEW SESSION REQUESTS
+    */
+
+    if (
+      req.method === "GET" &&
+      route === "/requests"
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      const requests =
+        await readRequests();
+
+
+      /*
+        Oldest first. This is a queue to
+        work through, not a feed to scroll.
+      */
+
+      return json({
+        requests:
+          requests
+            .slice()
+            .sort(
+              (a, b) =>
+                String(
+                  a.createdAt
+                ).localeCompare(
+                  String(
+                    b.createdAt
+                  )
+                )
+            )
+      });
+
+    }
+
+
+    /*
+      DISMISS A SESSION REQUEST
+    */
+
+    if (
+      req.method === "DELETE" &&
+      route.startsWith(
+        "/requests/"
+      )
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      const requestId =
+        decodeURIComponent(
+          route.slice(
+            "/requests/".length
+          )
+        );
+
+
+      const requests =
+        await readRequests();
+
+
+      const next =
+        requests.filter(
+          (request) =>
+            request.id !==
+            requestId
+        );
+
+
+      if (
+        next.length ===
+        requests.length
+      ) {
+
+        return json(
+          {
+            error:
+              "That request no longer exists."
+          },
+          404
+        );
+
+      }
+
+
+      await writeRequests(
+        next
+      );
+
+
+      return json({
+        ok:
+          true
+      });
+
+    }
+
+
+    /*
       DELETE EVENT / SERIES
     */
 
