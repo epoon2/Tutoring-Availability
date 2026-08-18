@@ -46,7 +46,15 @@
       the refresh below.
     */
     lastRefresh:
-      0
+      0,
+
+    /*
+      Quarter-hour mark the loaded data was
+      clipped to, so a stale page can be
+      recognised without asking the server.
+    */
+    quarterMark:
+      currentQuarterMark()
   };
 
 
@@ -58,6 +66,12 @@
     than this does not make the page
     fresher, it only spends function
     invocations.
+
+    The one exception is the quarter-hour
+    mark the schedule is clipped to. When
+    that moves, the page really is showing
+    times that have passed, so the check
+    below overrides this limit.
   */
 
   const REFRESH_INTERVAL_MS =
@@ -137,7 +151,13 @@
     }
 
 
+    const mark =
+      currentQuarterMark();
+
+
     if (
+      mark ===
+      state.quarterMark &&
       Date.now() -
       state.lastRefresh <
       REFRESH_INTERVAL_MS
@@ -148,12 +168,40 @@
     }
 
 
+    state.quarterMark =
+      mark;
+
+
     state.lastRefresh =
       Date.now();
 
 
     loadWeek(
       true
+    );
+
+  }
+
+
+  /*
+    The public schedule is clipped to the
+    next quarter-hour mark, so that mark is
+    what decides whether the page is still
+    accurate. Reading it from the clock
+    rather than from the response lets an
+    open tab notice it has gone stale
+    without spending a request to find out.
+  */
+
+  function currentQuarterMark() {
+
+    return Math.floor(
+      Date.now() /
+      (
+        15 *
+        60 *
+        1000
+      )
     );
 
   }
