@@ -17,6 +17,9 @@ const EVENTS_CACHE_TAG = "events";
 const TIMEZONE_ID =
   "America/Los_Angeles";
 
+const QUARTER_HOUR =
+  15;
+
 const EVENTS_KEY =
   "events-v2";
 
@@ -1731,13 +1734,15 @@ function buildPublicSchedule(
 
   /*
     A window that has already elapsed cannot be booked, so the public
-    schedule begins at the current moment rather than at the start of
-    the requested week. Blocked sessions inherit the same cut, because
-    they are only published where they overlap availability.
+    schedule begins at the next quarter-hour mark rather than at the
+    start of the requested week. Blocked sessions inherit the same cut,
+    because they are only published where they overlap availability.
   */
 
   const horizon =
-    currentMinuteKey();
+    roundUpToQuarterHour(
+      currentMinuteKey()
+    );
 
 
   const available =
@@ -2147,6 +2152,27 @@ function subtractIntervals(
   straddles it, so a partly elapsed window keeps only the part that
   can still be booked.
 */
+
+/*
+  Nobody books a slot that starts in seven minutes, and a ragged
+  "12:18" reads as a glitch beside times that otherwise land on the
+  quarter hour. Advertise from the next quarter-hour mark instead. A
+  mark that has only just arrived is left alone rather than pushed to
+  the following one.
+*/
+
+function roundUpToQuarterHour(
+  minuteKey
+) {
+
+  return Math.ceil(
+    minuteKey /
+    QUARTER_HOUR
+  ) *
+  QUARTER_HOUR;
+
+}
+
 
 function clipToUpcoming(
   ranges,
