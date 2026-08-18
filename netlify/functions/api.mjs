@@ -2576,6 +2576,23 @@ function json(body, status = 200, extraHeaders = {}) {
   });
 }
 
+function secondsUntilNextQuarterHour() {
+  const span = QUARTER_HOUR * 60;
+  return span - (Math.floor(Date.now() / 1000) % span);
+}
+
+/*
+  A public body is built from one quarter-hour mark, so it stops being
+  true the instant the next mark arrives. Expire it exactly then rather
+  than on a fixed ten-minute clock: the cache can no longer outlive the
+  horizon it was built from, and it is rebuilt four times an hour
+  instead of six.
+
+  stale-while-revalidate is gone for the same reason. Serving the
+  previous body for another minute past the boundary is precisely the
+  staleness this is removing.
+*/
+
 function publicCacheHeaders(req, admin) {
   if (admin || req.headers.get("x-admin-password")) {
     return {};                       // admin, or anyone carrying the header: never cache
@@ -2583,7 +2600,7 @@ function publicCacheHeaders(req, admin) {
   return {
     "Cache-Control": "public, max-age=0, must-revalidate",
     "Netlify-CDN-Cache-Control":
-      "public, s-maxage=600, stale-while-revalidate=60, durable",
+      `public, s-maxage=${secondsUntilNextQuarterHour()}, durable`,
     "Netlify-Cache-Tag": EVENTS_CACHE_TAG,
     "Vary": "x-admin-password"
   };
