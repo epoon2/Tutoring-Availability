@@ -62,6 +62,13 @@
         </button>
 
         <button
+          id="requestBtn"
+          class="btn primary"
+        >
+          Request a session
+        </button>
+
+        <button
           id="adminBtn"
           class="btn secondary"
         >
@@ -196,6 +203,271 @@
       and notes are never shown.
 
     </section>
+
+  </div>
+
+
+
+  <!-- SESSION REQUEST (PUBLIC) -->
+
+  <div
+    id="requestModal"
+    class="modal-backdrop hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="requestModalTitle"
+  >
+
+    <div class="modal-card">
+
+      <div class="modal-header">
+
+        <h2 id="requestModalTitle">
+          Request a session
+        </h2>
+
+        <button
+          class="close-btn"
+          data-close="requestModal"
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <p class="request-intro">
+        Ask for a time that works for you. Nothing is booked until
+        the tutor confirms it.
+      </p>
+
+
+      <!-- NAME -->
+
+      <label class="field">
+
+        <span>
+          Your name
+        </span>
+
+        <input
+          id="requestName"
+          type="text"
+          maxlength="80"
+          required
+          placeholder="e.g. Jordan Rivera"
+        >
+
+      </label>
+
+
+
+      <!-- START AND END -->
+
+      <div class="two-col">
+
+        <label class="field">
+
+          <span>
+            Starts
+          </span>
+
+          <input
+            id="requestStart"
+            type="datetime-local"
+            step="60"
+          >
+
+        </label>
+
+
+        <label class="field">
+
+          <span>
+            Ends
+          </span>
+
+          <input
+            id="requestEnd"
+            type="datetime-local"
+            step="60"
+          >
+
+        </label>
+
+      </div>
+
+
+
+      <!-- REPEAT AND FORMAT -->
+
+      <div class="two-col">
+
+        <label class="field">
+
+          <span>
+            Repeat
+          </span>
+
+          <select id="requestRepeat">
+
+            <option value="NONE">
+              Does not repeat
+            </option>
+
+            <option value="WEEKLY">
+              Weekly
+            </option>
+
+          </select>
+
+        </label>
+
+
+        <label class="field">
+
+          <span>
+            Format
+          </span>
+
+          <select
+            id="requestFormat"
+            class="placeholder-select"
+            required
+          >
+
+            <option
+              value=""
+              disabled
+              selected
+              hidden
+            >
+              Select One
+            </option>
+
+            <option value="ONLINE">
+              Online
+            </option>
+
+            <option value="IN_PERSON">
+              In person
+            </option>
+
+          </select>
+
+        </label>
+
+      </div>
+
+
+
+      <!-- SUBJECT -->
+
+      <label class="field">
+
+        <span>
+          Subject
+        </span>
+
+        <input
+          id="requestSubject"
+          type="text"
+          maxlength="80"
+          required
+          placeholder="e.g. AP Physics C"
+        >
+
+      </label>
+
+
+
+      <!-- INLINE AVAILABILITY WARNING -->
+
+      <div
+        id="requestWarning"
+        class="conflict-warning hidden"
+      >
+
+        <div class="conflict-warning-header">
+
+          <div class="conflict-warning-icon">
+            !
+          </div>
+
+          <div>
+
+            <div
+              id="requestWarningTitle"
+              class="conflict-warning-title"
+            >
+              Outside available hours
+            </div>
+
+            <div
+              id="requestWarningSummary"
+              class="conflict-warning-summary"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="requestWarningList"
+          class="conflict-warning-list"
+        ></div>
+
+
+        <div class="conflict-warning-footer">
+          You can still send this request. The tutor will confirm
+          whether the time works.
+        </div>
+
+      </div>
+
+
+
+      <!-- NORMAL VALIDATION ERROR -->
+
+      <div
+        id="requestError"
+        class="form-error"
+      ></div>
+
+
+
+      <!-- ACTION BUTTONS -->
+
+      <div class="modal-actions">
+
+        <button
+          class="btn secondary"
+          data-close="requestModal"
+        >
+          Cancel
+        </button>
+
+
+        <button
+          id="sendRequestAnywayBtn"
+          class="btn warning hidden"
+        >
+          Send Anyway
+        </button>
+
+
+        <button
+          id="sendRequestBtn"
+          class="btn primary"
+        >
+          Send request
+        </button>
+
+      </div>
+
+    </div>
 
   </div>
 

@@ -662,6 +662,21 @@ button:disabled {
 
 
 /* -----------------------------
+   SESSION REQUEST
+----------------------------- */
+
+.request-intro {
+  margin: 0 0 4px;
+
+  color: var(--muted);
+
+  font-size: 14px;
+
+  line-height: 1.45;
+}
+
+
+/* -----------------------------
    MOBILE AGENDA
 ----------------------------- */
 
