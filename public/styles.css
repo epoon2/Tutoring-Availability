@@ -620,14 +620,44 @@ button:disabled {
 }
 
 
+/*
+  A compact card has room for one row
+  of text, not two. Laying the title
+  and time side by side keeps the
+  title readable instead of hiding it
+  outright.
+*/
+
 .event-card.compact {
+  display: flex;
+
+  align-items: baseline;
+
+  gap: 5px;
+
   padding-top: 2px;
   padding-bottom: 2px;
 }
 
 
 .event-card.compact .event-title {
-  display: none;
+  flex: 1 1 auto;
+
+  /*
+    Without min-width the title floors
+    at its content width and pushes the
+    time out of the card instead of
+    ellipsizing.
+  */
+
+  min-width: 0;
+}
+
+
+.event-card.compact .event-time {
+  flex: 0 0 auto;
+
+  margin-top: 0;
 }
 
 
