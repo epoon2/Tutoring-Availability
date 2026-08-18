@@ -665,6 +665,20 @@ button:disabled {
    SESSION REQUEST
 ----------------------------- */
 
+.request-item {
+  cursor: default;
+}
+
+
+.request-item-actions {
+  display: flex;
+
+  gap: 8px;
+
+  margin-top: 10px;
+}
+
+
 .request-intro {
   margin: 0 0 4px;
 
