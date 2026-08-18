@@ -14,6 +14,9 @@ const STORE_NAME =
 
 const EVENTS_CACHE_TAG = "events";
 
+const TIMEZONE_ID =
+  "America/Los_Angeles";
+
 const EVENTS_KEY =
   "events-v2";
 
@@ -464,7 +467,7 @@ function getConfig() {
       "Pacific Time (PT)",
 
     timezoneId:
-      "America/Los_Angeles",
+      TIMEZONE_ID,
 
     dayStart:
       8,
@@ -1726,25 +1729,39 @@ function buildPublicSchedule(
   events
 ) {
 
-  const available =
-    mergeIntervals(
-      events
-        .filter(
-          (event) =>
-            event.type ===
-            "AVAILABLE"
-        )
-        .map(
-          (event) => [
-            localDateTimeToMinuteKey(
-              event.start
-            ),
+  /*
+    A window that has already elapsed cannot be booked, so the public
+    schedule begins at the current moment rather than at the start of
+    the requested week. Blocked sessions inherit the same cut, because
+    they are only published where they overlap availability.
+  */
 
-            localDateTimeToMinuteKey(
-              event.end
-            )
-          ]
-        )
+  const horizon =
+    currentMinuteKey();
+
+
+  const available =
+    clipToUpcoming(
+      mergeIntervals(
+        events
+          .filter(
+            (event) =>
+              event.type ===
+              "AVAILABLE"
+          )
+          .map(
+            (event) => [
+              localDateTimeToMinuteKey(
+                event.start
+              ),
+
+              localDateTimeToMinuteKey(
+                event.end
+              )
+            ]
+          )
+      ),
+      horizon
     );
 
 
@@ -2125,6 +2142,37 @@ function subtractIntervals(
 }
 
 
+/*
+  Drop everything before the horizon, and shorten the range that
+  straddles it, so a partly elapsed window keeps only the part that
+  can still be booked.
+*/
+
+function clipToUpcoming(
+  ranges,
+  horizon
+) {
+
+  return ranges
+    .map(
+      (range) => [
+        Math.max(
+          range[0],
+          horizon
+        ),
+
+        range[1]
+      ]
+    )
+    .filter(
+      (range) =>
+        range[1] >
+        range[0]
+    );
+
+}
+
+
 function sortEvents(
   a,
   b
@@ -2215,6 +2263,67 @@ function normalizeLocalDateTime(
   YYYY-MM-DDTHH:MM
   TO MINUTE KEY
 */
+
+/*
+  Every stored time is a Pacific wall-clock string, so "now" has to be
+  expressed the same way before it can be compared against one. Asking
+  Intl for the parts keeps this correct across DST without introducing
+  a real timezone conversion anywhere else.
+*/
+
+function currentMinuteKey() {
+
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone:
+          TIMEZONE_ID,
+
+        year:
+          "numeric",
+
+        month:
+          "2-digit",
+
+        day:
+          "2-digit",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit",
+
+        hourCycle:
+          "h23"
+      }
+    )
+      .formatToParts(
+        new Date()
+      );
+
+
+  const value =
+    {};
+
+
+  for (
+    const part of parts
+  ) {
+
+    value[part.type] =
+      part.value;
+
+  }
+
+
+  return localDateTimeToMinuteKey(
+    `${value.year}-${value.month}-${value.day}T${value.hour}:${value.minute}`
+  );
+
+}
+
 
 function localDateTimeToMinuteKey(
   value
