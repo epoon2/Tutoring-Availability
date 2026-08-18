@@ -360,14 +360,20 @@
     $('sendRequestBtn')
       .addEventListener(
         'click',
-        sendRequest
+        () =>
+          sendRequest(
+            false
+          )
       );
 
 
     $('sendRequestAnywayBtn')
       .addEventListener(
         'click',
-        sendRequest
+        () =>
+          sendRequest(
+            true
+          )
       );
 
 
@@ -3003,9 +3009,6 @@
       'requestModal'
     );
 
-
-    checkRequestedTime();
-
   }
 
 
@@ -3412,7 +3415,9 @@
 
 
 
-  async function sendRequest() {
+  async function sendRequest(
+    force
+  ) {
 
     $('requestError')
       .textContent =
@@ -3540,6 +3545,35 @@
 
 
       return;
+
+    }
+
+
+    /*
+      The warning is raised here rather than
+      when the form opens, so it describes a
+      time the visitor actually chose. Send
+      Anyway is what gets past it.
+    */
+
+    if (
+      !force
+    ) {
+
+      await checkRequestedTime();
+
+
+      if (
+        !$('requestWarning')
+          .classList
+          .contains(
+            'hidden'
+          )
+      ) {
+
+        return;
+
+      }
 
     }
 
