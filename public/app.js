@@ -54,7 +54,15 @@
       recognised without asking the server.
     */
     quarterMark:
-      currentQuarterMark()
+      currentQuarterMark(),
+
+    /*
+      Public schedule by date, so retyping
+      a time does not refetch the day it
+      falls on.
+    */
+    scheduleByDate:
+      new Map()
   };
 
 
@@ -299,6 +307,50 @@
       .addEventListener(
         'click',
         openBlockedSessions
+      );
+
+
+    $('requestBtn')
+      .addEventListener(
+        'click',
+        openRequestModal
+      );
+
+
+    $('sendRequestBtn')
+      .addEventListener(
+        'click',
+        sendRequest
+      );
+
+
+    $('sendRequestAnywayBtn')
+      .addEventListener(
+        'click',
+        sendRequest
+      );
+
+
+    /*
+      Re-check as the times change, so the
+      warning appears while it can still be
+      acted on rather than after sending.
+    */
+
+    [
+      'requestStart',
+      'requestEnd'
+    ]
+      .forEach(
+        (id) => {
+
+          $(id)
+            .addEventListener(
+              'change',
+              checkRequestedTime
+            );
+
+        }
       );
 
 
@@ -818,6 +870,14 @@
 
 
     $('adminBtn')
+      .classList
+      .toggle(
+        'hidden',
+        state.isAdmin
+      );
+
+
+    $('requestBtn')
       .classList
       .toggle(
         'hidden',
@@ -2823,6 +2883,684 @@
   /* =========================================================
      ADMIN LOGIN
   ========================================================= */
+
+
+  /* =========================================================
+     SESSION REQUESTS (PUBLIC)
+  ========================================================= */
+
+
+  function openRequestModal() {
+
+    /*
+      Default to the next quarter-hour mark
+      the schedule is advertised from, so the
+      form opens on a time that could
+      actually be requested.
+    */
+
+    const start =
+      roundUpToQuarterMinuteKey(
+        getPortalNowMinuteKey()
+      );
+
+
+    $('requestName')
+      .value =
+        '';
+
+
+    $('requestSubject')
+      .value =
+        '';
+
+
+    $('requestFormat')
+      .value =
+        '';
+
+
+    $('requestRepeat')
+      .value =
+        'NONE';
+
+
+    $('requestStart')
+      .value =
+        minuteKeyToLocalDateTime(
+          start
+        );
+
+
+    $('requestEnd')
+      .value =
+        minuteKeyToLocalDateTime(
+          start +
+          60
+        );
+
+
+    $('requestError')
+      .textContent =
+        '';
+
+
+    clearRequestWarning();
+
+
+    openModal(
+      'requestModal'
+    );
+
+
+    checkRequestedTime();
+
+  }
+
+
+
+  function roundUpToQuarterMinuteKey(
+    minuteKey
+  ) {
+
+    return Math.ceil(
+      minuteKey /
+      15
+    ) *
+    15;
+
+  }
+
+
+
+  function clearRequestWarning() {
+
+    $('requestWarning')
+      .classList
+      .add(
+        'hidden'
+      );
+
+
+    $('requestWarningSummary')
+      .textContent =
+        '';
+
+
+    $('requestWarningList')
+      .innerHTML =
+        '';
+
+
+    $('sendRequestAnywayBtn')
+      .classList
+      .add(
+        'hidden'
+      );
+
+
+    $('sendRequestBtn')
+      .classList
+      .remove(
+        'hidden'
+      );
+
+  }
+
+
+
+  /*
+    The public payload already describes a
+    day the way a visitor sees it: merged
+    availability and anonymised blocked
+    sessions. Checking against it needs no
+    new endpoint, and the answer always
+    matches what the calendar shows.
+  */
+
+  async function getScheduleForDate(
+    date
+  ) {
+
+    if (
+      state.scheduleByDate
+        .has(
+          date
+        )
+    ) {
+
+      return state.scheduleByDate
+        .get(
+          date
+        );
+
+    }
+
+
+    const data =
+      await api(
+        '/events?start=' +
+        encodeURIComponent(
+          date
+        ) +
+        '&end=' +
+        encodeURIComponent(
+          date
+        )
+      );
+
+
+    const events =
+      data.events ||
+      [];
+
+
+    state.scheduleByDate
+      .set(
+        date,
+        events
+      );
+
+
+    return events;
+
+  }
+
+
+
+  async function checkRequestedTime() {
+
+    const startValue =
+      $('requestStart')
+        .value;
+
+
+    const endValue =
+      $('requestEnd')
+        .value;
+
+
+    const startKey =
+      localDateTimeToMinuteKey(
+        startValue
+      );
+
+
+    const endKey =
+      localDateTimeToMinuteKey(
+        endValue
+      );
+
+
+    if (
+      startKey ===
+        null ||
+      endKey ===
+        null ||
+      endKey <=
+        startKey
+    ) {
+
+      clearRequestWarning();
+
+      return;
+
+    }
+
+
+    let events;
+
+
+    try {
+
+      events =
+        await getScheduleForDate(
+          startValue
+            .slice(
+              0,
+              10
+            )
+        );
+
+    } catch {
+
+      /*
+        A failed lookup should not stop
+        someone asking. The tutor reviews
+        every request anyway.
+      */
+
+      clearRequestWarning();
+
+      return;
+
+    }
+
+
+    const overlapping =
+      events
+        .filter(
+          (event) =>
+            event.type ===
+            'BLOCKED'
+        )
+        .filter(
+          (event) =>
+            localDateTimeToMinuteKey(
+              event.start
+            ) <
+            endKey &&
+            localDateTimeToMinuteKey(
+              event.end
+            ) >
+            startKey
+        );
+
+
+    if (
+      overlapping.length
+    ) {
+
+      showRequestWarning(
+        'Schedule conflict',
+
+        overlapping.length ===
+        1
+          ? 'That time overlaps a session the tutor has already blocked out.'
+          : 'That time overlaps ' +
+            overlapping.length +
+            ' sessions the tutor has already blocked out.',
+
+        overlapping.map(
+          (event) => ({
+            title:
+              'Blocked Session',
+
+            start:
+              event.start,
+
+            end:
+              event.end
+          })
+        )
+      );
+
+
+      return;
+
+    }
+
+
+    const windows =
+      events
+        .filter(
+          (event) =>
+            event.type ===
+            'AVAILABLE'
+        );
+
+
+    const covered =
+      windows.some(
+        (event) =>
+          localDateTimeToMinuteKey(
+            event.start
+          ) <=
+          startKey &&
+          localDateTimeToMinuteKey(
+            event.end
+          ) >=
+          endKey
+      );
+
+
+    if (
+      !covered
+    ) {
+
+      showRequestWarning(
+        'Outside available hours',
+
+        windows.length
+          ? 'The tutor has not marked that whole time as available.'
+          : 'The tutor has no availability listed on that day.',
+
+        windows.map(
+          (event) => ({
+            title:
+              'Available',
+
+            start:
+              event.start,
+
+            end:
+              event.end
+          })
+        )
+      );
+
+
+      return;
+
+    }
+
+
+    clearRequestWarning();
+
+  }
+
+
+
+  function showRequestWarning(
+    title,
+    summary,
+    items
+  ) {
+
+    $('requestWarningTitle')
+      .textContent =
+        title;
+
+
+    $('requestWarningSummary')
+      .textContent =
+        summary;
+
+
+    const list =
+      $('requestWarningList');
+
+
+    list.innerHTML =
+      '';
+
+
+    for (
+      const item of
+      items.slice(
+        0,
+        6
+      )
+    ) {
+
+      const row =
+        document.createElement(
+          'div'
+        );
+
+
+      row.className =
+        'conflict-item';
+
+
+      const label =
+        document.createElement(
+          'div'
+        );
+
+
+      label.className =
+        'conflict-item-title';
+
+
+      label.textContent =
+        item.title;
+
+
+      const time =
+        document.createElement(
+          'div'
+        );
+
+
+      time.className =
+        'conflict-item-time';
+
+
+      time.textContent =
+        formatBlockedEventRange(
+          item.start,
+          item.end
+        );
+
+
+      row.append(
+        label,
+        time
+      );
+
+
+      list.appendChild(
+        row
+      );
+
+    }
+
+
+    $('requestWarning')
+      .classList
+      .remove(
+        'hidden'
+      );
+
+
+    $('sendRequestAnywayBtn')
+      .classList
+      .remove(
+        'hidden'
+      );
+
+
+    $('sendRequestBtn')
+      .classList
+      .add(
+        'hidden'
+      );
+
+  }
+
+
+
+  async function sendRequest() {
+
+    $('requestError')
+      .textContent =
+        '';
+
+
+    const name =
+      $('requestName')
+        .value
+        .trim();
+
+
+    if (
+      !name
+    ) {
+
+      $('requestError')
+        .textContent =
+          'Please enter your name.';
+
+
+      $('requestName')
+        .focus();
+
+
+      return;
+
+    }
+
+
+    const subject =
+      $('requestSubject')
+        .value
+        .trim();
+
+
+    if (
+      !subject
+    ) {
+
+      $('requestError')
+        .textContent =
+          'Please enter the subject.';
+
+
+      $('requestSubject')
+        .focus();
+
+
+      return;
+
+    }
+
+
+    const format =
+      $('requestFormat')
+        .value;
+
+
+    if (
+      !format
+    ) {
+
+      $('requestError')
+        .textContent =
+          'Please choose online or in person.';
+
+
+      $('requestFormat')
+        .focus();
+
+
+      return;
+
+    }
+
+
+    const start =
+      $('requestStart')
+        .value;
+
+
+    const end =
+      $('requestEnd')
+        .value;
+
+
+    const startKey =
+      localDateTimeToMinuteKey(
+        start
+      );
+
+
+    const endKey =
+      localDateTimeToMinuteKey(
+        end
+      );
+
+
+    if (
+      startKey ===
+        null ||
+      endKey ===
+        null
+    ) {
+
+      $('requestError')
+        .textContent =
+          'Please choose a start and end time.';
+
+
+      return;
+
+    }
+
+
+    if (
+      endKey <=
+      startKey
+    ) {
+
+      $('requestError')
+        .textContent =
+          'The end time must be after the start time.';
+
+
+      return;
+
+    }
+
+
+    $('sendRequestBtn')
+      .disabled =
+        true;
+
+
+    $('sendRequestAnywayBtn')
+      .disabled =
+        true;
+
+
+    try {
+
+      await api(
+        '/requests',
+        {
+          method:
+            'POST',
+
+          body:
+            JSON.stringify({
+              name,
+
+              subject,
+
+              format,
+
+              repeat:
+                $('requestRepeat')
+                  .value,
+
+              start,
+
+              end
+            })
+        }
+      );
+
+
+      closeModal(
+        'requestModal'
+      );
+
+
+      setStatus(
+        'Request sent. The tutor will confirm it before it appears on the calendar.'
+      );
+
+    } catch (error) {
+
+      $('requestError')
+        .textContent =
+          error.message;
+
+    } finally {
+
+      $('sendRequestBtn')
+        .disabled =
+          false;
+
+
+      $('sendRequestAnywayBtn')
+        .disabled =
+          false;
+
+    }
+
+  }
+
 
 
   function openAdminLogin() {
