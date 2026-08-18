@@ -28,6 +28,21 @@ const LEGACY_EVENTS_KEY =
   "events-v1";
 
 
+const REQUESTS_KEY =
+  "requests-v1";
+
+/*
+  The submit endpoint is open to anyone, so the queue is bounded
+  rather than left to grow with whatever arrives.
+*/
+
+const MAX_STORED_REQUESTS =
+  100;
+
+const MAX_REQUEST_MINUTES =
+  8 * 60;
+
+
 export default async (req) => {
 
   try {
@@ -353,6 +368,66 @@ export default async (req) => {
 
 
     /*
+      SUBMIT A SESSION REQUEST
+
+      Deliberately unauthenticated: this is
+      how a student asks for a slot.
+    */
+
+    if (
+      req.method === "POST" &&
+      route === "/requests"
+    ) {
+
+      const body =
+        await req.json();
+
+
+      const incoming =
+        validateRequest(
+          body
+        );
+
+
+      const requests =
+        await readRequests();
+
+
+      if (
+        requests.length >=
+        MAX_STORED_REQUESTS
+      ) {
+
+        fail(
+          "The tutor has too many pending requests right now. Please try again later.",
+          429
+        );
+
+      }
+
+
+      requests.push(
+        incoming
+      );
+
+
+      await writeRequests(
+        requests
+      );
+
+
+      return json(
+        {
+          id:
+            incoming.id
+        },
+        201
+      );
+
+    }
+
+
+    /*
       DELETE EVENT / SERIES
     */
 
@@ -594,6 +669,61 @@ async function writeEvents(
   }
 
 }
+
+async function readRequests() {
+
+  const store =
+    getStore(
+      STORE_NAME
+    );
+
+
+  const current =
+    await store.get(
+      REQUESTS_KEY,
+      {
+        type:
+          "json",
+
+        consistency:
+          "strong"
+      }
+    );
+
+
+  return Array.isArray(
+    current
+  )
+    ? current
+    : [];
+
+}
+
+
+/*
+  Unlike writeEvents this does not purge the cache tag. Requests never
+  reach a cached response -- the public schedule does not contain them
+  and the admin list is never cached -- so purging would throw away a
+  still-correct schedule on every submission.
+*/
+
+async function writeRequests(
+  requests
+) {
+
+  const store =
+    getStore(
+      STORE_NAME
+    );
+
+
+  await store.setJSON(
+    REQUESTS_KEY,
+    requests
+  );
+
+}
+
 
 function normalizeStoredEvent(
   event
@@ -1150,6 +1280,214 @@ function validateRecurrence(
 /*
   EXPAND EVENTS FOR REQUESTED RANGE
 */
+
+/*
+  A request arrives from an anonymous visitor, so every field is
+  treated as hostile: bounded length, a known set of values, and a
+  time that is real, ordered and still ahead of us.
+*/
+
+function validateRequest(
+  request
+) {
+
+  if (
+    !request ||
+    typeof request !==
+    "object"
+  ) {
+
+    bad(
+      "Invalid request."
+    );
+
+  }
+
+
+  const name =
+    String(
+      request.name ||
+      ""
+    ).trim();
+
+
+  if (
+    !name ||
+    name.length >
+    80
+  ) {
+
+    bad(
+      "Please enter your name."
+    );
+
+  }
+
+
+  const subject =
+    String(
+      request.subject ||
+      ""
+    ).trim();
+
+
+  if (
+    !subject ||
+    subject.length >
+    80
+  ) {
+
+    bad(
+      "Please enter the subject."
+    );
+
+  }
+
+
+  const format =
+    String(
+      request.format ||
+      ""
+    ).toUpperCase();
+
+
+  if (
+    ![
+      "ONLINE",
+      "IN_PERSON"
+    ].includes(
+      format
+    )
+  ) {
+
+    bad(
+      "Please choose online or in person."
+    );
+
+  }
+
+
+  const repeat =
+    String(
+      request.repeat ||
+      "NONE"
+    ).toUpperCase();
+
+
+  if (
+    ![
+      "NONE",
+      "WEEKLY"
+    ].includes(
+      repeat
+    )
+  ) {
+
+    bad(
+      "Invalid repeat option."
+    );
+
+  }
+
+
+  const start =
+    normalizeLocalDateTime(
+      request.start
+    );
+
+
+  const end =
+    normalizeLocalDateTime(
+      request.end
+    );
+
+
+  const startKey =
+    localDateTimeToMinuteKey(
+      start
+    );
+
+
+  const endKey =
+    localDateTimeToMinuteKey(
+      end
+    );
+
+
+  if (
+    startKey ==
+      null ||
+    endKey ==
+      null
+  ) {
+
+    bad(
+      "Invalid start or end date/time."
+    );
+
+  }
+
+
+  if (
+    endKey <=
+    startKey
+  ) {
+
+    bad(
+      "The end time must be after the start time."
+    );
+
+  }
+
+
+  if (
+    endKey -
+    startKey >
+    MAX_REQUEST_MINUTES
+  ) {
+
+    bad(
+      "A single session cannot run longer than eight hours."
+    );
+
+  }
+
+
+  if (
+    startKey <
+    currentMinuteKey()
+  ) {
+
+    bad(
+      "Please choose a time in the future."
+    );
+
+  }
+
+
+  return {
+    id:
+      crypto.randomUUID(),
+
+    name,
+
+    subject,
+
+    format,
+
+    repeat,
+
+    start,
+
+    end,
+
+    createdAt:
+      new Date()
+        .toISOString()
+  };
+
+}
+
 
 function expandEventsForRange(
   events,
@@ -2542,6 +2880,26 @@ function addDaysToDate(
 /*
   ERRORS
 */
+
+function fail(
+  message,
+  status
+) {
+
+  const error =
+    new Error(
+      message
+    );
+
+
+  error.status =
+    status;
+
+
+  throw error;
+
+}
+
 
 function bad(
   message
