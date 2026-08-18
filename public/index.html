@@ -76,6 +76,22 @@
         </button>
 
         <button
+          id="requestsBtn"
+          class="btn secondary hidden"
+        >
+
+          Requests
+
+          <span
+            id="requestCount"
+            class="blocked-count"
+          >
+            0
+          </span>
+
+        </button>
+
+        <button
           id="blockedSessionsBtn"
           class="btn secondary hidden"
         >
@@ -1011,6 +1027,57 @@
       </div>
 
     </div>
+
+  </div>
+
+
+
+  <!-- SESSION REQUEST REVIEW (ADMIN) -->
+
+  <div
+    id="requestDrawerBackdrop"
+    class="drawer-backdrop hidden"
+  >
+
+    <aside class="blocked-drawer">
+
+      <div class="blocked-drawer-header">
+
+        <div>
+
+          <h2>
+            Session Requests
+          </h2>
+
+          <div class="blocked-drawer-subtitle">
+            Submitted by students, waiting on you
+          </div>
+
+        </div>
+
+        <button
+          id="closeRequestDrawerBtn"
+          class="close-btn"
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div
+        id="requestListStatus"
+        class="status"
+      ></div>
+
+
+      <div
+        id="requestList"
+        class="blocked-session-list"
+      ></div>
+
+    </aside>
 
   </div>
 

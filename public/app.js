@@ -62,7 +62,15 @@
       falls on.
     */
     scheduleByDate:
-      new Map()
+      new Map(),
+
+    /*
+      Set while the editor holds an accepted
+      request, so saving can clear it from
+      the queue and cancelling cannot.
+    */
+    acceptedRequestId:
+      null
   };
 
 
@@ -314,6 +322,38 @@
       .addEventListener(
         'click',
         openRequestModal
+      );
+
+
+    $('requestsBtn')
+      .addEventListener(
+        'click',
+        openRequestDrawer
+      );
+
+
+    $('closeRequestDrawerBtn')
+      .addEventListener(
+        'click',
+        closeRequestDrawer
+      );
+
+
+    $('requestDrawerBackdrop')
+      .addEventListener(
+        'click',
+        (event) => {
+
+          if (
+            event.target ===
+            $('requestDrawerBackdrop')
+          ) {
+
+            closeRequestDrawer();
+
+          }
+
+        }
       );
 
 
@@ -867,6 +907,17 @@
         'hidden',
         !state.isAdmin
       );
+
+
+    $('requestsBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
+      );
+
+
+    refreshRequestCount();
 
 
     $('adminBtn')
@@ -3563,6 +3614,491 @@
 
 
 
+  /* =========================================================
+     SESSION REQUEST REVIEW (ADMIN)
+  ========================================================= */
+
+
+  /*
+    A request is only removed once the event
+    it became has actually been saved, so a
+    cancelled review leaves it in the queue.
+  */
+
+  async function clearAcceptedRequest() {
+
+    const id =
+      state.acceptedRequestId;
+
+
+    if (
+      !id
+    ) {
+
+      return;
+
+    }
+
+
+    state.acceptedRequestId =
+      null;
+
+
+    try {
+
+      await api(
+        '/requests/' +
+        encodeURIComponent(
+          id
+        ),
+        {
+          method:
+            'DELETE'
+        }
+      );
+
+    } catch {
+
+      /*
+        The event saved, which is the part
+        that matters. A stale queue entry can
+        be dismissed by hand.
+      */
+
+    }
+
+
+    await refreshRequestCount();
+
+  }
+
+
+  async function refreshRequestCount() {
+
+    if (
+      !state.isAdmin
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      const data =
+        await api(
+          '/requests'
+        );
+
+
+      const total =
+        (
+          data.requests ||
+          []
+        ).length;
+
+
+      $('requestCount')
+        .textContent =
+          total;
+
+    } catch {
+
+      /*
+        The badge is a convenience. A failed
+        count should not interrupt admin work.
+      */
+
+    }
+
+  }
+
+
+
+  async function openRequestDrawer() {
+
+    if (
+      !state.isAdmin
+    ) {
+
+      return;
+
+    }
+
+
+    $('requestDrawerBackdrop')
+      .classList
+      .remove(
+        'hidden'
+      );
+
+
+    $('requestListStatus')
+      .textContent =
+        'Loading requests…';
+
+
+    $('requestList')
+      .innerHTML =
+        '';
+
+
+    try {
+
+      const data =
+        await api(
+          '/requests'
+        );
+
+
+      renderRequestList(
+        data.requests ||
+        []
+      );
+
+    } catch (error) {
+
+      $('requestListStatus')
+        .textContent =
+          error.message;
+
+    }
+
+  }
+
+
+
+  function closeRequestDrawer() {
+
+    $('requestDrawerBackdrop')
+      .classList
+      .add(
+        'hidden'
+      );
+
+  }
+
+
+
+  function renderRequestList(
+    requests
+  ) {
+
+    $('requestCount')
+      .textContent =
+        requests.length;
+
+
+    $('requestListStatus')
+      .textContent =
+        requests.length
+          ? 'Accepting opens the editor with the details filled in. Nothing is saved until you save it.'
+          : '';
+
+
+    const list =
+      $('requestList');
+
+
+    list.innerHTML =
+      '';
+
+
+    if (
+      !requests.length
+    ) {
+
+      const empty =
+        document.createElement(
+          'div'
+        );
+
+
+      empty.className =
+        'blocked-empty';
+
+
+      empty.textContent =
+        'No pending requests.';
+
+
+      list.appendChild(
+        empty
+      );
+
+
+      return;
+
+    }
+
+
+    for (
+      const request of requests
+    ) {
+
+      const item =
+        document.createElement(
+          'div'
+        );
+
+
+      item.className =
+        'blocked-session-item request-item';
+
+
+      const title =
+        document.createElement(
+          'div'
+        );
+
+
+      title.className =
+        'blocked-session-title';
+
+
+      title.textContent =
+        request.name;
+
+
+      const time =
+        document.createElement(
+          'div'
+        );
+
+
+      time.className =
+        'blocked-session-time';
+
+
+      time.textContent =
+        formatBlockedEventRange(
+          request.start,
+          request.end
+        );
+
+
+      const meta =
+        document.createElement(
+          'div'
+        );
+
+
+      meta.className =
+        'blocked-session-meta';
+
+
+      meta.textContent =
+        describeRequest(
+          request
+        );
+
+
+      const actions =
+        document.createElement(
+          'div'
+        );
+
+
+      actions.className =
+        'request-item-actions';
+
+
+      const accept =
+        document.createElement(
+          'button'
+        );
+
+
+      accept.className =
+        'btn primary small';
+
+
+      accept.textContent =
+        'Accept';
+
+
+      accept.addEventListener(
+        'click',
+        () =>
+          acceptRequest(
+            request
+          )
+      );
+
+
+      const dismiss =
+        document.createElement(
+          'button'
+        );
+
+
+      dismiss.className =
+        'btn danger small';
+
+
+      dismiss.textContent =
+        'Dismiss';
+
+
+      dismiss.addEventListener(
+        'click',
+        () =>
+          dismissRequest(
+            request
+          )
+      );
+
+
+      actions.append(
+        accept,
+        dismiss
+      );
+
+
+      item.append(
+        title,
+        time,
+        meta,
+        actions
+      );
+
+
+      list.appendChild(
+        item
+      );
+
+    }
+
+  }
+
+
+
+  function describeRequest(
+    request
+  ) {
+
+    return [
+      request.subject,
+
+      request.format ===
+      'ONLINE'
+        ? 'Online'
+        : 'In person',
+
+      request.repeat ===
+      'WEEKLY'
+        ? 'Weekly'
+        : 'One time'
+    ]
+      .join(' · ');
+
+  }
+
+
+
+  /*
+    Accepting does not save anything. It
+    opens the editor with the request
+    translated into an event so the tutor
+    reviews it, and the request is only
+    cleared once that event is saved.
+  */
+
+  function acceptRequest(
+    request
+  ) {
+
+    const weekday =
+      new Date(
+        request.start
+      )
+        .getDay();
+
+
+    closeRequestDrawer();
+
+
+    openEventModal({
+
+      type:
+        'BLOCKED',
+
+      title:
+        request.name,
+
+      notes:
+        describeRequest(
+          request
+        ),
+
+      start:
+        request.start,
+
+      end:
+        request.end,
+
+      recurrence:
+        request.repeat ===
+        'WEEKLY'
+          ? {
+              frequency:
+                'WEEKLY',
+
+              interval:
+                1,
+
+              weekdays: [
+                weekday
+              ],
+
+              endType:
+                'NEVER'
+            }
+          : null
+
+    });
+
+
+    state.acceptedRequestId =
+      request.id;
+
+  }
+
+
+
+  async function dismissRequest(
+    request
+  ) {
+
+    try {
+
+      await api(
+        '/requests/' +
+        encodeURIComponent(
+          request.id
+        ),
+        {
+          method:
+            'DELETE'
+        }
+      );
+
+
+      await openRequestDrawer();
+
+    } catch (error) {
+
+      $('requestListStatus')
+        .textContent =
+          error.message;
+
+    }
+
+  }
+
+
+
   function openAdminLogin() {
 
     $('loginError')
@@ -4029,6 +4565,16 @@
         event &&
         event.id
       );
+
+
+    /*
+      Opening the editor for anything else
+      releases whatever request was being
+      reviewed.
+    */
+
+    state.acceptedRequestId =
+      null;
 
 
     const defaultDate =
@@ -4516,6 +5062,9 @@
       );
 
 
+      await clearAcceptedRequest();
+
+
       await loadWeek();
 
     } catch (error) {
@@ -4747,6 +5296,9 @@
       closeModal(
         'eventModal'
       );
+
+
+      await clearAcceptedRequest();
 
 
       await loadWeek();
