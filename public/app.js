@@ -1647,11 +1647,8 @@
 
 
     timeElement.textContent =
-      formatMinutes(
-        segmentStartMin
-      ) +
-      ' – ' +
-      formatMinutes(
+      formatMinuteRange(
+        segmentStartMin,
         segmentEndMin
       );
 
@@ -4535,6 +4532,57 @@
       ) +
       ' ' +
       suffix
+    );
+
+  }
+
+
+
+  /*
+    Calendar convention: when a range
+    stays inside one half of the day
+    the opening meridiem is redundant,
+    and dropping it leaves room for the
+    title on a compact card. Only the
+    opening one goes – "11:30 – 12"
+    would be ambiguous.
+  */
+
+  function formatMinuteRange(
+    startMinutes,
+    endMinutes
+  ) {
+
+    const start =
+      formatMinutes(
+        startMinutes
+      );
+
+
+    const end =
+      formatMinutes(
+        endMinutes
+      );
+
+
+    const opening =
+      start.slice(
+        -2
+      ) ===
+      end.slice(
+        -2
+      )
+        ? start.slice(
+            0,
+            -3
+          )
+        : start;
+
+
+    return (
+      opening +
+      ' – ' +
+      end
     );
 
   }
