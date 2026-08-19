@@ -495,6 +495,17 @@
       );
 
 
+    [
+      'eventStart',
+      'eventEnd',
+      'requestStart',
+      'requestEnd'
+    ]
+      .forEach(
+        bindDateTimeField
+      );
+
+
     /*
       Weekly options, in both forms that
       offer them.
@@ -2927,6 +2938,148 @@
   ========================================================= */
 
 
+  /* =========================================================
+     DATE AND TIME FIELDS
+  ========================================================= */
+
+  /*
+    Each start and end is a visible date input
+    and a visible time input, plus a hidden
+    field holding the combined value the rest
+    of the app already reads and listens to.
+
+    Splitting them is what lets a phone open
+    the time wheel on the first tap. Keeping
+    the hidden field means nothing downstream
+    has to know that happened.
+  */
+
+  function setDateTimeValue(
+    id,
+    value
+  ) {
+
+    const combined =
+      value ||
+      '';
+
+
+    $(id)
+      .value =
+        combined;
+
+
+    $(id + 'Date')
+      .value =
+        combined
+          .slice(
+            0,
+            10
+          );
+
+
+    $(id + 'Time')
+      .value =
+        combined
+          .slice(
+            11,
+            16
+          );
+
+  }
+
+
+
+  function bindDateTimeField(
+    id
+  ) {
+
+    const recombine =
+      () => {
+
+        const date =
+          $(id + 'Date')
+            .value;
+
+
+        const time =
+          $(id + 'Time')
+            .value;
+
+
+        /*
+          Half a value is not a time. Leaving
+          it empty keeps the existing
+          validation in charge of saying so.
+        */
+
+        $(id)
+          .value =
+            date &&
+            time
+              ? `${date}T${time.slice(0, 5)}`
+              : '';
+
+
+        /*
+          The hidden field is what listeners
+          were attached to, so tell them it
+          moved.
+        */
+
+        $(id)
+          .dispatchEvent(
+            new Event(
+              'change',
+              {
+                bubbles:
+                  true
+              }
+            )
+          );
+
+
+        $(id)
+          .dispatchEvent(
+            new Event(
+              'input',
+              {
+                bubbles:
+                  true
+              }
+            )
+          );
+
+      };
+
+
+    [
+      id + 'Date',
+      id + 'Time'
+    ]
+      .forEach(
+        (part) => {
+
+          $(part)
+            .addEventListener(
+              'change',
+              recombine
+            );
+
+
+          $(part)
+            .addEventListener(
+              'input',
+              recombine
+            );
+
+        }
+      );
+
+  }
+
+
+
   function openRequestModal() {
 
     /*
@@ -2957,19 +3110,21 @@
         '';
 
 
-    $('requestStart')
-      .value =
-        minuteKeyToLocalDateTime(
-          start
-        );
+    setDateTimeValue(
+      'requestStart',
+      minuteKeyToLocalDateTime(
+        start
+      )
+    );
 
 
-    $('requestEnd')
-      .value =
-        minuteKeyToLocalDateTime(
-          start +
-          60
-        );
+    setDateTimeValue(
+      'requestEnd',
+      minuteKeyToLocalDateTime(
+        start +
+        60
+      )
+    );
 
 
     $('requestError')
@@ -5055,14 +5210,16 @@
         '';
 
 
-    $('eventStart')
-      .value =
-        originalStart;
+    setDateTimeValue(
+      'eventStart',
+      originalStart
+    );
 
 
-    $('eventEnd')
-      .value =
-        originalEnd;
+    setDateTimeValue(
+      'eventEnd',
+      originalEnd
+    );
 
 
     $('eventTitle')
