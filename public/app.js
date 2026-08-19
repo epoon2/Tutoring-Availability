@@ -472,108 +472,19 @@
 
 
     /*
-      Recurrence type.
+      Weekly options, in both forms that
+      offer them.
     */
 
-    $('repeatType')
-      .addEventListener(
-        'change',
-        () => {
-
-          if (
-            $('repeatType').value ===
-              'WEEKLY' &&
-            getSelectedWeekdays()
-              .length === 0
-          ) {
-
-            selectStartWeekday();
-
-          }
+    bindRecurrenceControls(
+      $('eventModal'),
+      clearConflictWarning
+    );
 
 
-          updateRecurrenceUI();
-
-          clearConflictWarning();
-
-        }
-      );
-
-
-    /*
-      Weekday selection.
-    */
-
-    document
-      .querySelectorAll(
-        '.weekday-btn'
-      )
-      .forEach(
-        (button) => {
-
-          button.addEventListener(
-            'click',
-            () => {
-
-              button
-                .classList
-                .toggle(
-                  'selected'
-                );
-
-              clearConflictWarning();
-
-            }
-          );
-
-        }
-      );
-
-
-    /*
-      Recurrence end options.
-    */
-
-    document
-      .querySelectorAll(
-        'input[name="repeatEndType"]'
-      )
-      .forEach(
-        (radio) => {
-
-          radio.addEventListener(
-            'change',
-            () => {
-
-              updateRecurrenceUI();
-
-              clearConflictWarning();
-
-            }
-          );
-
-        }
-      );
-
-
-    $('eventStart')
-      .addEventListener(
-        'change',
-        () => {
-
-          if (
-            $('repeatType').value ===
-              'WEEKLY' &&
-            getSelectedWeekdays()
-              .length === 0
-          ) {
-
-            selectStartWeekday();
-
-          }
-
-        }
-      );
+    bindRecurrenceControls(
+      $('requestModal')
+    );
 
 
     /*
@@ -2977,11 +2888,6 @@
         '';
 
 
-    $('requestRepeat')
-      .value =
-        'NONE';
-
-
     $('requestStart')
       .value =
         minuteKeyToLocalDateTime(
@@ -3000,6 +2906,11 @@
     $('requestError')
       .textContent =
         '';
+
+
+    resetRecurrenceControls(
+      $('requestModal')
+    );
 
 
     clearRequestWarning();
@@ -3549,6 +3460,28 @@
     }
 
 
+    let recurrence;
+
+
+    try {
+
+      recurrence =
+        getRecurrenceFromForm(
+          $('requestModal')
+        );
+
+    } catch (error) {
+
+      $('requestError')
+        .textContent =
+          error.message;
+
+
+      return;
+
+    }
+
+
     /*
       The warning is raised here rather than
       when the form opens, so it describes a
@@ -3604,9 +3537,7 @@
 
               format,
 
-              repeat:
-                $('requestRepeat')
-                  .value,
+              recurrence,
 
               start,
 
@@ -4047,6 +3978,110 @@
 
 
 
+  /*
+    Requests made before the form offered
+    full weekly options carry a plain repeat
+    flag instead of a recurrence, so both
+    shapes are read here.
+  */
+
+  function requestRecurrence(
+    request
+  ) {
+
+    if (
+      request.recurrence
+    ) {
+
+      return request.recurrence;
+
+    }
+
+
+    if (
+      request.repeat !==
+      'WEEKLY'
+    ) {
+
+      return null;
+
+    }
+
+
+    return {
+      frequency:
+        'WEEKLY',
+
+      interval:
+        1,
+
+      weekdays: [
+        new Date(
+          request.start
+        )
+          .getDay()
+      ],
+
+      endType:
+        'NEVER'
+    };
+
+  }
+
+
+
+  function describeRepeat(
+    request
+  ) {
+
+    const recurrence =
+      requestRecurrence(
+        request
+      );
+
+
+    if (
+      !recurrence
+    ) {
+
+      return 'One time';
+
+    }
+
+
+    const every =
+      recurrence.interval >
+      1
+        ? `Every ${recurrence.interval} weeks`
+        : 'Weekly';
+
+
+    if (
+      recurrence.endType ===
+      'ON'
+    ) {
+
+      return `${every} until ${recurrence.until}`;
+
+    }
+
+
+    if (
+      recurrence.endType ===
+      'COUNT'
+    ) {
+
+      return `${every}, ${recurrence.count} times`;
+
+    }
+
+
+    return every;
+
+  }
+
+
+
   function describeRequest(
     request
   ) {
@@ -4058,10 +4093,9 @@
         request
       ),
 
-      request.repeat ===
-      'WEEKLY'
-        ? 'Weekly'
-        : 'One time'
+      describeRepeat(
+        request
+      )
     ]
       .join(' · ');
 
@@ -4080,13 +4114,6 @@
   function acceptRequest(
     request
   ) {
-
-    const weekday =
-      new Date(
-        request.start
-      )
-        .getDay();
-
 
     closeRequestDrawer();
 
@@ -4111,23 +4138,9 @@
         request.end,
 
       recurrence:
-        request.repeat ===
-        'WEEKLY'
-          ? {
-              frequency:
-                'WEEKLY',
-
-              interval:
-                1,
-
-              weekdays: [
-                weekday
-              ],
-
-              endType:
-                'NEVER'
-            }
-          : null
+        requestRecurrence(
+          request
+        )
 
     });
 
@@ -4295,10 +4308,34 @@
   ========================================================= */
 
 
-  function getSelectedWeekdays() {
+  /*
+    The admin editor and the public request
+    form offer the same weekly options, so
+    they share these helpers. Each one is
+    given the form it should work inside,
+    and finds the controls by role rather
+    than by id, because the two forms cannot
+    share ids.
+  */
+
+  function repeatTypeField(
+    root
+  ) {
+
+    return root.querySelector(
+      '[data-repeat-type]'
+    );
+
+  }
+
+
+
+  function getSelectedWeekdays(
+    root
+  ) {
 
     return [
-      ...document.querySelectorAll(
+      ...root.querySelectorAll(
         '.weekday-btn.selected'
       )
     ]
@@ -4319,6 +4356,7 @@
 
 
   function setSelectedWeekdays(
+    root,
     days
   ) {
 
@@ -4333,7 +4371,7 @@
       );
 
 
-    document
+    root
       .querySelectorAll(
         '.weekday-btn'
       )
@@ -4359,11 +4397,15 @@
 
 
 
-  function getStartWeekday() {
+  function getStartWeekday(
+    root
+  ) {
 
     const key =
       localDateTimeToMinuteKey(
-        $('eventStart')
+        root.querySelector(
+          '[data-recurrence-start]'
+        )
           .value
       );
 
@@ -4389,21 +4431,30 @@
 
 
 
-  function selectStartWeekday() {
+  function selectStartWeekday(
+    root
+  ) {
 
-    setSelectedWeekdays([
-      getStartWeekday()
-    ]);
+    setSelectedWeekdays(
+      root,
+      [
+        getStartWeekday(
+          root
+        )
+      ]
+    );
 
   }
 
 
 
-  function getRepeatEndType() {
+  function getRepeatEndType(
+    root
+  ) {
 
     return (
-      document.querySelector(
-        'input[name="repeatEndType"]:checked'
+      root.querySelector(
+        'input[data-repeat-end]:checked'
       )?.value ||
       'NEVER'
     );
@@ -4413,12 +4464,13 @@
 
 
   function setRepeatEndType(
+    root,
     type
   ) {
 
     const radio =
-      document.querySelector(
-        `input[name="repeatEndType"][value="${type}"]`
+      root.querySelector(
+        `input[data-repeat-end][value="${type}"]`
       );
 
 
@@ -4435,15 +4487,21 @@
 
 
 
-  function updateRecurrenceUI() {
+  function updateRecurrenceUI(
+    root
+  ) {
 
     const weekly =
-      $('repeatType')
+      repeatTypeField(
+        root
+      )
         .value ===
       'WEEKLY';
 
 
-    $('recurrencePanel')
+    root.querySelector(
+      '.recurrence-panel'
+    )
       .classList
       .toggle(
         'hidden',
@@ -4461,16 +4519,22 @@
 
 
     const endType =
-      getRepeatEndType();
+      getRepeatEndType(
+        root
+      );
 
 
-    $('repeatEndDate')
+    root.querySelector(
+      '[data-repeat-end-date]'
+    )
       .disabled =
         endType !==
         'ON';
 
 
-    $('repeatCount')
+    root.querySelector(
+      '[data-repeat-count]'
+    )
       .disabled =
         endType !==
         'COUNT';
@@ -4479,10 +4543,198 @@
 
 
 
-  function getRecurrenceFromForm() {
+  /*
+    Reset the panel to a sensible starting
+    point: not repeating, and if it is turned
+    on, on the day already chosen.
+  */
+
+  function resetRecurrenceControls(
+    root
+  ) {
+
+    repeatTypeField(
+      root
+    )
+      .value =
+        'NONE';
+
+
+    root.querySelector(
+      '[data-repeat-interval]'
+    )
+      .value =
+        1;
+
+
+    setSelectedWeekdays(
+      root,
+      [
+        getStartWeekday(
+          root
+        )
+      ]
+    );
+
+
+    setRepeatEndType(
+      root,
+      'NEVER'
+    );
+
+
+    root.querySelector(
+      '[data-repeat-end-date]'
+    )
+      .value =
+        '';
+
+
+    root.querySelector(
+      '[data-repeat-count]'
+    )
+      .value =
+        10;
+
+
+    updateRecurrenceUI(
+      root
+    );
+
+  }
+
+
+
+  function bindRecurrenceControls(
+    root,
+    onChange
+  ) {
+
+    const changed =
+      () => {
+
+        if (
+          onChange
+        ) {
+
+          onChange();
+
+        }
+
+      };
+
+
+    const defaultWeekday =
+      () => {
+
+        if (
+          repeatTypeField(
+            root
+          )
+            .value ===
+            'WEEKLY' &&
+          getSelectedWeekdays(
+            root
+          ).length === 0
+        ) {
+
+          selectStartWeekday(
+            root
+          );
+
+        }
+
+      };
+
+
+    repeatTypeField(
+      root
+    )
+      .addEventListener(
+        'change',
+        () => {
+
+          defaultWeekday();
+
+          updateRecurrenceUI(
+            root
+          );
+
+          changed();
+
+        }
+      );
+
+
+    root
+      .querySelectorAll(
+        '.weekday-btn'
+      )
+      .forEach(
+        (button) => {
+
+          button.addEventListener(
+            'click',
+            () => {
+
+              button
+                .classList
+                .toggle(
+                  'selected'
+                );
+
+              changed();
+
+            }
+          );
+
+        }
+      );
+
+
+    root
+      .querySelectorAll(
+        'input[data-repeat-end]'
+      )
+      .forEach(
+        (radio) => {
+
+          radio.addEventListener(
+            'change',
+            () => {
+
+              updateRecurrenceUI(
+                root
+              );
+
+              changed();
+
+            }
+          );
+
+        }
+      );
+
+
+    root.querySelector(
+      '[data-recurrence-start]'
+    )
+      .addEventListener(
+        'change',
+        defaultWeekday
+      );
+
+  }
+
+
+  function getRecurrenceFromForm(
+    root
+  ) {
 
     if (
-      $('repeatType')
+      repeatTypeField(
+        root
+      )
         .value ===
       'NONE'
     ) {
@@ -4493,7 +4745,9 @@
 
 
     const weekdays =
-      getSelectedWeekdays();
+      getSelectedWeekdays(
+        root
+      );
 
 
     if (
@@ -4509,7 +4763,9 @@
 
     const interval =
       Number(
-        $('repeatInterval')
+        root.querySelector(
+          '[data-repeat-interval]'
+        )
           .value
       );
 
@@ -4532,7 +4788,9 @@
 
 
     const endType =
-      getRepeatEndType();
+      getRepeatEndType(
+        root
+      );
 
 
     const recurrence = {
@@ -4555,7 +4813,9 @@
     ) {
 
       if (
-        !$('repeatEndDate')
+        !root.querySelector(
+          '[data-repeat-end-date]'
+        )
           .value
       ) {
 
@@ -4567,7 +4827,9 @@
 
 
       recurrence.until =
-        $('repeatEndDate')
+        root.querySelector(
+          '[data-repeat-end-date]'
+        )
           .value;
 
     }
@@ -4580,7 +4842,9 @@
 
       const count =
         Number(
-          $('repeatCount')
+          root.querySelector(
+            '[data-repeat-count]'
+          )
             .value
         );
 
@@ -4788,12 +5052,14 @@
 
 
       setSelectedWeekdays(
+        $('eventModal'),
         recurrence.weekdays ||
         []
       );
 
 
       setRepeatEndType(
+        $('eventModal'),
         recurrence.endType ||
         'NEVER'
       );
@@ -4822,12 +5088,18 @@
           1;
 
 
-      setSelectedWeekdays([
-        getStartWeekday()
-      ]);
+      setSelectedWeekdays(
+        $('eventModal'),
+        [
+          getStartWeekday(
+            $('eventModal')
+          )
+        ]
+      );
 
 
       setRepeatEndType(
+        $('eventModal'),
         'NEVER'
       );
 
@@ -4844,7 +5116,9 @@
     }
 
 
-    updateRecurrenceUI();
+    updateRecurrenceUI(
+      $('eventModal')
+    );
 
 
     openModal(
@@ -5300,7 +5574,9 @@
     try {
 
       recurrence =
-        getRecurrenceFromForm();
+        getRecurrenceFromForm(
+          $('eventModal')
+        );
 
     } catch (error) {
 

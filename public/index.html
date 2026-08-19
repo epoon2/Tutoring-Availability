@@ -335,6 +335,7 @@
             id="requestStart"
             type="datetime-local"
             step="60"
+            data-recurrence-start
           >
 
         </label>
@@ -368,7 +369,10 @@
             Repeat
           </span>
 
-          <select id="requestRepeat">
+          <select
+            id="requestRepeatType"
+            data-repeat-type
+          >
 
             <option value="NONE">
               Does not repeat
@@ -418,6 +422,196 @@
 
       </div>
 
+
+
+      <!-- RECURRENCE OPTIONS -->
+
+      <div
+        id="requestRecurrencePanel"
+        class="recurrence-panel hidden"
+      >
+
+        <div class="repeat-every-row">
+
+          <span>
+            Repeat every
+          </span>
+
+          <input
+            id="requestRepeatInterval"
+            type="number"
+            min="1"
+            max="52"
+            value="1"
+            data-repeat-interval
+          >
+
+          <span>
+            week(s)
+          </span>
+
+        </div>
+
+
+        <div class="recurrence-section">
+
+          <div class="recurrence-label">
+            Repeat on
+          </div>
+
+
+          <div
+            id="requestWeekdayPicker"
+            class="weekday-picker"
+          >
+
+            <button
+              type="button"
+              class="weekday-btn"
+              data-day="0"
+              title="Sunday"
+            >
+              S
+            </button>
+
+            <button
+              type="button"
+              class="weekday-btn"
+              data-day="1"
+              title="Monday"
+            >
+              M
+            </button>
+
+            <button
+              type="button"
+              class="weekday-btn"
+              data-day="2"
+              title="Tuesday"
+            >
+              T
+            </button>
+
+            <button
+              type="button"
+              class="weekday-btn"
+              data-day="3"
+              title="Wednesday"
+            >
+              W
+            </button>
+
+            <button
+              type="button"
+              class="weekday-btn"
+              data-day="4"
+              title="Thursday"
+            >
+              T
+            </button>
+
+            <button
+              type="button"
+              class="weekday-btn"
+              data-day="5"
+              title="Friday"
+            >
+              F
+            </button>
+
+            <button
+              type="button"
+              class="weekday-btn"
+              data-day="6"
+              title="Saturday"
+            >
+              S
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="recurrence-section">
+
+          <div class="recurrence-label">
+            Ends
+          </div>
+
+
+          <label class="recurrence-end-row">
+
+            <input
+              type="radio"
+              name="requestRepeatEndType"
+              value="NEVER"
+              data-repeat-end
+              checked
+            >
+
+            <span>
+              Never
+            </span>
+
+          </label>
+
+
+          <label class="recurrence-end-row">
+
+            <input
+              type="radio"
+              name="requestRepeatEndType"
+              value="ON"
+              data-repeat-end
+            >
+
+            <span>
+              On
+            </span>
+
+            <input
+              id="requestRepeatEndDate"
+              type="date"
+              data-repeat-end-date
+              disabled
+            >
+
+          </label>
+
+
+          <label class="recurrence-end-row">
+
+            <input
+              type="radio"
+              name="requestRepeatEndType"
+              value="COUNT"
+              data-repeat-end
+            >
+
+            <span>
+              After
+            </span>
+
+            <input
+              id="requestRepeatCount"
+              type="number"
+              min="1"
+              max="999"
+              value="10"
+              data-repeat-count
+              disabled
+            >
+
+            <span>
+              occurrences
+            </span>
+
+          </label>
+
+        </div>
+
+      </div>
 
 
       <!-- SUBJECT -->
@@ -692,6 +886,7 @@
             id="eventStart"
             type="datetime-local"
             step="60"
+            data-recurrence-start
           >
 
         </label>
@@ -723,7 +918,10 @@
           Repeat
         </span>
 
-        <select id="repeatType">
+        <select
+          id="repeatType"
+          data-repeat-type
+        >
 
           <option value="NONE">
             Does not repeat
@@ -758,6 +956,7 @@
             min="1"
             max="52"
             value="1"
+            data-repeat-interval
           >
 
           <span>
@@ -860,6 +1059,7 @@
               type="radio"
               name="repeatEndType"
               value="NEVER"
+              data-repeat-end
               checked
             >
 
@@ -876,6 +1076,7 @@
               type="radio"
               name="repeatEndType"
               value="ON"
+              data-repeat-end
             >
 
             <span>
@@ -885,6 +1086,7 @@
             <input
               id="repeatEndDate"
               type="date"
+              data-repeat-end-date
               disabled
             >
 
@@ -897,6 +1099,7 @@
               type="radio"
               name="repeatEndType"
               value="COUNT"
+              data-repeat-end
             >
 
             <span>
@@ -909,6 +1112,7 @@
               min="1"
               max="999"
               value="10"
+              data-repeat-count
               disabled
             >
 
