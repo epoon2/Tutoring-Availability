@@ -754,9 +754,23 @@
         [];
 
 
-      state.config =
-        data.config ||
-        state.config;
+      /*
+        Merge rather than replace. A deploy
+        can briefly serve this page against a
+        cached response from the previous
+        version, and a key that response does
+        not carry should fall back to the
+        built-in default rather than becoming
+        undefined on screen.
+      */
+
+      state.config = {
+        ...state.config,
+        ...(
+          data.config ||
+          {}
+        )
+      };
 
 
       state.isAdmin =
