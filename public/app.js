@@ -21,6 +21,9 @@
       portalTitle:
         "Ethan's Tutoring Availability",
 
+      tutorName:
+        'Ethan',
+
       timezoneLabel:
         'Pacific Time (PT)',
 
