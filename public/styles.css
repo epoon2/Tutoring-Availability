@@ -928,6 +928,76 @@ button.agenda-item:hover {
 
 
 /* -----------------------------
+   DATE AND TIME
+----------------------------- */
+
+/*
+  A date input and a time input dressed as a
+  single control. Keeping them separate is
+  the point: on a phone, tapping the time
+  opens the time wheel directly instead of
+  making someone go through the date picker
+  first.
+*/
+
+.datetime-field {
+  display: flex;
+
+  align-items: stretch;
+
+  width: 100%;
+
+  background: #ffffff;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+
+.datetime-field:focus-within {
+  outline: 2px solid #a9bcff;
+
+  border-color: var(--accent);
+}
+
+
+.field .datetime-field input {
+  width: auto;
+
+  background: transparent;
+
+  border: 0;
+  border-radius: 0;
+}
+
+
+.field .datetime-field input:focus {
+  outline: none;
+
+  border-color: transparent;
+}
+
+
+.datetime-date {
+  flex: 1 1 auto;
+
+  min-width: 0;
+}
+
+
+.datetime-time {
+  flex: 0 0 auto;
+
+  border-left: 1px solid var(--border);
+}
+
+
+.field .datetime-field .datetime-time {
+  border-left: 1px solid var(--border);
+}
+
+
+/* -----------------------------
    TYPE PLACEHOLDER
 ----------------------------- */
 
