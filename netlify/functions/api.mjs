@@ -2201,25 +2201,35 @@ function buildPublicSchedule(
     );
 
 
+  const blockedSessions =
+    events
+      .filter(
+        (event) =>
+          event.type ===
+          "BLOCKED"
+      )
+      .map(
+        (event) => [
+          localDateTimeToMinuteKey(
+            event.start
+          ),
+
+          localDateTimeToMinuteKey(
+            event.end
+          )
+        ]
+      );
+
+
+  /*
+    Merged only for working out what is left
+    open, where overlapping sessions would
+    otherwise be subtracted twice.
+  */
+
   const blocked =
     mergeIntervals(
-      events
-        .filter(
-          (event) =>
-            event.type ===
-            "BLOCKED"
-        )
-        .map(
-          (event) => [
-            localDateTimeToMinuteKey(
-              event.start
-            ),
-
-            localDateTimeToMinuteKey(
-              event.end
-            )
-          ]
-        )
+      blockedSessions
     );
 
 
@@ -2234,6 +2244,12 @@ function buildPublicSchedule(
     Only show blocked sessions publicly
     where they overlap a period that was
     marked as tutoring availability.
+
+    Each session is published separately.
+    Merging back-to-back ones into a single
+    span would hide how many there are, and
+    that count is the honest signal of how
+    busy the day is.
   */
 
   const publicBlocked =
@@ -2241,7 +2257,7 @@ function buildPublicSchedule(
 
 
   for (
-    const block of blocked
+    const block of blockedSessions
   ) {
 
     for (
@@ -2277,12 +2293,6 @@ function buildPublicSchedule(
     }
 
   }
-
-
-  const mergedPublicBlocked =
-    mergeIntervals(
-      publicBlocked
-    );
 
 
   const output =
@@ -2329,7 +2339,7 @@ function buildPublicSchedule(
   );
 
 
-  mergedPublicBlocked.forEach(
+  publicBlocked.forEach(
     (
       range,
       index
