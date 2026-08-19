@@ -4008,6 +4008,45 @@
 
 
 
+  function formatLabel(
+    request
+  ) {
+
+    return request.format ===
+      'ONLINE'
+      ? 'Online'
+      : 'In-Person';
+
+  }
+
+
+
+  /*
+    The calendar card shows the title, so the
+    title carries who this is and how it is
+    run. The subject is detail behind that,
+    which is what notes are for.
+  */
+
+  function buildSessionTitle(
+    request
+  ) {
+
+    return [
+      request.name,
+
+      formatLabel(
+        request
+      ),
+
+      'Tutoring'
+    ]
+      .join(' ');
+
+  }
+
+
+
   function describeRequest(
     request
   ) {
@@ -4015,10 +4054,9 @@
     return [
       request.subject,
 
-      request.format ===
-      'ONLINE'
-        ? 'Online'
-        : 'In person',
+      formatLabel(
+        request
+      ),
 
       request.repeat ===
       'WEEKLY'
@@ -4059,12 +4097,12 @@
         'BLOCKED',
 
       title:
-        request.name,
-
-      notes:
-        describeRequest(
+        buildSessionTitle(
           request
         ),
+
+      notes:
+        request.subject,
 
       start:
         request.start,
