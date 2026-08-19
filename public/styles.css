@@ -118,8 +118,16 @@ h2 {
 
   align-items: center;
 
-  gap: 7px;
+  /*
+    Two timestamps do not fit beside the
+    timezone on a phone. Wrapping keeps each
+    phrase whole; without it they shrink and
+    break mid-sentence instead.
+  */
 
+  flex-wrap: wrap;
+
+  gap: 7px;
   margin-top: 6px;
 
   color: var(--muted);
