@@ -789,11 +789,11 @@
       $('updatedLabel')
         .textContent =
           data.lastUpdated
-            ? 'Schedule updated ' +
+            ? `${state.config.tutorName} last updated the schedule ` +
               formatUpdated(
                 data.lastUpdated
               )
-            : 'No saved times yet';
+            : `${state.config.tutorName} has not saved any times yet`;
 
 
       state.lastLoadedAt =
@@ -6491,8 +6491,10 @@
     Two timestamps are easy to confuse: when
     the tutor last changed the schedule, and
     when this page last asked for it. The
-    second one is worded relatively so it is
-    obviously about this browser.
+    first names the person, the second is
+    relative and borrows the Refresh button's
+    wording, so neither can be read as the
+    other.
   */
 
   function renderCheckedLabel() {
@@ -6528,7 +6530,7 @@
 
       $('checkedLabel')
         .textContent =
-          'Checked just now';
+          'Refreshed just now';
 
 
       return;
@@ -6543,7 +6545,7 @@
 
       $('checkedLabel')
         .textContent =
-          `Checked ${minutes} min ago`;
+          `Refreshed ${minutes} min ago`;
 
 
       return;
@@ -6553,7 +6555,7 @@
 
     $('checkedLabel')
       .textContent =
-        'Checked at ' +
+        'Refreshed at ' +
         new Date(
           state.lastLoadedAt
         )
