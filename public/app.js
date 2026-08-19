@@ -70,7 +70,16 @@
       the queue and cancelling cannot.
     */
     acceptedRequestId:
-      null
+      null,
+
+    /*
+      When this page last heard from the
+      server, which is a different question
+      from when the tutor last changed
+      anything.
+    */
+    lastLoadedAt:
+      0
   };
 
 
@@ -127,7 +136,13 @@
     */
 
     setInterval(
-      maybeRefresh,
+      () => {
+
+        renderCheckedLabel();
+
+        maybeRefresh();
+
+      },
       60000
     );
 
@@ -140,7 +155,13 @@
 
     document.addEventListener(
       'visibilitychange',
-      maybeRefresh
+      () => {
+
+        renderCheckedLabel();
+
+        maybeRefresh();
+
+      }
     );
 
   }
@@ -765,11 +786,18 @@
       $('updatedLabel')
         .textContent =
           data.lastUpdated
-            ? 'Updated ' +
+            ? 'Schedule updated ' +
               formatUpdated(
                 data.lastUpdated
               )
             : 'No saved times yet';
+
+
+      state.lastLoadedAt =
+        Date.now();
+
+
+      renderCheckedLabel();
 
 
       if (
@@ -6451,6 +6479,91 @@
       dayStart +
       minutes
     );
+
+  }
+
+
+
+  /*
+    Two timestamps are easy to confuse: when
+    the tutor last changed the schedule, and
+    when this page last asked for it. The
+    second one is worded relatively so it is
+    obviously about this browser.
+  */
+
+  function renderCheckedLabel() {
+
+    if (
+      !state.lastLoadedAt
+    ) {
+
+      $('checkedLabel')
+        .textContent =
+          '';
+
+
+      return;
+
+    }
+
+
+    const minutes =
+      Math.floor(
+        (
+          Date.now() -
+          state.lastLoadedAt
+        ) /
+        60000
+      );
+
+
+    if (
+      minutes <
+      1
+    ) {
+
+      $('checkedLabel')
+        .textContent =
+          'Checked just now';
+
+
+      return;
+
+    }
+
+
+    if (
+      minutes <
+      60
+    ) {
+
+      $('checkedLabel')
+        .textContent =
+          `Checked ${minutes} min ago`;
+
+
+      return;
+
+    }
+
+
+    $('checkedLabel')
+      .textContent =
+        'Checked at ' +
+        new Date(
+          state.lastLoadedAt
+        )
+          .toLocaleTimeString(
+            undefined,
+            {
+              hour:
+                'numeric',
+
+              minute:
+                '2-digit'
+            }
+          );
 
   }
 
