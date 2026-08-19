@@ -647,6 +647,17 @@ function getConfig() {
       process.env.PORTAL_TITLE ||
       "Ethan's Tutoring Availability",
 
+    /*
+      Shown wherever the page needs to say a
+      person did something, rather than the
+      page itself. Configurable for the same
+      reason the title is.
+    */
+
+    tutorName:
+      process.env.TUTOR_NAME ||
+      "Ethan",
+
     timezoneLabel:
       process.env.TIMEZONE_LABEL ||
       "Pacific Time (PT)",
