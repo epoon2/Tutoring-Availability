@@ -1474,29 +1474,6 @@ function validateRequest(
   }
 
 
-  const repeat =
-    String(
-      request.repeat ||
-      "NONE"
-    ).toUpperCase();
-
-
-  if (
-    ![
-      "NONE",
-      "WEEKLY"
-    ].includes(
-      repeat
-    )
-  ) {
-
-    bad(
-      "Invalid repeat option."
-    );
-
-  }
-
-
   const start =
     normalizeLocalDateTime(
       request.start
@@ -1572,6 +1549,15 @@ function validateRequest(
   }
 
 
+  const recurrence =
+    request.recurrence
+      ? validateRecurrence(
+          request.recurrence,
+          start
+        )
+      : null;
+
+
   return {
     id:
       crypto.randomUUID(),
@@ -1582,7 +1568,7 @@ function validateRequest(
 
     format,
 
-    repeat,
+    recurrence,
 
     start,
 
