@@ -2578,6 +2578,88 @@
   ========================================================= */
 
 
+  /*
+    Where a pointer landed in a day column,
+    as a minute of the day.
+
+    Snapped to the nearest quarter hour: a
+    drop lands wherever the cursor happens to
+    be, which produced starts like 12:53, and
+    the grid line the cursor was aiming at is
+    what was actually meant.
+  */
+
+  function pointerMinuteOfDay(
+    column,
+    clientY
+  ) {
+
+    const rect =
+      column
+        .getBoundingClientRect();
+
+
+    const y =
+      Math.max(
+        0,
+        Math.min(
+          rect.height,
+          clientY -
+          rect.top
+        )
+      );
+
+
+    const startHour =
+      Number(
+        state.config
+          .dayStart ??
+        8
+      );
+
+
+    const endHour =
+      Number(
+        state.config
+          .dayEnd ??
+        24
+      );
+
+
+    const snapped =
+      Math.round(
+        (
+          startHour *
+          60 +
+          (
+            y /
+            64
+          ) *
+          60
+        ) /
+        15
+      ) *
+      15;
+
+
+    /*
+      Keep the start inside the day on screen.
+      Without this, a drop on the last row
+      rounds up past midnight and the event
+      lands on tomorrow, out of sight.
+    */
+
+    return Math.min(
+      snapped,
+      endHour *
+      60 -
+      15
+    );
+
+  }
+
+
+
   async function handleDrop(
     event,
     column
@@ -2635,39 +2717,10 @@
     }
 
 
-    const rect =
-      column
-        .getBoundingClientRect();
-
-
-    const y =
-      Math.max(
-        0,
-        Math.min(
-          rect.height,
-          event.clientY -
-          rect.top
-        )
-      );
-
-
-    const startHour =
-      Number(
-        state.config
-          .dayStart ??
-        8
-      );
-
-
     const newStartMinuteOfDay =
-      startHour *
-      60 +
-      Math.round(
-        (
-          y /
-          64
-        ) *
-        60
+      pointerMinuteOfDay(
+        column,
+        event.clientY
       );
 
 
@@ -2821,39 +2874,10 @@
     }
 
 
-    const rect =
-      column
-        .getBoundingClientRect();
-
-
-    const y =
-      Math.max(
-        0,
-        Math.min(
-          rect.height,
-          event.clientY -
-          rect.top
-        )
-      );
-
-
-    const startHour =
-      Number(
-        state.config
-          .dayStart ??
-        8
-      );
-
-
     const startMinuteOfDay =
-      startHour *
-      60 +
-      Math.round(
-        (
-          y /
-          64
-        ) *
-        60
+      pointerMinuteOfDay(
+        column,
+        event.clientY
       );
 
 
