@@ -834,7 +834,6 @@ button.agenda-item:hover {
 
 .modal-card {
   width: min(560px, 100%);
-
   max-height: 92vh;
 
   overflow: auto;
@@ -947,6 +946,7 @@ button.agenda-item:hover {
 
   width: 100%;
 
+  min-width: 0;
   background: #ffffff;
 
   border: 1px solid var(--border);
@@ -962,7 +962,11 @@ button.agenda-item:hover {
 
 
 .field .datetime-field input {
-  width: auto;
+  width: 100%;
+
+  min-width: 0;
+
+  padding: 10px 8px;
 
   background: transparent;
 
@@ -979,14 +983,12 @@ button.agenda-item:hover {
 
 
 .datetime-date {
-  flex: 1 1 auto;
-
-  min-width: 0;
+  flex: 1 1 55%;
 }
 
 
 .datetime-time {
-  flex: 0 0 auto;
+  flex: 1 1 45%;
 
   border-left: 1px solid var(--border);
 }
@@ -1024,6 +1026,18 @@ button.agenda-item:hover {
     1fr;
 
   gap: 12px;
+}
+
+
+/*
+  A grid item is min-width: auto by default,
+  so a column will not shrink below whatever
+  a browser thinks a date input should be,
+  and the row overflows instead.
+*/
+
+.two-col > * {
+  min-width: 0;
 }
 
 
