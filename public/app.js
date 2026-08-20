@@ -2185,6 +2185,67 @@
   ========================================================= */
 
 
+  /*
+    How far ahead the upcoming list looks,
+    as the midnight that closes the window.
+
+    It always ends on a Saturday, so the list
+    is whole weeks rather than a rolling
+    fortnight. Sunday stops at the end of
+    this week, because a week of notice is
+    already there; every other day takes next
+    week as well, since a Friday would
+    otherwise show almost nothing.
+  */
+
+  function upcomingWindowEnd(
+    nowKey
+  ) {
+
+    const now =
+      new Date(
+        nowKey *
+        60000
+      );
+
+
+    const startOfToday =
+      nowKey -
+      (
+        now.getUTCHours() *
+        60 +
+        now.getUTCMinutes()
+      );
+
+
+    const weekday =
+      now.getUTCDay();
+
+
+    const daysToSaturday =
+      6 -
+      weekday;
+
+
+    const nextWeek =
+      weekday ===
+      0
+        ? 0
+        : 7;
+
+
+    return startOfToday +
+      (
+        daysToSaturday +
+        nextWeek +
+        1
+      ) *
+      1440;
+
+  }
+
+
+
   async function openBlockedSessions() {
 
     if (
@@ -2241,16 +2302,55 @@
           );
 
 
+      const windowEnd =
+        upcomingWindowEnd(
+          nowKey
+        );
+
+
       const endDate =
         minuteKeyToLocalDateTime(
-          nowKey +
-          365 *
-          1440
+          windowEnd -
+          1
         )
           .slice(
             0,
             10
           );
+
+
+      /*
+        Say where the list stops, so a quiet
+        column reads as nothing booked rather
+        than as something failing to load.
+      */
+
+      $('upcomingBlockedRange')
+        .textContent =
+          'Through ' +
+          new Date(
+            (
+              windowEnd -
+              1440
+            ) *
+            60000
+          )
+            .toLocaleDateString(
+              undefined,
+              {
+                timeZone:
+                  'UTC',
+
+                weekday:
+                  'short',
+
+                month:
+                  'short',
+
+                day:
+                  'numeric'
+              }
+            );
 
 
       const data =
@@ -2318,7 +2418,11 @@
               localDateTimeToMinuteKey(
                 event.end
               ) >
-              nowKey
+                nowKey &&
+              localDateTimeToMinuteKey(
+                event.start
+              ) <
+                windowEnd
           )
           .sort(
             (a, b) =>
@@ -3051,6 +3155,52 @@
           );
 
       };
+
+
+    /*
+      A desktop browser opens the time picker
+      from the clock icon only; clicking the
+      digits just puts a caret in them. This
+      gives the whole control that behaviour,
+      so the wheel is one click away rather
+      than one click plus aiming at an icon.
+    */
+
+    $(id + 'Time')
+      .addEventListener(
+        'click',
+        () => {
+
+          const field =
+            $(id + 'Time');
+
+
+          if (
+            typeof field.showPicker !==
+            'function'
+          ) {
+
+            return;
+
+          }
+
+
+          try {
+
+            field.showPicker();
+
+          } catch {
+
+            /*
+              Some browsers refuse, for
+              instance without a user gesture.
+              Typing still works.
+            */
+
+          }
+
+        }
+      );
 
 
     [
