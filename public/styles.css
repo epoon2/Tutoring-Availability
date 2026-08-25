@@ -1892,3 +1892,132 @@ button.agenda-item:hover {
 }
 
 
+/* -----------------------------
+   WEEK SUMMARY (ADMIN)
+----------------------------- */
+
+.week-summary {
+  margin: 0 0 12px;
+
+  padding: 12px 16px;
+
+  background: #f6f8ff;
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+
+.week-summary-totals {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: baseline;
+
+  gap: 20px;
+}
+
+
+.week-summary-stat {
+  display: flex;
+
+  align-items: baseline;
+
+  gap: 6px;
+}
+
+
+.week-summary-number {
+  color: var(--accent);
+
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.week-summary-label {
+  color: var(--muted);
+
+  font-size: 13px;
+}
+
+
+.week-summary-totals .text-btn {
+  margin-left: auto;
+}
+
+
+.week-summary-list {
+  margin: 12px 0 0;
+
+  padding: 0;
+
+  list-style: none;
+
+  border-top: 1px solid var(--border);
+}
+
+
+.week-summary-student {
+  padding: 8px 0;
+
+  border-bottom: 1px solid var(--border);
+}
+
+
+.week-summary-student:last-child {
+  border-bottom: 0;
+}
+
+
+.week-summary-student-head {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: baseline;
+
+  gap: 8px;
+}
+
+
+.week-summary-student-hours {
+  color: var(--muted);
+
+  font-size: 13px;
+}
+
+
+.week-summary-sessions {
+  margin-top: 2px;
+
+  color: var(--muted);
+
+  font-size: 13px;
+}
+
+
+.week-summary-empty {
+  padding: 10px 0;
+
+  color: var(--muted);
+
+  font-size: 14px;
+}
+
+
+@media (max-width: 640px) {
+
+  .week-summary-totals {
+    gap: 12px;
+  }
+
+  .week-summary-totals .text-btn {
+    margin-left: 0;
+
+    flex-basis: 100%;
+  }
+
+}
