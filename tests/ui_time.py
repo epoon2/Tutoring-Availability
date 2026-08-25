@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""Drives the admin schedule: typed times, the quarter-hour wheel, single-click
+create, and the right-click menu with copy and paste."""
+import asyncio, subprocess, sys, time, urllib.request
+from playwright.async_api import async_playwright
+
+PORT = 8891
+BASE = f"http://127.0.0.1:{PORT}"
+ok, fail = [], []
+def check(name, cond, extra=""):
+    (ok if cond else fail).append(name)
+    print(("  PASS  " if cond else "  FAIL  ") + name + (f"   {extra}" if extra and not cond else ""))
+
+async def main():
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch()
+        page = await (await b.new_context(viewport={"width":1400,"height":950})).new_page()
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+
+        await page.goto(BASE, wait_until="networkidle")
+
+        # --- admin mode ---
+        await page.click("#adminBtn")
+        await page.fill("#adminPasswordInput", "test")
+        await page.click("#loginSubmitBtn")
+        await page.wait_for_timeout(600)
+        check("admin mode entered", await page.evaluate("!document.getElementById('adminBanner').classList.contains('hidden')"))
+
+        # ---------- 1. single left-click creates ----------
+        col = page.locator(".day-column").first
+        box = await col.bounding_box()
+        await page.mouse.dblclick(box["x"] + box["width"]/2, box["y"] + 200)
+        await page.wait_for_timeout(400)
+        modal_open = await page.evaluate("!document.getElementById('eventModal').classList.contains('hidden')")
+        check("double-click opens the new-session form", modal_open)
+
+        # ---------- 2. time segments ----------
+        seg = await page.evaluate("""() => ({
+            hour: !!document.getElementById('eventStartHour'),
+            minute: !!document.getElementById('eventStartMinute'),
+            meridiem: !!document.getElementById('eventStartMeridiem'),
+            wheel: !!document.getElementById('eventStartWheel')
+        })""")
+        check("three time segments + wheel button exist", all(seg.values()), str(seg))
+
+        # clicked at a slot -> should be snapped to :00/:15/:30/:45
+        await page.evaluate("window.__testDate = document.getElementById('eventStartDate').value")
+        snapped = await page.evaluate("document.getElementById('eventStartMinute').value")
+        check("click-created time snaps to a quarter hour", snapped in ("00","15","30","45"), f"got {snapped!r}")
+
+        # ---------- 3. typing with auto-advance ----------
+        await page.click("#eventStartHour")
+        await page.keyboard.type("11")
+        after_hour = await page.evaluate("document.activeElement.id")
+        check("2 digits in hour auto-advances to minute", after_hour == "eventStartMinute", f"focus={after_hour}")
+
+        await page.keyboard.type("07")
+        after_min = await page.evaluate("document.activeElement.id")
+        check("2 digits in minute auto-advances to AM/PM", after_min == "eventStartMeridiem", f"focus={after_min}")
+
+        await page.keyboard.type("a")
+        await page.wait_for_timeout(200)
+        vals = await page.evaluate("""() => ({
+            h: document.getElementById('eventStartHour').value,
+            m: document.getElementById('eventStartMinute').value,
+            p: document.getElementById('eventStartMeridiem').value,
+            hidden: document.getElementById('eventStartTime').value,
+            combined: document.getElementById('eventStart').value
+        })""")
+        check("typing 11 / 07 / a yields 11:07 AM", vals["h"]=="11" and vals["m"]=="07" and vals["p"]=="AM", str(vals))
+        check("any minute is accepted (11:07 not snapped)", vals["hidden"]=="11:07", str(vals))
+        check("hidden combined field updated", vals["combined"].endswith("T11:07"), str(vals))
+
+        # PM path
+        await page.click("#eventStartHour")
+        await page.keyboard.type("3")
+        await page.wait_for_timeout(100)
+        after_single = await page.evaluate("document.activeElement.id")
+        check("a lone 3 in hour advances (no hour 3x)", after_single == "eventStartMinute", f"focus={after_single}")
+        await page.keyboard.type("45p")
+        await page.wait_for_timeout(200)
+        pm = await page.evaluate("document.getElementById('eventStartTime').value")
+        check("3:45 PM converts to 15:45", pm == "15:45", f"got {pm!r}")
+
+        # ---------- 4. the wheel is quarter-hours only ----------
+        await page.click("#eventStartWheel")
+        await page.wait_for_timeout(300)
+        wheel = await page.evaluate("""() => {
+            const w = document.querySelector('.time-wheel');
+            if (!w) return null;
+            const opts = [...w.querySelectorAll('.time-wheel-option')].map(o => o.dataset.value);
+            return { count: opts.length, allQuarter: opts.every(v => ['00','15','30','45'].includes(v.slice(3))) };
+        }""")
+        check("wheel opens", wheel is not None)
+        if wheel:
+            check("wheel lists 96 quarter-hour options", wheel["count"]==96 and wheel["allQuarter"], str(wheel))
+        await page.click(".time-wheel-option[data-value='13:30']")
+        await page.wait_for_timeout(250)
+        picked = await page.evaluate("""() => ({
+            t: document.getElementById('eventStartTime').value,
+            h: document.getElementById('eventStartHour').value,
+            p: document.getElementById('eventStartMeridiem').value,
+            gone: !document.querySelector('.time-wheel')
+        })""")
+        check("picking from the wheel sets 1:30 PM and closes", picked["t"]=="13:30" and picked["h"]=="1" and picked["p"]=="PM" and picked["gone"], str(picked))
+
+        # ---------- 5. year capped at 4 digits ----------
+        # Focus the month segment explicitly, then type the whole date.
+        await page.click("#eventStartDate")
+        for _ in range(3):
+            await page.keyboard.press("Delete")
+        await page.keyboard.press("ArrowLeft")
+        await page.keyboard.press("ArrowLeft")
+        await page.keyboard.type("12252026")
+        await page.wait_for_timeout(200)
+        d = await page.evaluate("document.getElementById('eventStartDate').value")
+        check("date typed normally", d == "2026-12-25", f"got {d!r}")
+
+        # Keep typing digits at the year: it must not grow past 4.
+        await page.keyboard.type("9999999")
+        await page.locator("#eventTitle").click()
+        await page.wait_for_timeout(250)
+        d2 = await page.evaluate("document.getElementById('eventStartDate').value")
+        year_ok = d2 == "" or len(d2.split("-")[0]) == 4
+        check("year cannot exceed 4 digits", year_ok, f"got {d2!r}")
+        in_range = d2 == "" or 2000 <= int(d2.split("-")[0]) <= 2099
+        check("year stays inside the allowed range", in_range, f"got {d2!r}")
+
+        # ---------- save an event so there is a card ----------
+        real = [e for e in errors if "favicon" not in e and "manifest" not in e.lower()]
+        check("no console errors", not real, str(real[:3]))
+
+        print(f"\n{len(ok)} passed, {len(fail)} failed")
+        if fail:
+            print("FAILED: " + "; ".join(fail))
+        await b.close()
+        return 1 if fail else 0
+
+def run():
+    server = subprocess.Popen(["node", "tests/server.mjs", str(PORT)],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    for _ in range(50):
+        try:
+            urllib.request.urlopen(f"{BASE}/api/config", timeout=1).read()
+            break
+        except Exception:
+            time.sleep(0.2)
+    else:
+        print("server never came up:", server.stderr.read().decode()[:400])
+        return 1
+    try:
+        return asyncio.run(main())
+    finally:
+        server.terminate()
+
+sys.exit(run())

@@ -13,6 +13,18 @@
     isAdmin:
       false,
 
+
+    /*
+      Which segmented time control has its
+      quarter-hour list open, so a click
+      elsewhere can close it.
+    */
+
+    openTimeWheel:
+      null,
+
+
+
     events:
       [],
 
@@ -166,6 +178,61 @@
 
       }
     );
+
+
+    /*
+      One dismissal path for both overlays.
+      A pointer down anywhere that is not the
+      menu or the open wheel closes them, and
+      Escape does the same from the keyboard.
+    */
+
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+
+        /*
+          The wheel button lives inside the
+          control, so a press on it reaches
+          this capture handler first. Closing
+          on it would undo the open that is
+          about to happen, which is why the
+          whole control is exempt here and the
+          button toggles for itself.
+        */
+
+        if (
+          !event.target
+            .closest( '.datetime-time' ) &&
+          !event.target
+            .closest( '.time-wheel' )
+        ) {
+
+          closeTimeWheel();
+
+        }
+
+      },
+      true
+    );
+
+
+    document.addEventListener(
+      'keydown',
+      (event) => {
+
+        if ( event.key !== 'Escape' ) {
+
+          return;
+
+        }
+
+
+        closeTimeWheel();
+
+      }
+    );
+
 
   }
 
@@ -921,6 +988,8 @@
     renderAgenda();
 
   }
+
+
 
 
 
@@ -2973,15 +3042,16 @@
 
 
 
+
+
   function handleEmptyDoubleClick(
     event,
     column
   ) {
 
     if (
-      event.target.closest(
-        '.event-card'
-      )
+      event.target
+        .closest( '.event-card' )
     ) {
 
       return;
@@ -3004,22 +3074,17 @@
 
 
     const startKey =
-      localDateTimeToMinuteKey(
-        start
-      );
+      localDateTimeToMinuteKey( start );
 
 
     const end =
       minuteKeyToLocalDateTime(
-        startKey +
-        60
+        startKey + 60
       );
 
 
     /*
-      Do not automatically assign
-      Available.
-
+      Do not automatically assign Available.
       Type begins as Select One.
     */
 
@@ -3029,7 +3094,6 @@
     });
 
   }
-
 
 
   /* =========================================================
@@ -3082,13 +3146,14 @@
           );
 
 
-    $(id + 'Time')
-      .value =
-        combined
-          .slice(
-            11,
-            16
-          );
+    writeTimeControl(
+      id,
+      combined
+        .slice(
+          11,
+          16
+        )
+    );
 
   }
 
@@ -3157,27 +3222,48 @@
       };
 
 
+    bindTimeControl(
+      id
+    );
+
+
     /*
-      A desktop browser opens the time picker
-      from the clock icon only; clicking the
-      digits just puts a caret in them. This
-      gives the whole control that behaviour,
-      so the wheel is one click away rather
-      than one click plus aiming at an icon.
+      The year segment of a native date input
+      accepts six digits, and min/max only
+      mark the field invalid rather than stop
+      the typing. A schedule has no business
+      in the year 275760, so anything outside
+      the allowed span is pulled back to it
+      once the field is left.
     */
 
-    $(id + 'Time')
+    $(id + 'Date')
       .addEventListener(
-        'click',
+        'blur',
         () => {
 
           const field =
-            $(id + 'Time');
+            $(id + 'Date');
+
+
+          if ( !field.value ) {
+
+            return;
+
+          }
+
+
+          const year =
+            Number(
+              field.value
+                .slice( 0, 4 )
+            );
 
 
           if (
-            typeof field.showPicker !==
-            'function'
+            !Number.isFinite( year ) ||
+            ( year >= 2000 &&
+              year <= 2099 )
           ) {
 
             return;
@@ -3185,22 +3271,33 @@
           }
 
 
-          try {
+          const clamped =
+            Math.min(
+              2099,
+              Math.max( 2000, year )
+            );
 
-            field.showPicker();
 
-          } catch {
+          field.value =
+            String( clamped ) +
+            field.value
+              .slice( 4 );
 
-            /*
-              Some browsers refuse, for
-              instance without a user gesture.
-              Typing still works.
-            */
 
-          }
+          field
+            .dispatchEvent(
+              new Event(
+                'input',
+                {
+                  bubbles:
+                    true
+                }
+              )
+            );
 
         }
       );
+
 
 
     [
@@ -3227,6 +3324,773 @@
       );
 
   }
+
+
+  /* =========================================================
+     SEGMENTED TIME CONTROL
+     ========================================================= */
+
+  /*
+    A native time input cannot do everything
+    this portal needs at once: typing any
+    minute, a wheel that offers only quarter
+    hours, and both of those on a phone. The
+    step attribute governs typing and the
+    picker together, so one of the three
+    always loses. Three small text inputs plus
+    a list of our own get all three, and the
+    hidden field underneath still carries the
+    same HH:MM the rest of the app reads.
+  */
+
+  const QUARTER_MINUTES = 15;
+
+
+  function timeControlParts(
+    id
+  ) {
+
+    return {
+      hour: $(id + 'Hour'),
+      minute: $(id + 'Minute'),
+      meridiem: $(id + 'Meridiem'),
+      hidden: $(id + 'Time')
+    };
+
+  }
+
+
+  /*
+    Segments to HH:MM. Returns '' unless all
+    three are filled, because half a time is
+    not a time and the existing validation
+    should be the thing that says so.
+  */
+
+  function readTimeControl(
+    id
+  ) {
+
+    const parts =
+      timeControlParts( id );
+
+
+    const hour =
+      Number(
+        parts.hour.value
+      );
+
+
+    const minute =
+      Number(
+        parts.minute.value
+      );
+
+
+    const meridiem =
+      parts.meridiem
+        .value
+        .trim()
+        .toUpperCase();
+
+
+    if (
+      !parts.hour.value ||
+      !parts.minute.value ||
+      !Number.isFinite( hour ) ||
+      !Number.isFinite( minute ) ||
+      hour < 1 ||
+      hour > 12 ||
+      minute < 0 ||
+      minute > 59 ||
+      ( meridiem !== 'AM' &&
+        meridiem !== 'PM' )
+    ) {
+
+      return '';
+
+    }
+
+
+    const hour24 =
+      meridiem === 'AM'
+        ? hour % 12
+        : ( hour % 12 ) + 12;
+
+
+    return (
+      String( hour24 )
+        .padStart( 2, '0' ) +
+      ':' +
+      String( minute )
+        .padStart( 2, '0' )
+    );
+
+  }
+
+
+  /*
+    HH:MM into the three segments. An empty
+    value clears them rather than showing a
+    misleading 12:00 AM.
+  */
+
+  function writeTimeControl(
+    id,
+    value
+  ) {
+
+    const parts =
+      timeControlParts( id );
+
+
+    const match =
+      /^(\d{1,2}):(\d{2})/
+        .exec( value || '' );
+
+
+    if ( !match ) {
+
+      parts.hour.value = '';
+      parts.minute.value = '';
+      parts.meridiem.value = '';
+      parts.hidden.value = '';
+
+      return;
+
+    }
+
+
+    const hour24 =
+      Number( match[1] );
+
+
+    const minute =
+      Number( match[2] );
+
+
+    parts.hour.value =
+      String(
+        hour24 % 12 === 0
+          ? 12
+          : hour24 % 12
+      );
+
+
+    parts.minute.value =
+      String( minute )
+        .padStart( 2, '0' );
+
+
+    parts.meridiem.value =
+      hour24 >= 12
+        ? 'PM'
+        : 'AM';
+
+
+    parts.hidden.value =
+      String( hour24 )
+        .padStart( 2, '0' ) +
+      ':' +
+      String( minute )
+        .padStart( 2, '0' );
+
+  }
+
+
+  function bindTimeControl(
+    id
+  ) {
+
+    const parts =
+      timeControlParts( id );
+
+
+    /*
+      The hidden field is what the recombine
+      logic already listens to, so every
+      segment change republishes it there.
+    */
+
+    const publish =
+      () => {
+
+        parts.hidden.value =
+          readTimeControl( id );
+
+
+        parts.hidden
+          .dispatchEvent(
+            new Event(
+              'input',
+              {
+                bubbles:
+                  true
+              }
+            )
+          );
+
+      };
+
+
+    const focusNext =
+      (field) => {
+
+        field.focus();
+        field.select();
+
+      };
+
+
+    /*
+      Hour: two digits, or one digit that
+      cannot become a valid two-digit hour,
+      moves to the minutes. Typing 1 waits,
+      because 11 and 12 are still reachable;
+      typing 3 does not, because there is no
+      hour 3x.
+    */
+
+    parts.hour
+      .addEventListener(
+        'input',
+        () => {
+
+          const digits =
+            parts.hour
+              .value
+              .replace( /\D/g, '' )
+              .slice( 0, 2 );
+
+
+          parts.hour.value = digits;
+
+
+          publish();
+
+
+          if ( digits.length === 2 ) {
+
+            focusNext( parts.minute );
+
+            return;
+
+          }
+
+
+          if (
+            digits.length === 1 &&
+            Number( digits ) > 1
+          ) {
+
+            focusNext( parts.minute );
+
+          }
+
+        }
+      );
+
+
+    /*
+      Minutes: any value 00-59, so 11:07 is
+      typeable. Two digits move on to AM/PM.
+    */
+
+    parts.minute
+      .addEventListener(
+        'input',
+        () => {
+
+          const digits =
+            parts.minute
+              .value
+              .replace( /\D/g, '' )
+              .slice( 0, 2 );
+
+
+          parts.minute.value = digits;
+
+
+          publish();
+
+
+          if ( digits.length === 2 ) {
+
+            focusNext( parts.meridiem );
+
+          }
+
+        }
+      );
+
+
+    /*
+      Meridiem takes a or p from anywhere in
+      what was typed, so both 'a' and 'AM'
+      work and nothing else sticks.
+    */
+
+    parts.meridiem
+      .addEventListener(
+        'input',
+        () => {
+
+          const typed =
+            parts.meridiem
+              .value
+              .toUpperCase();
+
+
+          if ( /P/.test( typed ) ) {
+
+            parts.meridiem.value = 'PM';
+
+          } else if ( /A/.test( typed ) ) {
+
+            parts.meridiem.value = 'AM';
+
+          } else {
+
+            parts.meridiem.value = '';
+
+          }
+
+
+          publish();
+
+        }
+      );
+
+
+    /*
+      Backspace at the start of a segment goes
+      back to the previous one, which is what
+      a native segmented field does.
+    */
+
+    [
+      [ parts.minute, parts.hour ],
+      [ parts.meridiem, parts.minute ]
+    ]
+      .forEach(
+        ([ field, previous ]) => {
+
+          field
+            .addEventListener(
+              'keydown',
+              (keyEvent) => {
+
+                if (
+                  keyEvent.key !==
+                    'Backspace' ||
+                  field.value !== ''
+                ) {
+
+                  return;
+
+                }
+
+
+                keyEvent.preventDefault();
+
+                focusNext( previous );
+
+              }
+            );
+
+        }
+      );
+
+
+    /*
+      Tidy up on the way out: a lone 7 in the
+      minutes means 07, and an hour of 0 means
+      12. Done on blur rather than on input so
+      it never fights what is being typed.
+    */
+
+    [
+      parts.hour,
+      parts.minute
+    ]
+      .forEach(
+        (field) => {
+
+          field
+            .addEventListener(
+              'blur',
+              () => {
+
+                if ( field.value === '' ) {
+
+                  return;
+
+                }
+
+
+                let numeric =
+                  Number( field.value );
+
+
+                if ( field === parts.hour ) {
+
+                  if ( numeric === 0 ) {
+
+                    numeric = 12;
+
+                  }
+
+
+                  if ( numeric > 12 ) {
+
+                    numeric = 12;
+
+                  }
+
+
+                  field.value =
+                    String( numeric );
+
+                } else {
+
+                  if ( numeric > 59 ) {
+
+                    numeric = 59;
+
+                  }
+
+
+                  field.value =
+                    String( numeric )
+                      .padStart( 2, '0' );
+
+                }
+
+
+                publish();
+
+              }
+            );
+
+        }
+      );
+
+
+    /*
+      Selecting the whole segment on focus
+      means typing replaces rather than
+      appends, so a second visit to the field
+      does not produce 1111.
+    */
+
+    [
+      parts.hour,
+      parts.minute,
+      parts.meridiem
+    ]
+      .forEach(
+        (field) => {
+
+          field
+            .addEventListener(
+              'focus',
+              () => {
+
+                field.select();
+
+              }
+            );
+
+        }
+      );
+
+
+    /*
+      Opened on pointerdown, and toggled, so
+      the global dismiss handler that runs in
+      the capture phase cannot close it in the
+      same gesture that asked for it.
+    */
+
+    /*
+      The control sits inside a <label>, and a
+      label forwards clicks to its input as a
+      second, synthetic event whose target is
+      the label itself. That synthetic click
+      bubbles to the schedule and to the
+      global dismiss handler, which would shut
+      the wheel in the same gesture that
+      opened it. Stopping the gesture dead at
+      pointerdown, and again at click, is what
+      keeps it open.
+    */
+
+    [ 'pointerdown', 'mousedown', 'click' ]
+      .forEach(
+        (type) => {
+
+          $(id + 'Wheel')
+            .addEventListener(
+              type,
+              (gestureEvent) => {
+
+                gestureEvent
+                  .preventDefault();
+
+                gestureEvent
+                  .stopPropagation();
+
+
+                if ( type !== 'pointerdown' ) {
+
+                  return;
+
+                }
+
+
+                if (
+                  state.openTimeWheel === id
+                ) {
+
+                  closeTimeWheel();
+
+                  return;
+
+                }
+
+
+                openTimeWheel( id );
+
+              }
+            );
+
+        }
+      );
+
+  }
+
+
+  /*
+    The wheel: quarter hours only, as asked.
+    Built here rather than taken from the
+    browser so a phone gets the same list the
+    desktop does while the digits stay
+    typeable on both.
+  */
+
+  function openTimeWheel(
+    id
+  ) {
+
+    closeTimeWheel();
+
+
+    const control =
+      document
+        .querySelector(
+          `[data-time-control="${id}"]`
+        );
+
+
+    if ( !control ) {
+
+      return;
+
+    }
+
+
+    const list =
+      document
+        .createElement( 'div' );
+
+
+    list.className = 'time-wheel';
+
+
+    list
+      .setAttribute(
+        'role',
+        'listbox'
+      );
+
+
+    const current =
+      readTimeControl( id );
+
+
+    let selected = null;
+
+
+    for (
+      let minutes = 0;
+      minutes < 24 * 60;
+      minutes += QUARTER_MINUTES
+    ) {
+
+      const hour24 =
+        Math.floor( minutes / 60 );
+
+
+      const minute =
+        minutes % 60;
+
+
+      const value =
+        String( hour24 )
+          .padStart( 2, '0' ) +
+        ':' +
+        String( minute )
+          .padStart( 2, '0' );
+
+
+      const option =
+        document
+          .createElement( 'button' );
+
+
+      option.type = 'button';
+
+      option.className =
+        'time-wheel-option';
+
+      option.dataset.value = value;
+
+      option.textContent =
+        formatClockLabel(
+          hour24,
+          minute
+        );
+
+
+      if ( value === current ) {
+
+        option.classList
+          .add( 'is-current' );
+
+        selected = option;
+
+      }
+
+
+      option
+        .addEventListener(
+          'click',
+          (clickEvent) => {
+
+            clickEvent.preventDefault();
+
+            clickEvent.stopPropagation();
+
+
+            writeTimeControl(
+              id,
+              value
+            );
+
+
+            $(id + 'Time')
+              .dispatchEvent(
+                new Event(
+                  'input',
+                  {
+                    bubbles:
+                      true
+                  }
+                )
+              );
+
+
+            closeTimeWheel();
+
+          }
+        );
+
+
+      list.appendChild( option );
+
+    }
+
+
+    control.appendChild( list );
+
+
+    /*
+      Open on the current value so the wheel
+      starts where the field already is.
+    */
+
+    if ( selected ) {
+
+      list.scrollTop =
+        selected.offsetTop -
+        list.clientHeight / 2 +
+        selected.offsetHeight / 2;
+
+    } else {
+
+      /*
+        No value yet: start the list at a
+        plausible teaching hour rather than
+        midnight.
+      */
+
+      list.scrollTop =
+        ( 15 * 60 / QUARTER_MINUTES ) *
+        32 -
+        list.clientHeight / 2;
+
+    }
+
+
+    state.openTimeWheel = id;
+
+  }
+
+
+  function closeTimeWheel() {
+
+    document
+      .querySelectorAll(
+        '.time-wheel'
+      )
+      .forEach(
+        (node) => {
+
+          node.remove();
+
+        }
+      );
+
+
+    state.openTimeWheel = null;
+
+  }
+
+
+  function formatClockLabel(
+    hour24,
+    minute
+  ) {
+
+    const hour =
+      hour24 % 12 === 0
+        ? 12
+        : hour24 % 12;
+
+
+    return (
+      hour +
+      ':' +
+      String( minute )
+        .padStart( 2, '0' ) +
+      ' ' +
+      ( hour24 >= 12
+        ? 'PM'
+        : 'AM' )
+    );
+
+  }
+
 
 
 

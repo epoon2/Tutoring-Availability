@@ -997,7 +997,17 @@ button.agenda-item:hover {
 
 
 .datetime-time {
+  position: relative;
+
+  display: flex;
+
   flex: 1 1 45%;
+
+  align-items: center;
+
+  min-width: 0;
+
+  padding: 0 4px 0 8px;
 
   border-left: 1px solid var(--border);
 }
@@ -1005,6 +1015,160 @@ button.agenda-item:hover {
 
 .field .datetime-field .datetime-time {
   border-left: 1px solid var(--border);
+}
+
+
+/* -----------------------------
+   SEGMENTED TIME CONTROL
+----------------------------- */
+
+.field .datetime-field .time-seg {
+  width: auto;
+
+  min-width: 0;
+
+  padding: 10px 1px;
+
+  font-variant-numeric: tabular-nums;
+
+  text-align: center;
+
+  background: transparent;
+
+  border: 0;
+  border-radius: 4px;
+}
+
+
+.time-seg-hour,
+.time-seg-minute {
+  flex: 0 0 2.2ch;
+}
+
+
+.time-seg-meridiem {
+  flex: 0 0 3ch;
+
+  margin-left: 4px;
+
+  text-transform: uppercase;
+}
+
+
+.field .datetime-field .time-seg:focus {
+  outline: none;
+
+  background: #e8edff;
+}
+
+
+.time-sep {
+  flex: 0 0 auto;
+
+  color: var(--muted);
+}
+
+
+.time-wheel-button {
+  flex: 0 0 auto;
+
+  margin-left: auto;
+
+  padding: 4px 6px;
+
+  color: var(--muted);
+
+  font-size: 12px;
+  line-height: 1;
+
+  background: transparent;
+
+  border: 0;
+  border-radius: 4px;
+
+  cursor: pointer;
+}
+
+
+.time-wheel-button:hover {
+  color: var(--accent);
+
+  background: #eef2ff;
+}
+
+
+/*
+  The chevron glyph must not be its own hit
+  target: the control sits inside a <label>,
+  and an event starting on the span reaches
+  the label before the button can stop it.
+*/
+
+.time-wheel-button > * {
+  pointer-events: none;
+}
+
+
+/*
+  The quarter-hour list. Positioned against
+  the control so it opens under the digits,
+  and scrollable so it behaves like the wheel
+  it replaces on both desktop and phone.
+*/
+
+.time-wheel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 60;
+
+  width: 8.5rem;
+  max-height: 15rem;
+
+  overflow-y: auto;
+
+  background: #ffffff;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+
+  -webkit-overflow-scrolling: touch;
+}
+
+
+.time-wheel-option {
+  display: block;
+
+  width: 100%;
+
+  padding: 8px 12px;
+
+  color: inherit;
+
+  font-size: 14px;
+  text-align: left;
+
+  background: transparent;
+
+  border: 0;
+
+  cursor: pointer;
+}
+
+
+.time-wheel-option:hover {
+  background: #eef2ff;
+}
+
+
+.time-wheel-option.is-current {
+  color: var(--accent);
+
+  font-weight: 600;
+
+  background: #e8edff;
 }
 
 
@@ -1664,3 +1828,4 @@ button.agenda-item:hover {
   }
 
 }
+
