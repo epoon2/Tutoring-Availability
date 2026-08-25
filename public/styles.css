@@ -1829,3 +1829,66 @@ button.agenda-item:hover {
 
 }
 
+/* -----------------------------
+   RIGHT-CLICK MENU
+----------------------------- */
+
+/*
+  Fixed to the viewport because it is opened
+  at the pointer and appended to the body, so
+  it never inherits a scrolling ancestor.
+*/
+
+.context-menu {
+  position: fixed;
+  z-index: 80;
+
+  min-width: 11rem;
+
+  padding: 4px;
+
+  background: #ffffff;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+
+.context-menu-item {
+  display: block;
+
+  width: 100%;
+
+  padding: 8px 12px;
+
+  color: inherit;
+
+  font-size: 14px;
+  text-align: left;
+
+  background: transparent;
+
+  border: 0;
+  border-radius: 6px;
+
+  cursor: pointer;
+}
+
+
+.context-menu-item:hover {
+  background: #eef2ff;
+}
+
+
+.context-menu-item.is-danger {
+  color: #b42318;
+}
+
+
+.context-menu-item.is-danger:hover {
+  background: #fee4e2;
+}
+
+

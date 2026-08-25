@@ -31,10 +31,10 @@ async def main():
         # ---------- 1. single left-click creates ----------
         col = page.locator(".day-column").first
         box = await col.bounding_box()
-        await page.mouse.dblclick(box["x"] + box["width"]/2, box["y"] + 200)
+        await page.mouse.click(box["x"] + box["width"]/2, box["y"] + 200)
         await page.wait_for_timeout(400)
         modal_open = await page.evaluate("!document.getElementById('eventModal').classList.contains('hidden')")
-        check("double-click opens the new-session form", modal_open)
+        check("single left-click opens the new-session form", modal_open)
 
         # ---------- 2. time segments ----------
         seg = await page.evaluate("""() => ({
@@ -129,6 +129,81 @@ async def main():
         check("year stays inside the allowed range", in_range, f"got {d2!r}")
 
         # ---------- save an event so there is a card ----------
+        # Reopen a clean form on the visible week, so the saved card lands where
+        # the later right-click steps can reach it. The date-typing checks above
+        # deliberately left this form on a far-off month.
+        await page.click("[data-close='eventModal']")
+        await page.wait_for_timeout(250)
+        col2 = page.locator(".day-column").first
+        box3 = await col2.bounding_box()
+        await page.mouse.click(box3["x"] + box3["width"]/2, box3["y"] + 200)
+        await page.wait_for_timeout(400)
+        await page.evaluate("""() => {
+            document.getElementById('eventType').value = 'BLOCKED';
+            document.getElementById('eventTitle').value = 'Maya - Algebra II';
+            document.getElementById('eventNotes').value = 'chapter 4';
+        }""")
+        await page.click("#saveEventBtn")
+        await page.wait_for_timeout(700)
+        cards = await page.locator(".event-card").count()
+        check("event saved and rendered as a card", cards >= 1, f"cards={cards}")
+
+        # ---------- 6. right-click a card ----------
+        if cards:
+            await page.locator(".event-card").first.click(button="right")
+            await page.wait_for_timeout(300)
+            items = await page.evaluate("[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
+            check("card menu has Edit/Duplicate/Copy/Delete",
+                  items[:4] == ["Edit","Duplicate","Copy","Delete"], str(items))
+
+            # Copy
+            await page.evaluate("""() => [...document.querySelectorAll('.context-menu-item')]
+                .find(i => i.textContent.trim() === 'Copy').click()""")
+            await page.wait_for_timeout(250)
+            copied = await page.evaluate("!!window.__state?.clipboardEvent")
+            check("menu closes after choosing", await page.evaluate("!document.querySelector('.context-menu')"))
+
+            # ---------- 7. right-click empty space offers paste ----------
+            box2 = await page.locator(".day-column").nth(2).bounding_box()
+            await page.mouse.click(box2["x"]+box2["width"]/2, box2["y"]+300, button="right")
+            await page.wait_for_timeout(300)
+            items2 = await page.evaluate("[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
+            check("empty-slot menu offers New + Paste",
+                  len(items2)==2 and items2[0]=="New session here" and items2[1].startswith("Paste"), str(items2))
+
+            await page.evaluate("""() => [...document.querySelectorAll('.context-menu-item')]
+                .find(i => i.textContent.trim().startsWith('Paste')).click()""")
+            await page.wait_for_timeout(400)
+            pasted = await page.evaluate("""() => ({
+                open: !document.getElementById('eventModal').classList.contains('hidden'),
+                title: document.getElementById('eventTitle').value,
+                type: document.getElementById('eventType').value,
+                notes: document.getElementById('eventNotes').value,
+                date: document.getElementById('eventStartDate').value
+            })""")
+            check("paste prefills title/type/notes", pasted["open"] and pasted["title"]=="Maya - Algebra II"
+                  and pasted["type"]=="BLOCKED" and pasted["notes"]=="chapter 4", str(pasted))
+            # Column index 2 was right-clicked, so paste must land on that day.
+            want = await page.evaluate(
+                "document.querySelectorAll('.day-column')[2].dataset.date")
+            check("paste lands on the right-clicked day, not the copied one",
+                  pasted["date"] == want, f"{pasted['date']} vs {want}")
+            await page.click("[data-close='eventModal']")
+            await page.wait_for_timeout(300)
+
+        # ---------- 8. left-click on a card still creates new ----------
+        if cards:
+            await page.locator(".event-card").first.click()
+            await page.wait_for_timeout(400)
+            on_card = await page.evaluate("""() => ({
+                open: !document.getElementById('eventModal').classList.contains('hidden'),
+                id: document.getElementById('eventId').value,
+                title: document.getElementById('eventModalTitle').textContent.trim()
+            })""")
+            check("left-click on a card opens a NEW session (not edit)",
+                  on_card["open"] and on_card["id"]=="" and on_card["title"]=="Add time", str(on_card))
+            await page.click("[data-close='eventModal']")
+
         real = [e for e in errors if "favicon" not in e and "manifest" not in e.lower()]
         check("no console errors", not real, str(real[:3]))
 

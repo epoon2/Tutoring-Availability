@@ -24,6 +24,29 @@
       null,
 
 
+    /*
+      The session most recently copied from
+      the right-click menu, waiting to be
+      pasted into a slot.
+    */
+
+    clipboardEvent:
+      null,
+
+
+    /*
+      The open right-click menu, and the flag
+      that stops the click ending a drag from
+      being read as a new-session click.
+    */
+
+    openContextMenu:
+      null,
+
+    suppressNextScheduleClick:
+      false,
+
+
 
     events:
       [],
@@ -203,6 +226,16 @@
 
         if (
           !event.target
+            .closest( '.context-menu' )
+        ) {
+
+          closeContextMenu();
+
+        }
+
+
+        if (
+          !event.target
             .closest( '.datetime-time' ) &&
           !event.target
             .closest( '.time-wheel' )
@@ -228,9 +261,46 @@
         }
 
 
+        closeContextMenu();
+
         closeTimeWheel();
 
       }
+    );
+
+
+    /*
+      Scrolling the week would leave the menu
+      anchored to a slot that has moved, so it
+      closes. The time wheel does not: it is
+      positioned against its own field and
+      moves with it, and it scrolls itself to
+      the current value as it opens - which is
+      a scroll event of its own, and closing on
+      that would shut the wheel in the act of
+      opening it.
+    */
+
+    window.addEventListener(
+      'scroll',
+      (scrollEvent) => {
+
+        if (
+          scrollEvent.target &&
+          scrollEvent.target.closest &&
+          scrollEvent.target
+            .closest( '.time-wheel' )
+        ) {
+
+          return;
+
+        }
+
+
+        closeContextMenu();
+
+      },
+      true
     );
 
 
@@ -1548,10 +1618,23 @@
 
 
         column.addEventListener(
-          'dblclick',
+          'click',
           (event) => {
 
-            handleEmptyDoubleClick(
+            handleScheduleClick(
+              event,
+              column
+            );
+
+          }
+        );
+
+
+        column.addEventListener(
+          'contextmenu',
+          (event) => {
+
+            handleScheduleContextMenu(
               event,
               column
             );
@@ -1927,6 +2010,10 @@
               null;
 
 
+            state.suppressNextScheduleClick =
+              true;
+
+
             document
               .querySelectorAll(
                 '.drag-over'
@@ -1958,11 +2045,20 @@
       }
 
 
-      card.addEventListener(
-        'click',
-        () => {
+      /*
+        Left click anywhere on the schedule
+        opens a new session for that slot,
+        cards included. Editing an existing
+        one moved to the right-click menu so
+        this one gesture is never ambiguous.
+      */
 
-          openEventModal(
+      card.addEventListener(
+        'contextmenu',
+        (menuEvent) => {
+
+          handleCardContextMenu(
+            menuEvent,
             original
           );
 
@@ -3044,25 +3140,29 @@
 
 
 
-  function handleEmptyDoubleClick(
-    event,
-    column
+  /* =========================================================
+     SCHEDULE CLICK AND CONTEXT MENU
+     ========================================================= */
+
+  /*
+    One gesture, one meaning. Left click on
+    the schedule always starts a new session
+    at the slot under the pointer, whether or
+    not something is already there. Everything
+    that acts on an existing session lives in
+    the right-click menu, so a stray click can
+    never edit or move real bookings.
+  */
+
+  function scheduleSlotFromPointer(
+    column,
+    clientY
   ) {
-
-    if (
-      event.target
-        .closest( '.event-card' )
-    ) {
-
-      return;
-
-    }
-
 
     const startMinuteOfDay =
       pointerMinuteOfDay(
         column,
-        event.clientY
+        clientY
       );
 
 
@@ -3077,9 +3177,58 @@
       localDateTimeToMinuteKey( start );
 
 
-    const end =
-      minuteKeyToLocalDateTime(
-        startKey + 60
+    return {
+      start,
+      end:
+        minuteKeyToLocalDateTime(
+          startKey + 60
+        )
+    };
+
+  }
+
+
+  function handleScheduleClick(
+    event,
+    column
+  ) {
+
+    if ( !state.isAdmin ) {
+
+      return;
+
+    }
+
+
+    /*
+      A drag that ends over the column also
+      fires a click. Ignoring it here keeps
+      moving a card from silently opening the
+      new-session form on top of the drop.
+    */
+
+    if ( state.suppressNextScheduleClick ) {
+
+      state.suppressNextScheduleClick = false;
+
+      return;
+
+    }
+
+
+    if ( state.openContextMenu ) {
+
+      closeContextMenu();
+
+      return;
+
+    }
+
+
+    const slot =
+      scheduleSlotFromPointer(
+        column,
+        event.clientY
       );
 
 
@@ -3088,12 +3237,461 @@
       Type begins as Select One.
     */
 
+    openEventModal( slot );
+
+  }
+
+
+  function handleScheduleContextMenu(
+    event,
+    column
+  ) {
+
+    if ( !state.isAdmin ) {
+
+      return;
+
+    }
+
+
+    /*
+      A right click that landed on a card is
+      that card's menu, not the column's.
+    */
+
+    if (
+      event.target
+        .closest( '.event-card' )
+    ) {
+
+      return;
+
+    }
+
+
+    event.preventDefault();
+
+
+    const slot =
+      scheduleSlotFromPointer(
+        column,
+        event.clientY
+      );
+
+
+    const items = [
+      {
+        label:
+          'New session here',
+        run:
+          () => {
+
+            openEventModal( slot );
+
+          }
+      }
+    ];
+
+
+    if ( state.clipboardEvent ) {
+
+      items.push({
+        label:
+          'Paste "' +
+          clipboardLabel() +
+          '" here',
+        run:
+          () => {
+
+            pasteClipboardInto( slot );
+
+          }
+      });
+
+    }
+
+
+    openContextMenu(
+      event,
+      items
+    );
+
+  }
+
+
+  function handleCardContextMenu(
+    event,
+    original
+  ) {
+
+    if ( !state.isAdmin ) {
+
+      return;
+
+    }
+
+
+    event.preventDefault();
+
+    event.stopPropagation();
+
+
+    const items = [
+      {
+        label:
+          'Edit',
+        run:
+          () => {
+
+            openEventModal( original );
+
+          }
+      },
+      {
+        label:
+          'Duplicate',
+        run:
+          () => {
+
+            copyEvent( original );
+
+            pasteClipboardInto({
+              start:
+                original.start,
+              end:
+                original.end
+            });
+
+          }
+      },
+      {
+        label:
+          'Copy',
+        run:
+          () => {
+
+            copyEvent( original );
+
+
+            setStatus(
+              'Copied. Right-click a slot to paste it.'
+            );
+
+          }
+      },
+      {
+        label:
+          'Delete',
+        danger:
+          true,
+        run:
+          () => {
+
+            deleteEventById( original );
+
+          }
+      }
+    ];
+
+
+    openContextMenu(
+      event,
+      items
+    );
+
+  }
+
+
+  /*
+    Copy keeps the fields that describe the
+    session and deliberately drops the ones
+    that place it in time, because the point
+    of pasting is to put the same session
+    somewhere else.
+  */
+
+  function copyEvent(
+    original
+  ) {
+
+    state.clipboardEvent = {
+      title:
+        original.title || '',
+      type:
+        original.type || '',
+      notes:
+        original.notes || '',
+      durationMinutes:
+        Math.max(
+          15,
+          localDateTimeToMinuteKey(
+            original.end
+          ) -
+          localDateTimeToMinuteKey(
+            original.start
+          )
+        )
+    };
+
+  }
+
+
+  function clipboardLabel() {
+
+    const copied =
+      state.clipboardEvent;
+
+
+    if ( !copied ) {
+
+      return '';
+
+    }
+
+
+    const name =
+      copied.title ||
+      copied.studentName ||
+      ( copied.type === 'AVAILABLE'
+        ? 'Available'
+        : 'Blocked' );
+
+
+    return name.length > 24
+      ? name.slice( 0, 23 ) + '…'
+      : name;
+
+  }
+
+
+  /*
+    Paste opens the editor rather than writing
+    straight to the server, so the slot can be
+    checked and adjusted before it is saved.
+    Everything except date and time arrives
+    already filled in.
+  */
+
+  function pasteClipboardInto(
+    slot
+  ) {
+
+    const copied =
+      state.clipboardEvent;
+
+
+    if ( !copied ) {
+
+      return;
+
+    }
+
+
+    const startKey =
+      localDateTimeToMinuteKey(
+        slot.start
+      );
+
+
     openEventModal({
-      start,
-      end
+      start:
+        slot.start,
+      end:
+        minuteKeyToLocalDateTime(
+          startKey +
+          copied.durationMinutes
+        ),
+      title:
+        copied.title,
+      type:
+        copied.type,
+      notes:
+        copied.notes
     });
 
   }
+
+
+  async function deleteEventById(
+    original
+  ) {
+
+    const id =
+      original.masterId ||
+      original.id;
+
+
+    if ( !id ) {
+
+      return;
+
+    }
+
+
+    const message =
+      original.recurrence
+        ? 'Delete this entire recurring series?'
+        : 'Delete this event?';
+
+
+    if ( !confirm( message ) ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      await api(
+        '/events/' +
+          encodeURIComponent( id ),
+        {
+          method:
+            'DELETE'
+        }
+      );
+
+
+      await loadWeek();
+
+    } catch (error) {
+
+      setStatus( error.message );
+
+    }
+
+  }
+
+
+  /* -----------------------------
+     THE MENU ITSELF
+  ----------------------------- */
+
+  function openContextMenu(
+    event,
+    items
+  ) {
+
+    closeContextMenu();
+
+
+    const menu =
+      document
+        .createElement( 'div' );
+
+
+    menu.className = 'context-menu';
+
+
+    menu
+      .setAttribute(
+        'role',
+        'menu'
+      );
+
+
+    items
+      .forEach(
+        (item) => {
+
+          const button =
+            document
+              .createElement( 'button' );
+
+
+          button.type = 'button';
+
+          button.className =
+            'context-menu-item' +
+            ( item.danger
+              ? ' is-danger'
+              : '' );
+
+          button.textContent =
+            item.label;
+
+
+          button
+            .addEventListener(
+              'click',
+              (clickEvent) => {
+
+                clickEvent
+                  .stopPropagation();
+
+                closeContextMenu();
+
+                item.run();
+
+              }
+            );
+
+
+          menu.appendChild( button );
+
+        }
+      );
+
+
+    document
+      .body
+      .appendChild( menu );
+
+
+    /*
+      Keep the menu on screen: flip it back
+      inside the viewport if opening at the
+      pointer would push it off an edge.
+    */
+
+    const width =
+      menu.offsetWidth;
+
+
+    const height =
+      menu.offsetHeight;
+
+
+    const left =
+      Math.min(
+        event.clientX,
+        window.innerWidth - width - 8
+      );
+
+
+    const top =
+      Math.min(
+        event.clientY,
+        window.innerHeight - height - 8
+      );
+
+
+    menu.style.left =
+      Math.max( 8, left ) + 'px';
+
+    menu.style.top =
+      Math.max( 8, top ) + 'px';
+
+
+    state.openContextMenu = menu;
+
+  }
+
+
+  function closeContextMenu() {
+
+    if ( state.openContextMenu ) {
+
+      state.openContextMenu.remove();
+
+      state.openContextMenu = null;
+
+    }
+
+  }
+
+
 
 
   /* =========================================================
