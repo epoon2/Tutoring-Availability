@@ -46,8 +46,6 @@
     suppressNextScheduleClick:
       false,
 
-
-
     events:
       [],
 
@@ -214,16 +212,6 @@
       'pointerdown',
       (event) => {
 
-        /*
-          The wheel button lives inside the
-          control, so a press on it reaches
-          this capture handler first. Closing
-          on it would undo the open that is
-          about to happen, which is why the
-          whole control is exempt here and the
-          button toggles for itself.
-        */
-
         if (
           !event.target
             .closest( '.context-menu' )
@@ -233,6 +221,16 @@
 
         }
 
+
+        /*
+          The wheel button lives inside the
+          control, so a press on it reaches
+          this capture handler first. Closing
+          on it would undo the open that is
+          about to happen, which is why the
+          whole control is exempt here and the
+          button toggles for itself.
+        */
 
         if (
           !event.target
@@ -302,7 +300,6 @@
       },
       true
     );
-
 
   }
 
@@ -606,6 +603,38 @@
             submitAdminLogin();
 
           }
+
+        }
+      );
+
+
+    $('summaryToggle')
+      .addEventListener(
+        'click',
+        () => {
+
+          const list =
+            $('summaryList');
+
+
+          const nowHidden =
+            list
+              .classList
+              .toggle( 'hidden' );
+
+
+          $('summaryToggle')
+            .textContent =
+              nowHidden
+                ? 'Show each student'
+                : 'Hide each student';
+
+
+          $('summaryToggle')
+            .setAttribute(
+              'aria-expanded',
+              String( !nowHidden )
+            );
 
         }
       );
@@ -1057,10 +1086,377 @@
 
     renderAgenda();
 
+    renderWeekSummary();
+
   }
 
 
 
+
+
+  /* =========================================================
+     WEEK SUMMARY (ADMIN)
+     ========================================================= */
+
+  /*
+    How much of the week is spoken for, and by
+    whom. Only blocked time counts as booked;
+    availability is the offer, not the work.
+    Everything is measured from what is drawn
+    on the calendar, so a recurring series and
+    a one-off are counted the same way and a
+    session crossing midnight is split across
+    the two days exactly as it appears.
+  */
+
+  function renderWeekSummary() {
+
+    const panel =
+      $('weekSummary');
+
+
+    if ( !panel ) {
+
+      return;
+
+    }
+
+
+    panel
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
+      );
+
+
+    if ( !state.isAdmin ) {
+
+      return;
+
+    }
+
+
+    const byStudent =
+      new Map();
+
+
+    let totalMinutes = 0;
+
+
+    for ( let day = 0; day < 7; day++ ) {
+
+      const date =
+        addDays(
+          state.weekStart,
+          day
+        );
+
+
+      const dateStr =
+        formatDate( date );
+
+
+      getSegmentsForDate( dateStr )
+        .forEach(
+          ({ event, startMin, endMin }) => {
+
+            if (
+              event.type !== 'BLOCKED'
+            ) {
+
+              return;
+
+            }
+
+
+            const minutes =
+              Math.max(
+                0,
+                endMin - startMin
+              );
+
+
+            totalMinutes += minutes;
+
+
+            const name =
+              summaryStudentName( event );
+
+
+            if ( !byStudent.has( name ) ) {
+
+              byStudent.set(
+                name,
+                {
+                  name,
+                  minutes: 0,
+                  sessions: []
+                }
+              );
+
+            }
+
+
+            const record =
+              byStudent.get( name );
+
+
+            record.minutes += minutes;
+
+
+            record.sessions.push({
+              date,
+              startMin,
+              endMin
+            });
+
+          }
+        );
+
+    }
+
+
+    $('summaryHours')
+      .textContent =
+        formatHours( totalMinutes );
+
+
+    $('summaryStudents')
+      .textContent =
+        String( byStudent.size );
+
+
+    const list =
+      $('summaryList');
+
+
+    list.innerHTML = '';
+
+
+    if ( byStudent.size === 0 ) {
+
+      const empty =
+        document
+          .createElement( 'li' );
+
+
+      empty.className =
+        'week-summary-empty';
+
+
+      empty.textContent =
+        'Nothing blocked off this week.';
+
+
+      list.appendChild( empty );
+
+
+      return;
+
+    }
+
+
+    /*
+      Busiest first: the person to look at is
+      the one taking the most of the week.
+    */
+
+    [ ...byStudent.values() ]
+      .sort(
+        (a, b) =>
+          b.minutes - a.minutes ||
+          a.name.localeCompare( b.name )
+      )
+      .forEach(
+        (record) => {
+
+          const item =
+            document
+              .createElement( 'li' );
+
+
+          item.className =
+            'week-summary-student';
+
+
+          const head =
+            document
+              .createElement( 'div' );
+
+
+          head.className =
+            'week-summary-student-head';
+
+
+          const who =
+            document
+              .createElement( 'strong' );
+
+
+          who.textContent = record.name;
+
+
+          const hours =
+            document
+              .createElement( 'span' );
+
+
+          hours.className =
+            'week-summary-student-hours';
+
+
+          hours.textContent =
+            formatHours( record.minutes ) +
+            ' hr' +
+            ( record.minutes === 60
+              ? ''
+              : 's' ) +
+            ' · ' +
+            record.sessions.length +
+            ( record.sessions.length === 1
+              ? ' session'
+              : ' sessions' );
+
+
+          head.appendChild( who );
+
+          head.appendChild( hours );
+
+
+          const when =
+            document
+              .createElement( 'div' );
+
+
+          when.className =
+            'week-summary-sessions';
+
+
+          when.textContent =
+            record.sessions
+              .sort(
+                (a, b) =>
+                  a.date - b.date ||
+                  a.startMin - b.startMin
+              )
+              .map( summarySessionLabel )
+              .join( ' · ' );
+
+
+          item.appendChild( head );
+
+          item.appendChild( when );
+
+
+          list.appendChild( item );
+
+        }
+      );
+
+  }
+
+
+  /*
+    Titles are written as "Maya - Algebra II"
+    or "Maya (online)", so the name is what
+    comes before the first separator. An
+    untitled block is still time spent and is
+    grouped under one heading rather than
+    dropped.
+  */
+
+  function summaryStudentName(
+    event
+  ) {
+
+    const title =
+      ( event.title || '' ).trim();
+
+
+    if ( !title ) {
+
+      return 'Unlabelled';
+
+    }
+
+
+    const cut =
+      title.split(
+        /\s+[-–—(|,]\s*|\s+\(/
+      )[0];
+
+
+    return (
+      cut.trim() ||
+      title
+    );
+
+  }
+
+
+  function summarySessionLabel(
+    session
+  ) {
+
+    const day =
+      session.date
+        .toLocaleDateString(
+          undefined,
+          {
+            weekday: 'short'
+          }
+        );
+
+
+    return (
+      day +
+      ' ' +
+      formatClockLabel(
+        Math.floor( session.startMin / 60 ),
+        session.startMin % 60
+      )
+        .replace( ':00', '' )
+        .toLowerCase()
+        .replace( ' ', '' ) +
+      '-' +
+      formatClockLabel(
+        Math.floor( session.endMin / 60 ),
+        session.endMin % 60
+      )
+        .replace( ':00', '' )
+        .toLowerCase()
+        .replace( ' ', '' )
+    );
+
+  }
+
+
+  /*
+    Half hours read better than 1.5000000001,
+    and a whole number should not carry a
+    trailing .0.
+  */
+
+  function formatHours(
+    minutes
+  ) {
+
+    const hours =
+      Math.round(
+        minutes / 60 * 100
+      ) / 100;
+
+
+    return (
+      Number.isInteger( hours )
+        ? String( hours )
+        : hours
+            .toFixed( 2 )
+            .replace( /0$/, '' )
+    );
+
+  }
 
 
   function renderWeekLabel() {
