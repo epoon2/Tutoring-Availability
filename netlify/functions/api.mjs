@@ -535,6 +535,138 @@ export default async (req) => {
 
 
     /*
+      SKIP ONE OCCURRENCE OF A SERIES
+      POST /events/:id/skip  { date: "YYYY-MM-DD" }
+      Deletes just that week's occurrence; the series is untouched.
+    */
+
+    if (
+      req.method === "POST" &&
+      route.startsWith(
+        "/events/"
+      ) &&
+      route.endsWith(
+        "/skip"
+      )
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      const id =
+        decodeURIComponent(
+          route.slice(
+            "/events/".length,
+            -"/skip".length
+          )
+        );
+
+
+      const body =
+        await req.json();
+
+
+      const date =
+        body?.date;
+
+      validateDate(
+        date
+      );
+
+
+      const events =
+        await readEvents();
+
+
+      const event =
+        events.find(
+          (item) =>
+            item.id === id
+        );
+
+
+      if ( !event ) {
+        return json(
+          {
+            error:
+              "That event no longer exists."
+          },
+          404
+        );
+      }
+
+
+      if ( !event.recurrence ) {
+        return json(
+          {
+            error:
+              "Only a repeating event has single weeks to skip."
+          },
+          400
+        );
+      }
+
+
+      /*
+        Only accept a date the series actually lands on, so a stray
+        call cannot pollute the exception list.
+      */
+
+      const dayStart =
+        localDateTimeToMinuteKey(
+          date + "T00:00"
+        );
+
+
+      const lands =
+        expandWeeklyEvent(
+          event,
+          dayStart,
+          dayStart + 1440
+        )
+          .some(
+            (occurrence) =>
+              occurrence.start.slice( 0, 10 ) === date
+          );
+
+
+      if ( !lands ) {
+        return json(
+          {
+            error:
+              "That series has no session on that date."
+          },
+          400
+        );
+      }
+
+
+      event.recurrence.exdates =
+        [ ...new Set(
+          [
+            ...( event.recurrence.exdates || [] ),
+            date
+          ]
+        ) ]
+          .sort();
+
+
+      await writeEvents(
+        events
+      );
+
+
+      return json({
+        ok:
+          true
+      });
+
+    }
+
+
+    /*
       DELETE EVENT / SERIES
     */
 
@@ -1327,6 +1459,36 @@ function validateRecurrence(
   };
 
 
+  /*
+    Exception dates: single occurrences deleted out of the series, the
+    way every calendar's "delete just this one" works. Stored as plain
+    YYYY-MM-DD strings on the recurrence.
+  */
+
+  const exdates =
+    [ ...new Set(
+      ( recurrence.exdates || [] )
+        .filter( (d) => typeof d === "string" )
+    ) ]
+      .sort();
+
+
+  if ( exdates.length > 366 ) {
+    bad( "Too many skipped dates on one series." );
+  }
+
+
+  for ( const d of exdates ) {
+    validateDate( d );
+  }
+
+
+  if ( exdates.length ) {
+    result.exdates = exdates;
+  }
+
+
+
   if (
     endType ===
     "ON"
@@ -1679,6 +1841,16 @@ function expandWeeklyEvent(
     event.recurrence;
 
 
+  /*
+    Dates deleted out of the series one at a time. A skipped week still
+    counts toward a COUNT-limited series - deleting one Thursday must
+    not quietly add a bonus week at the far end.
+  */
+
+  const exdates =
+    new Set( recurrence.exdates || [] );
+
+
   const seriesStart =
     localDateTimeToMinuteKey(
       event.start
@@ -1843,6 +2015,16 @@ function expandWeeklyEvent(
 
         return output;
 
+      }
+
+
+      if (
+        exdates.has(
+          minuteKeyToLocalDateTime( occurrenceStart )
+            .slice( 0, 10 )
+        )
+      ) {
+        continue;
       }
 
 
@@ -3077,6 +3259,17 @@ function publicCacheHeaders(req, admin) {
     "Vary": "x-admin-password"
   };
 }
+
+/*
+  Exported for the unit tests only; the page never imports this module.
+*/
+
+export {
+  expandEventsForRange,
+  expandWeeklyEvent,
+  localDateTimeToMinuteKey
+};
+
 
 /*
   NETLIFY ROUTE
