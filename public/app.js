@@ -2455,7 +2455,8 @@
 
           handleCardContextMenu(
             menuEvent,
-            original
+            original,
+            event
           );
 
         }
@@ -3717,7 +3718,8 @@
 
   function handleCardContextMenu(
     event,
-    original
+    original,
+    occurrence
   ) {
 
     if ( !state.isAdmin ) {
@@ -3735,7 +3737,9 @@
     const items = [
       {
         label:
-          'Edit',
+          original.recurrence
+            ? 'Edit series'
+            : 'Edit',
         run:
           () => {
 
@@ -3777,7 +3781,9 @@
       },
       {
         label:
-          'Delete',
+          original.recurrence
+            ? 'Delete series'
+            : 'Delete',
         danger:
           true,
         run:
@@ -3788,6 +3794,43 @@
           }
       }
     ];
+
+
+    /*
+      A repeating event gets one more verb: remove just this week's
+      occurrence and leave every other week alone - the way a calendar
+      deletes "just this one". Placed above Delete so the gentle option
+      is reached before the destructive one.
+    */
+
+    if ( original.recurrence ) {
+
+      /*
+        The label and the deletion both speak about the card that was
+        clicked - THIS week's session - so they read from the expanded
+        occurrence, not from the series master, whose start is stuck on
+        the anchor week.
+      */
+
+      const clicked =
+        occurrence ||
+        original;
+
+
+      items.splice( 3, 0, {
+        label:
+          'Skip just this week (' +
+          occurrenceLabel( clicked ) +
+          ')',
+        run:
+          () => {
+
+            skipOccurrence( clicked );
+
+          }
+      });
+
+    }
 
 
     openContextMenu(
@@ -3904,6 +3947,98 @@
       notes:
         copied.notes
     });
+
+  }
+
+
+  function occurrenceLabel(
+    original
+  ) {
+
+    const date =
+      new Date(
+        original.start.slice( 0, 10 ) + 'T12:00'
+      );
+
+
+    return date.toLocaleDateString(
+      undefined,
+      {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      }
+    );
+
+  }
+
+
+  /*
+    Remove one occurrence of a repeating event. The series itself is
+    untouched: the server records the date as an exception and every
+    other week keeps its session.
+  */
+
+  async function skipOccurrence(
+    original
+  ) {
+
+    const date =
+      original.start.slice( 0, 10 );
+
+
+    const message =
+      'Remove just ' +
+      occurrenceLabel( original ) +
+      '? Every other week keeps this session.';
+
+
+    if ( !confirm( message ) ) {
+
+      return;
+
+    }
+
+
+    const id =
+      original.masterId ||
+      original.id;
+
+
+    try {
+
+      await api(
+        '/events/' +
+          encodeURIComponent( id ) +
+          '/skip',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify({ date })
+        }
+      );
+
+
+      /*
+        loadWeek narrates its own progress into the status line, so the
+        confirmation is written after it finishes - otherwise "Loading"
+        stomps on it and the admin never sees what happened.
+      */
+
+      await loadWeek();
+
+
+      setStatus(
+        occurrenceLabel( original ) +
+        ' removed. The series is untouched.'
+      );
+
+    } catch (error) {
+
+      setStatus( error.message );
+
+    }
 
   }
 

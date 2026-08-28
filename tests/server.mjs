@@ -4,6 +4,12 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 
+// The REAL expansion logic, so the stub serves recurring events exactly
+// the way production does (run `node tests/install-shim.mjs` once first).
+import {
+  expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey
+} from '../netlify/functions/api.mjs';
+
 const ROOT = new URL('../public/', import.meta.url).pathname;
 const PORT = Number(process.argv[2] || 8877);
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
@@ -39,10 +45,30 @@ createServer(async (req, res) => {
     if (route === '/requests') return json(res, 200, { requests: [] });
     if (route.startsWith('/events') && req.method === 'GET') {
       const admin = req.headers['x-admin-password'] ? 'admin' : 'public';
+      const params = url.searchParams;
+      let served = events;
+      if (params.get('start') && params.get('end')) {
+        const rangeStart = localDateTimeToMinuteKey(params.get('start') + 'T00:00');
+        const rangeEnd = localDateTimeToMinuteKey(params.get('end') + 'T00:00') + 1440;
+        served = expandEventsForRange(events, rangeStart, rangeEnd);
+      }
       return json(res, 200, {
-        events, config, mode: admin,
+        events: served, config, mode: admin,
         updatedAt: new Date().toISOString(), updatedBy: 'test'
       });
+    }
+    if (route.startsWith('/events/') && route.endsWith('/skip') && req.method === 'POST') {
+      const id = decodeURIComponent(route.slice('/events/'.length, -'/skip'.length));
+      const event = events.find(e => e.id === id);
+      if (!event) return json(res, 404, { error: 'That event no longer exists.' });
+      if (!event.recurrence) return json(res, 400, { error: 'Only a repeating event has single weeks to skip.' });
+      const date = body.date;
+      const dayStart = localDateTimeToMinuteKey(date + 'T00:00');
+      const lands = expandWeeklyEvent(event, dayStart, dayStart + 1440)
+        .some(o => o.start.slice(0, 10) === date);
+      if (!lands) return json(res, 400, { error: 'That series has no session on that date.' });
+      event.recurrence.exdates = [...new Set([...(event.recurrence.exdates || []), date])].sort();
+      return json(res, 200, { ok: true });
     }
     if (route === '/events' && req.method === 'POST') {
       const ev = { ...body, id: 'e' + (nextId++) };
