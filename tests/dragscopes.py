@@ -79,6 +79,38 @@ async def main():
         await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
         await page.click("#loginSubmitBtn"); await page.wait_for_timeout(800)
 
+        # ---- The grey ghost clicks to the snapped quarter-hour under the drag.
+        ghost = await page.evaluate("""([thu, fri]) => {
+            const card = document.querySelector(`.day-column[data-date="${thu}"] .event-card`);
+            const col = document.querySelector(`.day-column[data-date="${fri}"]`);
+            const dt = new DataTransfer();
+            card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+            const rect = col.getBoundingClientRect();
+            const hover = (mins) => {
+                const y = rect.top + (mins - 8 * 60) / 60 * 64;
+                col.dispatchEvent(new DragEvent('dragover',
+                    { bubbles: true, cancelable: true, clientY: y, dataTransfer: dt }));
+                const g = document.querySelector('.drag-ghost');
+                return g ? { top: g.style.top, height: g.style.height,
+                             col: g.closest('.day-column').dataset.date,
+                             label: g.textContent } : null;
+            };
+            const onHour = hover(16 * 60 + 7);      // pointing at 4:07 PM
+            const onQuarter = hover(16 * 60 + 22);  // pointing at 4:22 PM
+            card.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+            return { onHour, onQuarter, goneAfter: !document.querySelector('.drag-ghost') };
+        }""", [dates["thu"], dates["fri"]])
+        g = ghost["onHour"]
+        q = ghost["onQuarter"]
+        check("a ghost appears in the hovered column", bool(g) and g["col"] == dates["fri"], str(g))
+        check("the ghost clicks to the 4:00 slot", bool(g) and g["top"] == "512px", str(g))
+        check("the ghost carries the block's hour", bool(g) and g["height"] == "64px", str(g))
+        check("the ghost names the landing times", bool(g) and "4" in g["label"]
+              and "5 PM" in g["label"], str(g))
+        check("a lower hover clicks to the quarter slot", bool(q) and q["top"] == "528px"
+              and "4:15" in q["label"], str(q))
+        check("letting go clears the ghost", ghost["goneAfter"])
+
         # ---- Never mind: a cancelled drag changes nothing.
         await drag_card(page, dates["thu"], dates["fri"], 16 * 60)
         await page.wait_for_selector(".choice-modal")

@@ -2109,6 +2109,19 @@
                 'drag-over'
               );
 
+
+            /*
+              The grey placeholder that clicks from slot to slot under
+              the drag, showing exactly where the block will land -
+              same snap, same clamp as the drop itself, because both
+              read pointerMinuteOfDay.
+            */
+
+            positionDragGhost(
+              column,
+              event.clientY
+            );
+
           }
         );
 
@@ -2513,6 +2526,15 @@
               : null;
 
 
+          state.draggingDuration =
+            localDateTimeToMinuteKey(
+              event.end
+            ) -
+            localDateTimeToMinuteKey(
+              event.start
+            );
+
+
           dragEvent
             .dataTransfer
             .effectAllowed =
@@ -2533,6 +2555,9 @@
       card.addEventListener(
         'dragend',
         () => {
+
+          removeDragGhost();
+
 
           state.draggingId =
             null;
@@ -3461,6 +3486,167 @@
   }
 
 
+  /*
+    One ghost for the whole grid, adopted by whichever column the drag
+    is over. It carries the dragged block's own duration and a time
+    range label, so the admin reads the exact quarter-hour landing
+    before letting go.
+  */
+
+  function positionDragGhost(
+    column,
+    clientY
+  ) {
+
+    const duration =
+      state.draggingDuration ||
+      60;
+
+
+    const startHour =
+      Number(
+        state.config
+          .dayStart ??
+        8
+      );
+
+
+    const endHour =
+      Number(
+        state.config
+          .dayEnd ??
+        24
+      );
+
+
+    const startMin =
+      pointerMinuteOfDay(
+        column,
+        clientY
+      );
+
+
+    const endMin =
+      startMin +
+      duration;
+
+
+    const visibleStart =
+      startHour *
+      60;
+
+
+    const visibleEnd =
+      endHour *
+      60;
+
+
+    const top =
+      (
+        (
+          Math.max(
+            startMin,
+            visibleStart
+          ) -
+          visibleStart
+        ) /
+        60
+      ) *
+      64;
+
+
+    const height =
+      Math.max(
+        (
+          (
+            Math.min(
+              endMin,
+              visibleEnd
+            ) -
+            Math.max(
+              startMin,
+              visibleStart
+            )
+          ) /
+          60
+        ) *
+        64,
+        14
+      );
+
+
+    let ghost =
+      state.dragGhost;
+
+
+    if ( !ghost ) {
+
+      ghost =
+        document.createElement( 'div' );
+
+      ghost.className =
+        'drag-ghost';
+
+
+      const label =
+        document.createElement( 'span' );
+
+      label.className =
+        'drag-ghost-label';
+
+      ghost.appendChild( label );
+
+
+      state.dragGhost =
+        ghost;
+
+    }
+
+
+    if (
+      ghost.parentElement !==
+      column
+    ) {
+
+      column.appendChild( ghost );
+
+    }
+
+
+    ghost.style.top =
+      top +
+      'px';
+
+
+    ghost.style.height =
+      height +
+      'px';
+
+
+    ghost.firstChild.textContent =
+      formatMinuteRange(
+        startMin,
+        endMin
+      );
+
+  }
+
+
+  function removeDragGhost() {
+
+    if ( state.dragGhost ) {
+
+      state.dragGhost.remove();
+
+
+      state.dragGhost =
+        null;
+
+    }
+
+  }
+
+
 
   async function handleDrop(
     event,
@@ -3468,6 +3654,9 @@
   ) {
 
     event.preventDefault();
+
+
+    removeDragGhost();
 
 
     column
