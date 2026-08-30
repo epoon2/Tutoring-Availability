@@ -3951,6 +3951,225 @@
   }
 
 
+  /*
+    In-page choice dialog, replacing the browser's confirm(). Resolves
+    to the chosen value, or null when dismissed. Each verb sits on its
+    own stacked button so a three-way decision reads as three plain
+    sentences instead of an OK/Cancel riddle.
+  */
+
+  function siteDialog({
+    title,
+    message,
+    choices,
+    cancelLabel
+  }) {
+
+    return new Promise( (resolve) => {
+
+      const backdrop =
+        document.createElement( 'div' );
+
+      backdrop.className =
+        'modal-backdrop choice-backdrop';
+
+
+      const card =
+        document.createElement( 'div' );
+
+      card.className =
+        'modal-card small-modal choice-modal';
+
+      card.setAttribute( 'role', 'alertdialog' );
+
+      card.setAttribute( 'aria-modal', 'true' );
+
+
+      const heading =
+        document.createElement( 'h2' );
+
+      heading.textContent =
+        title;
+
+      card.appendChild( heading );
+
+
+      if ( message ) {
+
+        const body =
+          document.createElement( 'p' );
+
+        body.className =
+          'choice-message';
+
+        body.textContent =
+          message;
+
+        card.appendChild( body );
+
+      }
+
+
+      const list =
+        document.createElement( 'div' );
+
+      list.className =
+        'choice-list';
+
+
+      let settled = false;
+
+      const finish = (value) => {
+
+        if ( settled ) {
+
+          return;
+
+        }
+
+        settled = true;
+
+        document.removeEventListener( 'keydown', onKey, true );
+
+        backdrop.remove();
+
+        resolve( value );
+
+      };
+
+
+      ( choices || [] ).forEach( (choice) => {
+
+        const button =
+          document.createElement( 'button' );
+
+        button.type =
+          'button';
+
+        button.className =
+          'btn choice-btn' +
+          ( choice.danger
+            ? ' danger'
+            : ' secondary' );
+
+        button.textContent =
+          choice.label;
+
+        button.addEventListener( 'click', () => {
+
+          finish( choice.value );
+
+        });
+
+        list.appendChild( button );
+
+      });
+
+      card.appendChild( list );
+
+
+      const cancel =
+        document.createElement( 'button' );
+
+      cancel.type =
+        'button';
+
+      cancel.className =
+        'btn choice-cancel';
+
+      cancel.textContent =
+        cancelLabel ||
+        'Never mind';
+
+      cancel.addEventListener( 'click', () => {
+
+        finish( null );
+
+      });
+
+      card.appendChild( cancel );
+
+
+      /*
+        Capture phase, so Escape closes this dialog without also
+        reaching the app's global handler and closing whatever
+        modal sits underneath it.
+      */
+
+      const onKey = (keyEvent) => {
+
+        if ( keyEvent.key === 'Escape' ) {
+
+          keyEvent.stopPropagation();
+
+          finish( null );
+
+        }
+
+      };
+
+      document.addEventListener( 'keydown', onKey, true );
+
+
+      backdrop.addEventListener( 'mousedown', (downEvent) => {
+
+        if ( downEvent.target === backdrop ) {
+
+          finish( null );
+
+        }
+
+      });
+
+
+      backdrop.appendChild( card );
+
+      document.body.appendChild( backdrop );
+
+
+      const first =
+        list.querySelector( 'button' );
+
+      if ( first ) {
+
+        first.focus();
+
+      }
+
+    });
+
+  }
+
+
+  async function siteConfirm(
+    title,
+    message,
+    verb
+  ) {
+
+    const choice =
+      await siteDialog({
+        title,
+        message,
+        choices: [
+          {
+            label:
+              verb ||
+              'Delete',
+            value:
+              'yes',
+            danger:
+              true
+          }
+        ]
+      });
+
+
+    return choice === 'yes';
+
+  }
+
+
   function occurrenceLabel(
     original
   ) {
@@ -3988,12 +4207,20 @@
 
 
     const message =
-      'Remove just ' +
-      occurrenceLabel( original ) +
-      '? Every other week keeps this session.';
+      'Every other week keeps this session.';
 
 
-    if ( !confirm( message ) ) {
+    const wanted =
+      await siteConfirm(
+        'Remove just ' +
+        occurrenceLabel( original ) +
+        '?',
+        message,
+        'Remove it'
+      );
+
+
+    if ( !wanted ) {
 
       return;
 
@@ -4059,13 +4286,17 @@
     }
 
 
-    const message =
-      original.recurrence
-        ? 'Delete this entire recurring series?'
-        : 'Delete this event?';
+    const wanted =
+      await siteConfirm(
+        original.recurrence
+          ? 'Delete this entire recurring series?'
+          : 'Delete this event?',
+        original.title ||
+        ''
+      );
 
 
-    if ( !confirm( message ) ) {
+    if ( !wanted ) {
 
       return;
 
@@ -8090,25 +8321,18 @@
       'WEEKLY';
 
 
-    /*
-      This is currently the only browser
-      confirmation still used.
-
-      It is separate from schedule
-      conflict warnings.
-    */
-
-    const message =
-      recurring
-        ? 'Delete this entire recurring series?'
-        : 'Delete this event?';
+    const wanted =
+      await siteConfirm(
+        recurring
+          ? 'Delete this entire recurring series?'
+          : 'Delete this event?',
+        $('eventTitle')
+          .value ||
+        ''
+      );
 
 
-    if (
-      !confirm(
-        message
-      )
-    ) {
+    if ( !wanted ) {
 
       return;
 

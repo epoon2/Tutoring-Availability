@@ -2021,3 +2021,25 @@ button.agenda-item:hover {
   }
 
 }
+
+/* ---- In-page choice dialog (replaces the browser's confirm) ---- */
+
+.choice-modal .choice-message {
+  margin: 4px 0 14px;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.choice-btn,
+.choice-cancel {
+  width: 100%;
+  justify-content: center;
+}
