@@ -301,6 +301,16 @@
       true
     );
 
+
+    /*
+      Keep the "now" line honest while the tab sits open.
+    */
+
+    setInterval(
+      mountNowLine,
+      60000
+    );
+
   }
 
 
@@ -1087,6 +1097,123 @@
     renderAgenda();
 
     renderWeekSummary();
+
+    mountNowLine();
+
+  }
+
+
+  /*
+    The red line that says "you are here". Drawn in today's column at
+    the portal's own current time - getPortalNowMinuteKey, not the
+    visitor's clock, so a student in another timezone sees the line
+    where the tutor's day actually stands. Redrawn by renderAll and by
+    a once-a-minute tick; absent entirely when the viewed week is not
+    this one or the moment falls outside the visible hours.
+  */
+
+  function mountNowLine() {
+
+    document
+      .querySelectorAll( '.now-line' )
+      .forEach(
+        (element) => {
+
+          element.remove();
+
+        }
+      );
+
+
+    const nowLocal =
+      minuteKeyToLocalDateTime(
+        getPortalNowMinuteKey()
+      );
+
+
+    const today =
+      nowLocal.slice( 0, 10 );
+
+
+    const column =
+      document.querySelector(
+        '.day-column[data-date="' +
+        today +
+        '"]'
+      );
+
+
+    if ( !column ) {
+
+      return;
+
+    }
+
+
+    const startHour =
+      Number(
+        state.config
+          .dayStart ??
+        8
+      );
+
+
+    const endHour =
+      Number(
+        state.config
+          .dayEnd ??
+        24
+      );
+
+
+    const minutes =
+      Number( nowLocal.slice( 11, 13 ) ) *
+      60 +
+      Number( nowLocal.slice( 14, 16 ) );
+
+
+    if (
+      minutes <
+        startHour *
+        60 ||
+      minutes >
+        endHour *
+        60
+    ) {
+
+      return;
+
+    }
+
+
+    const line =
+      document.createElement( 'div' );
+
+    line.className =
+      'now-line';
+
+    line.style.top =
+      (
+        (
+          minutes -
+          startHour *
+          60
+        ) /
+        60
+      ) *
+      64 +
+      'px';
+
+
+    const dot =
+      document.createElement( 'span' );
+
+    dot.className =
+      'now-dot';
+
+    line.appendChild( dot );
+
+    column.appendChild( line );
 
   }
 

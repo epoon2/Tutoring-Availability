@@ -7,7 +7,8 @@ import { extname, join, normalize } from 'node:path';
 // The REAL expansion logic, so the stub serves recurring events exactly
 // the way production does (run `node tests/install-shim.mjs` once first).
 import {
-  expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey
+  expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey,
+  buildPublicSchedule
 } from '../netlify/functions/api.mjs';
 
 const ROOT = new URL('../public/', import.meta.url).pathname;
@@ -53,7 +54,10 @@ createServer(async (req, res) => {
         served = expandEventsForRange(events, rangeStart, rangeEnd);
       }
       return json(res, 200, {
-        events: served, config, mode: admin,
+        // Public visitors get the same reduced interval schedule
+        // production builds; admins get the raw expanded events.
+        events: admin === 'admin' ? served : buildPublicSchedule(served),
+        config, mode: admin,
         updatedAt: new Date().toISOString(), updatedBy: 'test'
       });
     }

@@ -2043,3 +2043,25 @@ button.agenda-item:hover {
   width: 100%;
   justify-content: center;
 }
+
+/* ---- The "you are here" line on today's column ---- */
+
+.now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid #e14b4b;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.now-dot {
+  position: absolute;
+  left: -4px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e14b4b;
+}

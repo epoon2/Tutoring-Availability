@@ -17,8 +17,6 @@ const EVENTS_CACHE_TAG = "events";
 const TIMEZONE_ID =
   "America/Los_Angeles";
 
-const QUARTER_HOUR =
-  15;
 
 const EVENTS_KEY =
   "events-v2";
@@ -2357,40 +2355,33 @@ function buildPublicSchedule(
 ) {
 
   /*
-    A window that has already elapsed cannot be booked, so the public
-    schedule begins at the next quarter-hour mark rather than at the
-    start of the requested week. Blocked sessions inherit the same cut,
-    because they are only published where they overlap availability.
+    The whole week is published, past included: the page draws a line
+    at the current time instead of amputating everything behind it, so
+    a visitor can see the shape of a day that already happened. What
+    has elapsed still cannot be BOOKED - validateRequest refuses any
+    request starting before now - but hiding it was a display choice,
+    and it was the wrong one.
   */
 
-  const horizon =
-    roundUpToQuarterHour(
-      currentMinuteKey()
-    );
-
-
   const available =
-    clipToUpcoming(
-      mergeIntervals(
-        events
-          .filter(
-            (event) =>
-              event.type ===
-              "AVAILABLE"
-          )
-          .map(
-            (event) => [
-              localDateTimeToMinuteKey(
-                event.start
-              ),
+    mergeIntervals(
+      events
+        .filter(
+          (event) =>
+            event.type ===
+            "AVAILABLE"
+        )
+        .map(
+          (event) => [
+            localDateTimeToMinuteKey(
+              event.start
+            ),
 
-              localDateTimeToMinuteKey(
-                event.end
-              )
-            ]
-          )
-      ),
-      horizon
+            localDateTimeToMinuteKey(
+              event.end
+            )
+          ]
+        )
     );
 
 
@@ -2777,58 +2768,6 @@ function subtractIntervals(
 
 
   return result;
-
-}
-
-
-/*
-  Drop everything before the horizon, and shorten the range that
-  straddles it, so a partly elapsed window keeps only the part that
-  can still be booked.
-*/
-
-/*
-  Nobody books a slot that starts in seven minutes, and a ragged
-  "12:18" reads as a glitch beside times that otherwise land on the
-  quarter hour. Advertise from the next quarter-hour mark instead. A
-  mark that has only just arrived is left alone rather than pushed to
-  the following one.
-*/
-
-function roundUpToQuarterHour(
-  minuteKey
-) {
-
-  return Math.ceil(
-    minuteKey /
-    QUARTER_HOUR
-  ) *
-  QUARTER_HOUR;
-
-}
-
-
-function clipToUpcoming(
-  ranges,
-  horizon
-) {
-
-  return ranges
-    .map(
-      (range) => [
-        Math.max(
-          range[0],
-          horizon
-        ),
-
-        range[1]
-      ]
-    )
-    .filter(
-      (range) =>
-        range[1] >
-        range[0]
-    );
 
 }
 
@@ -3230,21 +3169,13 @@ function json(body, status = 200, extraHeaders = {}) {
   });
 }
 
-function secondsUntilNextQuarterHour() {
-  const span = QUARTER_HOUR * 60;
-  return span - (Math.floor(Date.now() / 1000) % span);
-}
-
 /*
-  A public body is built from one quarter-hour mark, so it stops being
-  true the instant the next mark arrives. Expire it exactly then rather
-  than on a fixed ten-minute clock: the cache can no longer outlive the
-  horizon it was built from, and it is rebuilt four times an hour
-  instead of six.
-
-  stale-while-revalidate is gone for the same reason. Serving the
-  previous body for another minute past the boundary is precisely the
-  staleness this is removing.
+  The public body no longer depends on when it was built - the elapsed
+  part of the week ships too, and the "now" line is drawn by the page
+  from the visitor's own clock. So the cache needs no clock-driven
+  expiry at all: the body changes only when the schedule changes, and
+  every write purges the cache tag. The hour cap is a backstop for the
+  day a purge fails, nothing more.
 */
 
 function publicCacheHeaders(req, admin) {
@@ -3254,7 +3185,7 @@ function publicCacheHeaders(req, admin) {
   return {
     "Cache-Control": "public, max-age=0, must-revalidate",
     "Netlify-CDN-Cache-Control":
-      `public, s-maxage=${secondsUntilNextQuarterHour()}, durable`,
+      "public, s-maxage=3600, durable",
     "Netlify-Cache-Tag": EVENTS_CACHE_TAG,
     "Vary": "x-admin-password"
   };
@@ -3267,7 +3198,8 @@ function publicCacheHeaders(req, admin) {
 export {
   expandEventsForRange,
   expandWeeklyEvent,
-  localDateTimeToMinuteKey
+  localDateTimeToMinuteKey,
+  buildPublicSchedule
 };
 
 
