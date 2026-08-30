@@ -2488,84 +2488,82 @@
 
 
       /*
-        Only one-time events can
-        be dragged.
+        Everything drags. A one-time event moves outright; a repeating
+        one is asked, on drop, how much of the series moves with it -
+        so the card remembers which occurrence was picked up, because
+        "just this block" means the block in the admin's hand.
       */
 
-      if (
-        !recurring
-      ) {
-
-        card.draggable =
-          true;
+      card.draggable =
+        true;
 
 
-        card.addEventListener(
-          'dragstart',
-          (dragEvent) => {
+      card.addEventListener(
+        'dragstart',
+        (dragEvent) => {
 
-            state.draggingId =
-              original.id;
-
-
-            dragEvent
-              .dataTransfer
-              .effectAllowed =
-                'move';
+          state.draggingId =
+            original.masterId ||
+            original.id;
 
 
-            dragEvent
-              .dataTransfer
-              .setData(
-                'text/plain',
-                original.id
-              );
-
-          }
-        );
+          state.draggingOccurrence =
+            recurring
+              ? event
+              : null;
 
 
-        card.addEventListener(
-          'dragend',
-          () => {
-
-            state.draggingId =
-              null;
+          dragEvent
+            .dataTransfer
+            .effectAllowed =
+              'move';
 
 
-            state.suppressNextScheduleClick =
-              true;
+          dragEvent
+            .dataTransfer
+            .setData(
+              'text/plain',
+              state.draggingId
+            );
+
+        }
+      );
 
 
-            document
-              .querySelectorAll(
-                '.drag-over'
-              )
-              .forEach(
-                (element) => {
+      card.addEventListener(
+        'dragend',
+        () => {
 
-                  element
-                    .classList
-                    .remove(
-                      'drag-over'
-                    );
-
-                }
-              );
-
-          }
-        );
-
-      } else {
-
-        card.draggable =
-          false;
+          state.draggingId =
+            null;
 
 
-        card.title =
-          'Recurring event. Click to edit the recurring series.';
+          state.draggingOccurrence =
+            null;
 
-      }
+
+          state.suppressNextScheduleClick =
+            true;
+
+
+          document
+            .querySelectorAll(
+              '.drag-over'
+            )
+            .forEach(
+              (element) => {
+
+                element
+                  .classList
+                  .remove(
+                    'drag-over'
+                  );
+
+              }
+            );
+
+        }
+      );
 
 
       /*
@@ -3512,9 +3510,21 @@
       storedEvent.recurrence
     ) {
 
-      setStatus(
-        'Recurring events must be edited by clicking them.'
+      /*
+        A repeating block is not moved blindly: the drop asks how much
+        of the series comes along. The exact card picked up was
+        remembered at dragstart; the stored event found by id is only
+        the week's first occurrence, which may be a different day.
+      */
+
+      await moveRecurringDrop(
+        storedEvent,
+        state.draggingOccurrence ||
+        storedEvent,
+        column,
+        event
       );
+
 
       return;
 
@@ -4644,6 +4654,947 @@
     } catch (error) {
 
       setStatus( error.message );
+
+    }
+
+  }
+
+
+  /* =========================================================
+     MOVING A REPEATING BLOCK
+  ========================================================= */
+
+  /*
+    The master record rebuilt for saving: id and times from the
+    series' own anchor (seriesStart/seriesEnd), never from an
+    expanded occurrence, whose start belongs to whatever week was
+    on screen.
+  */
+
+  function masterPayload(
+    original,
+    recurrence
+  ) {
+
+    return {
+
+      id:
+        original.masterId ||
+        original.id,
+
+      type:
+        original.type,
+
+      title:
+        original.title,
+
+      notes:
+        original.notes,
+
+      start:
+        original.seriesStart ||
+        original.start,
+
+      end:
+        original.seriesEnd ||
+        original.end,
+
+      recurrence
+
+    };
+
+  }
+
+
+  async function repostMaster(
+    original
+  ) {
+
+    await api(
+      '/events',
+      {
+        method:
+          'POST',
+        body:
+          JSON.stringify(
+            masterPayload(
+              original,
+              original.recurrence
+            )
+          )
+      }
+    );
+
+  }
+
+
+  function dayNumber(
+    dateStr
+  ) {
+
+    return Math.floor(
+      Date.parse(
+        dateStr +
+        'T00:00:00Z'
+      ) /
+      86400000
+    );
+
+  }
+
+
+  function utcWeekday(
+    dateStr
+  ) {
+
+    return new Date(
+      dateStr +
+      'T00:00:00Z'
+    ).getUTCDay();
+
+  }
+
+
+  /*
+    How many occurrences the series delivers strictly before a date.
+    Exception dates still count - a skipped week consumes its slot in
+    a COUNT series rather than extending it - so this walks the bare
+    weekday-and-interval pattern, matching the server's bookkeeping.
+  */
+
+  function occurrencesBefore(
+    original,
+    cut
+  ) {
+
+    const recurrence =
+      original.recurrence;
+
+
+    const startDate =
+      (
+        original.seriesStart ||
+        original.start
+      ).slice( 0, 10 );
+
+
+    const interval =
+      recurrence.interval ||
+      1;
+
+
+    const anchorWeekStart =
+      dayNumber( startDate ) -
+      utcWeekday( startDate );
+
+
+    let count = 0;
+
+
+    for (
+      let day = dayNumber( startDate );
+      day < dayNumber( cut );
+      day++
+    ) {
+
+      const weekday =
+        ( day + 4 ) %
+        7;
+
+
+      const weeks =
+        Math.floor(
+          (
+            day -
+            anchorWeekStart
+          ) /
+          7
+        );
+
+
+      if (
+        recurrence.weekdays.includes( weekday ) &&
+        weeks %
+          interval ===
+          0
+      ) {
+
+        count++;
+
+      }
+
+    }
+
+
+    return count;
+
+  }
+
+
+  function moveErrorText(
+    error
+  ) {
+
+    return error?.data?.code ===
+      'BLOCKED_CONFLICT'
+      ? 'Move not saved: it would overlap another blocked session.'
+      : (
+          error.message ||
+          'The move failed.'
+        );
+
+  }
+
+
+  function moveTargetLabel(
+    localDateTime
+  ) {
+
+    return new Date(
+      localDateTime
+    ).toLocaleString(
+      undefined,
+      {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      }
+    );
+
+  }
+
+
+  /*
+    Dropping a repeating block asks the same three-reach question as
+    deleting one: just this block, this and every one after, or the
+    whole series. The dialog opens after the drop, with the landing
+    time in its message, and Never mind puts everything back.
+  */
+
+  async function moveRecurringDrop(
+    original,
+    occurrence,
+    column,
+    dropEvent
+  ) {
+
+    const occStartKey =
+      localDateTimeToMinuteKey(
+        occurrence.start
+      );
+
+
+    const duration =
+      localDateTimeToMinuteKey(
+        occurrence.end
+      ) -
+      occStartKey;
+
+
+    const newStart =
+      dateAndMinutesToLocalDateTime(
+        column.dataset.date,
+        pointerMinuteOfDay(
+          column,
+          dropEvent.clientY
+        )
+      );
+
+
+    const newStartKey =
+      localDateTimeToMinuteKey(
+        newStart
+      );
+
+
+    const newEnd =
+      minuteKeyToLocalDateTime(
+        newStartKey +
+        duration
+      );
+
+
+    if (
+      newStart ===
+      occurrence.start
+    ) {
+
+      return;
+
+    }
+
+
+    const dayDelta =
+      dayNumber(
+        column.dataset.date
+      ) -
+      dayNumber(
+        occurrence.start.slice( 0, 10 )
+      );
+
+
+    const timeDelta =
+      newStartKey -
+      occStartKey -
+      dayDelta *
+      1440;
+
+
+    const choice =
+      await siteDialog({
+        title:
+          'Move this repeating block?',
+        message:
+          ( original.title || 'This event' ) +
+          ' would land on ' +
+          moveTargetLabel( newStart ) +
+          '. How much of the series moves?',
+        choices: [
+          {
+            label:
+              'Just this block (' +
+              occurrenceLabel( occurrence ) +
+              ')',
+            value:
+              'one'
+          },
+          {
+            label:
+              'This and every one after',
+            value:
+              'following'
+          },
+          {
+            label:
+              'The whole series, past and future',
+            value:
+              'all'
+          }
+        ]
+      });
+
+
+    if ( !choice ) {
+
+      return;
+
+    }
+
+
+    if ( choice === 'one' ) {
+
+      await moveOneOccurrence(
+        original,
+        occurrence,
+        newStart,
+        newEnd
+      );
+
+    } else if ( choice === 'following' ) {
+
+      await moveFollowing(
+        original,
+        occurrence,
+        newStart,
+        newEnd,
+        dayDelta,
+        timeDelta
+      );
+
+    } else {
+
+      await moveWholeSeries(
+        original,
+        occurrence,
+        dayDelta,
+        timeDelta
+      );
+
+    }
+
+  }
+
+
+  /*
+    One block steps out of line: the series records an exception on
+    the old date and a standalone event appears at the new time. If
+    the standalone cannot be saved - a conflict, say - the exception
+    is rolled back, so a failed move never silently deletes the week.
+  */
+
+  async function moveOneOccurrence(
+    original,
+    occurrence,
+    newStart,
+    newEnd
+  ) {
+
+    const id =
+      original.masterId ||
+      original.id;
+
+
+    const date =
+      occurrence.start.slice( 0, 10 );
+
+
+    try {
+
+      setStatus(
+        'Moving this block…'
+      );
+
+
+      await api(
+        '/events/' +
+          encodeURIComponent( id ) +
+          '/skip',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify({ date })
+        }
+      );
+
+
+      try {
+
+        await api(
+          '/events',
+          {
+            method:
+              'POST',
+            body:
+              JSON.stringify({
+
+                type:
+                  original.type,
+
+                title:
+                  original.title,
+
+                notes:
+                  original.notes,
+
+                start:
+                  newStart,
+
+                end:
+                  newEnd,
+
+                recurrence:
+                  null
+
+              })
+          }
+        );
+
+      } catch (error) {
+
+        await repostMaster(
+          original
+        );
+
+
+        throw error;
+
+      }
+
+
+      await loadWeek();
+
+
+      setStatus(
+        'Moved just ' +
+        occurrenceLabel( occurrence ) +
+        '. Every other week keeps its time.'
+      );
+
+    } catch (error) {
+
+      await loadWeek();
+
+
+      setStatus(
+        moveErrorText( error )
+      );
+
+    }
+
+  }
+
+
+  /*
+    From here on, the series happens at the new time: the old master
+    is truncated the day before the cut, and a new series starts at
+    the landing time carrying the rest of the pattern. The dragged
+    weekday follows the drop; the series' other weekdays stay put. A
+    COUNT series hands the new one only the occurrences it had left,
+    and exception dates on the moved weekday travel with it.
+  */
+
+  async function moveFollowing(
+    original,
+    occurrence,
+    newStart,
+    newEnd,
+    dayDelta,
+    timeDelta
+  ) {
+
+    const cut =
+      occurrence.start.slice( 0, 10 );
+
+
+    const masterStartDate =
+      (
+        original.seriesStart ||
+        original.start
+      ).slice( 0, 10 );
+
+
+    if (
+      cut <=
+      masterStartDate
+    ) {
+
+      /*
+        Cutting at the first block means the whole series moves.
+      */
+
+      await moveWholeSeries(
+        original,
+        occurrence,
+        dayDelta,
+        timeDelta
+      );
+
+
+      return;
+
+    }
+
+
+    const recurrence =
+      original.recurrence;
+
+
+    const oldWeekday =
+      utcWeekday( cut );
+
+
+    const newWeekday =
+      utcWeekday(
+        newStart.slice( 0, 10 )
+      );
+
+
+    const movedRecurrence = {
+
+      frequency:
+        'WEEKLY',
+
+      interval:
+        recurrence.interval ||
+        1,
+
+      weekdays:
+        [ ...new Set(
+          recurrence.weekdays.map(
+            (weekday) =>
+              weekday ===
+              oldWeekday
+                ? newWeekday
+                : weekday
+          )
+        ) ].sort(
+          (a, b) =>
+            a - b
+        ),
+
+      endType:
+        recurrence.endType ||
+        'NEVER'
+
+    };
+
+
+    if (
+      recurrence.endType ===
+      'ON'
+    ) {
+
+      movedRecurrence.until =
+        recurrence.until >=
+        newStart.slice( 0, 10 )
+          ? recurrence.until
+          : newStart.slice( 0, 10 );
+
+    }
+
+
+    if (
+      recurrence.endType ===
+      'COUNT'
+    ) {
+
+      movedRecurrence.count =
+        Math.max(
+          1,
+          recurrence.count -
+          occurrencesBefore(
+            original,
+            cut
+          )
+        );
+
+    }
+
+
+    const carriedExdates =
+      ( recurrence.exdates || [] )
+        .filter(
+          (exdate) =>
+            exdate >=
+            cut
+        )
+        .map(
+          (exdate) =>
+            utcWeekday( exdate ) ===
+            oldWeekday
+              ? shiftDateString(
+                  exdate,
+                  dayDelta
+                )
+              : exdate
+        );
+
+
+    if ( carriedExdates.length ) {
+
+      movedRecurrence.exdates =
+        carriedExdates;
+
+    }
+
+
+    const truncated = {
+
+      frequency:
+        'WEEKLY',
+
+      interval:
+        recurrence.interval ||
+        1,
+
+      weekdays:
+        recurrence.weekdays,
+
+      endType:
+        'ON',
+
+      until:
+        shiftDateString(
+          cut,
+          -1
+        )
+
+    };
+
+
+    if ( recurrence.exdates ) {
+
+      truncated.exdates =
+        recurrence.exdates;
+
+    }
+
+
+    try {
+
+      setStatus(
+        'Moving this and the weeks after…'
+      );
+
+
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify(
+              masterPayload(
+                original,
+                truncated
+              )
+            )
+        }
+      );
+
+
+      try {
+
+        await api(
+          '/events',
+          {
+            method:
+              'POST',
+            body:
+              JSON.stringify({
+
+                type:
+                  original.type,
+
+                title:
+                  original.title,
+
+                notes:
+                  original.notes,
+
+                start:
+                  newStart,
+
+                end:
+                  newEnd,
+
+                recurrence:
+                  movedRecurrence
+
+              })
+          }
+        );
+
+      } catch (error) {
+
+        await repostMaster(
+          original
+        );
+
+
+        throw error;
+
+      }
+
+
+      await loadWeek();
+
+
+      setStatus(
+        'Moved ' +
+        occurrenceLabel( occurrence ) +
+        ' and every week after it. Earlier weeks keep their time.'
+      );
+
+    } catch (error) {
+
+      await loadWeek();
+
+
+      setStatus(
+        moveErrorText( error )
+      );
+
+    }
+
+  }
+
+
+  /*
+    The whole series shifts by the same distance the block was
+    dragged - day and minutes alike, past weeks included. The dragged
+    weekday moves in the pattern; the others stay. Exception dates on
+    the moved weekday shift with it, and an ON end date slides by the
+    same days so the series keeps its length.
+  */
+
+  async function moveWholeSeries(
+    original,
+    occurrence,
+    dayDelta,
+    timeDelta
+  ) {
+
+    const recurrence =
+      original.recurrence;
+
+
+    const masterStart =
+      original.seriesStart ||
+      original.start;
+
+
+    const masterEnd =
+      original.seriesEnd ||
+      original.end;
+
+
+    const shiftBy =
+      dayDelta *
+      1440 +
+      timeDelta;
+
+
+    const oldWeekday =
+      utcWeekday(
+        occurrence.start.slice( 0, 10 )
+      );
+
+
+    const newWeekday =
+      (
+        (
+          oldWeekday +
+          dayDelta
+        ) %
+        7 +
+        7
+      ) %
+      7;
+
+
+    const movedRecurrence = {
+
+      frequency:
+        'WEEKLY',
+
+      interval:
+        recurrence.interval ||
+        1,
+
+      weekdays:
+        [ ...new Set(
+          recurrence.weekdays.map(
+            (weekday) =>
+              weekday ===
+              oldWeekday
+                ? newWeekday
+                : weekday
+          )
+        ) ].sort(
+          (a, b) =>
+            a - b
+        ),
+
+      endType:
+        recurrence.endType ||
+        'NEVER'
+
+    };
+
+
+    if (
+      recurrence.endType ===
+      'ON'
+    ) {
+
+      movedRecurrence.until =
+        shiftDateString(
+          recurrence.until,
+          dayDelta
+        );
+
+    }
+
+
+    if (
+      recurrence.endType ===
+      'COUNT'
+    ) {
+
+      movedRecurrence.count =
+        recurrence.count;
+
+    }
+
+
+    if ( recurrence.exdates ) {
+
+      movedRecurrence.exdates =
+        recurrence.exdates.map(
+          (exdate) =>
+            utcWeekday( exdate ) ===
+            oldWeekday
+              ? shiftDateString(
+                  exdate,
+                  dayDelta
+                )
+              : exdate
+        );
+
+    }
+
+
+    try {
+
+      setStatus(
+        'Moving the whole series…'
+      );
+
+
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify({
+
+              id:
+                original.masterId ||
+                original.id,
+
+              type:
+                original.type,
+
+              title:
+                original.title,
+
+              notes:
+                original.notes,
+
+              start:
+                minuteKeyToLocalDateTime(
+                  localDateTimeToMinuteKey(
+                    masterStart
+                  ) +
+                  shiftBy
+                ),
+
+              end:
+                minuteKeyToLocalDateTime(
+                  localDateTimeToMinuteKey(
+                    masterEnd
+                  ) +
+                  shiftBy
+                ),
+
+              recurrence:
+                movedRecurrence
+
+            })
+        }
+      );
+
+
+      await loadWeek();
+
+
+      setStatus(
+        'Moved the whole series, past weeks included.'
+      );
+
+    } catch (error) {
+
+      await loadWeek();
+
+
+      setStatus(
+        moveErrorText( error )
+      );
 
     }
 
