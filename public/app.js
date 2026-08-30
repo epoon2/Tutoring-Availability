@@ -3743,7 +3743,11 @@
         run:
           () => {
 
-            openEventModal( original );
+            openEventModal(
+              original,
+              occurrence ||
+              original
+            );
 
           }
       },
@@ -3782,55 +3786,39 @@
       {
         label:
           original.recurrence
-            ? 'Delete series'
+            ? 'Delete…'
             : 'Delete',
         danger:
           true,
         run:
           () => {
 
-            deleteEventById( original );
+            /*
+              A repeating event is never deleted in one blind stroke:
+              the dialog asks how far the deletion reaches - just the
+              clicked block, everything from it onward, or the whole
+              series. The clicked date comes from the expanded
+              occurrence, not the series master, whose start is stuck
+              on the anchor week.
+            */
+
+            if ( original.recurrence ) {
+
+              confirmScopedDelete(
+                original,
+                occurrence ||
+                original
+              );
+
+            } else {
+
+              deleteEventById( original );
+
+            }
 
           }
       }
     ];
-
-
-    /*
-      A repeating event gets one more verb: remove just this week's
-      occurrence and leave every other week alone - the way a calendar
-      deletes "just this one". Placed above Delete so the gentle option
-      is reached before the destructive one.
-    */
-
-    if ( original.recurrence ) {
-
-      /*
-        The label and the deletion both speak about the card that was
-        clicked - THIS week's session - so they read from the expanded
-        occurrence, not from the series master, whose start is stuck on
-        the anchor week.
-      */
-
-      const clicked =
-        occurrence ||
-        original;
-
-
-      items.splice( 3, 0, {
-        label:
-          'Skip just this week (' +
-          occurrenceLabel( clicked ) +
-          ')',
-        run:
-          () => {
-
-            skipOccurrence( clicked );
-
-          }
-      });
-
-    }
 
 
     openContextMenu(
@@ -4193,38 +4181,137 @@
 
 
   /*
-    Remove one occurrence of a repeating event. The series itself is
-    untouched: the server records the date as an exception and every
-    other week keeps its session.
+    Date arithmetic on plain YYYY-MM-DD strings, through UTC so a DST
+    boundary can never bend a day into 23 or 25 hours mid-shift.
   */
 
-  async function skipOccurrence(
-    original
+  function shiftDateString(
+    dateStr,
+    deltaDays
+  ) {
+
+    const [ y, m, d ] =
+      dateStr
+        .split( '-' )
+        .map( Number );
+
+
+    return new Date(
+      Date.UTC(
+        y,
+        m - 1,
+        d + deltaDays
+      )
+    )
+      .toISOString()
+      .slice( 0, 10 );
+
+  }
+
+
+  /*
+    Deleting from a repeating series reaches one of three distances:
+    the clicked block alone, everything from it onward, or the whole
+    series. One dialog asks which; choosing the verb is the
+    confirmation, so nothing asks twice. Resolves true when any
+    deletion was chosen and attempted.
+  */
+
+  async function confirmScopedDelete(
+    original,
+    occurrence
+  ) {
+
+    const clicked =
+      occurrence ||
+      original;
+
+
+    const choice =
+      await siteDialog({
+        title:
+          'Delete from this series?',
+        message:
+          ( original.title || 'This event' ) +
+          ' repeats weekly. How much of it goes?',
+        choices: [
+          {
+            label:
+              'Just this block (' +
+              occurrenceLabel( clicked ) +
+              ')',
+            value:
+              'one'
+          },
+          {
+            label:
+              'This and every one after',
+            value:
+              'following',
+            danger:
+              true
+          },
+          {
+            label:
+              'The whole series, past and future',
+            value:
+              'all',
+            danger:
+              true
+          }
+        ]
+      });
+
+
+    if ( !choice ) {
+
+      return false;
+
+    }
+
+
+    if ( choice === 'one' ) {
+
+      await deleteOneOccurrence(
+        original,
+        clicked
+      );
+
+    } else if ( choice === 'following' ) {
+
+      await deleteFollowing(
+        original,
+        clicked
+      );
+
+    } else {
+
+      await deleteWholeSeries(
+        original
+      );
+
+    }
+
+
+    return true;
+
+  }
+
+
+  /*
+    Remove one occurrence. The series itself is untouched: the server
+    records the date as an exception and every other week keeps its
+    session. The status is written after loadWeek so its own progress
+    narration does not stomp on the confirmation.
+  */
+
+  async function deleteOneOccurrence(
+    original,
+    occurrence
   ) {
 
     const date =
-      original.start.slice( 0, 10 );
-
-
-    const message =
-      'Every other week keeps this session.';
-
-
-    const wanted =
-      await siteConfirm(
-        'Remove just ' +
-        occurrenceLabel( original ) +
-        '?',
-        message,
-        'Remove it'
-      );
-
-
-    if ( !wanted ) {
-
-      return;
-
-    }
+      occurrence.start.slice( 0, 10 );
 
 
     const id =
@@ -4247,18 +4334,184 @@
       );
 
 
+      await loadWeek();
+
+
+      setStatus(
+        occurrenceLabel( occurrence ) +
+        ' removed. Every other week keeps this session.'
+      );
+
+    } catch (error) {
+
+      setStatus( error.message );
+
+    }
+
+  }
+
+
+  /*
+    Ending a series "from here on" is a truncation, not a deletion:
+    the master keeps everything it had but gains an end date the day
+    before the chosen block, so earlier weeks survive exactly as they
+    were. The master's own start and times come from seriesStart and
+    seriesEnd - the clicked card is an expanded occurrence whose start
+    belongs to the viewed week, and saving THAT as the anchor would
+    silently erase the history being protected.
+  */
+
+  async function deleteFollowing(
+    original,
+    occurrence
+  ) {
+
+    const cut =
+      occurrence.start.slice( 0, 10 );
+
+
+    const masterStart =
+      original.seriesStart ||
+      original.start;
+
+
+    const masterEnd =
+      original.seriesEnd ||
+      original.end;
+
+
+    if (
+      cut <=
+      masterStart.slice( 0, 10 )
+    ) {
+
       /*
-        loadWeek narrates its own progress into the status line, so the
-        confirmation is written after it finishes - otherwise "Loading"
-        stomps on it and the admin never sees what happened.
+        Cutting at the very first block leaves nothing - that is the
+        whole-series case wearing different clothes.
       */
+
+      await deleteWholeSeries(
+        original
+      );
+
+
+      return;
+
+    }
+
+
+    const recurrence = {
+
+      frequency:
+        'WEEKLY',
+
+      interval:
+        original.recurrence.interval ||
+        1,
+
+      weekdays:
+        original.recurrence.weekdays,
+
+      endType:
+        'ON',
+
+      until:
+        shiftDateString(
+          cut,
+          -1
+        )
+
+    };
+
+
+    if ( original.recurrence.exdates ) {
+
+      recurrence.exdates =
+        original.recurrence.exdates;
+
+    }
+
+
+    try {
+
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify({
+
+              id:
+                original.masterId ||
+                original.id,
+
+              type:
+                original.type,
+
+              title:
+                original.title,
+
+              notes:
+                original.notes,
+
+              start:
+                masterStart,
+
+              end:
+                masterEnd,
+
+              recurrence
+
+            })
+        }
+      );
+
 
       await loadWeek();
 
 
       setStatus(
-        occurrenceLabel( original ) +
-        ' removed. The series is untouched.'
+        'Removed ' +
+        occurrenceLabel( occurrence ) +
+        ' and every week after it. Earlier weeks are untouched.'
+      );
+
+    } catch (error) {
+
+      setStatus( error.message );
+
+    }
+
+  }
+
+
+  async function deleteWholeSeries(
+    original
+  ) {
+
+    const id =
+      original.masterId ||
+      original.id;
+
+
+    try {
+
+      await api(
+        '/events/' +
+          encodeURIComponent( id ),
+        {
+          method:
+            'DELETE'
+        }
+      );
+
+
+      await loadWeek();
+
+
+      setStatus(
+        'The whole series is deleted.'
       );
 
     } catch (error) {
@@ -7482,7 +7735,8 @@
 
 
   function openEventModal(
-    event
+    event,
+    occurrence
   ) {
 
     if (
@@ -7508,6 +7762,18 @@
     */
 
     state.acceptedRequestId =
+      null;
+
+
+    /*
+      Which week's card opened this editor, when one did. The scoped
+      delete inside the modal needs the clicked date, because "just
+      this block" means the block that was clicked, not the week the
+      series happens to start in.
+    */
+
+    state.editingOccurrence =
+      occurrence ||
       null;
 
 
@@ -8319,6 +8585,48 @@
       $('repeatType')
         .value ===
       'WEEKLY';
+
+
+    /*
+      The modal's Delete on a series opens the same three-way choice
+      the right-click menu offers, so both roads behave identically.
+      The stored master supplies the truth about the series; the
+      clicked occurrence, remembered when the editor opened, names
+      which block "just this one" means.
+    */
+
+    if ( recurring ) {
+
+      const original =
+        getOriginalEvent({
+          id
+        });
+
+
+      if ( original?.recurrence ) {
+
+        const acted =
+          await confirmScopedDelete(
+            original,
+            state.editingOccurrence ||
+            original
+          );
+
+
+        if ( acted ) {
+
+          closeModal(
+            'eventModal'
+          );
+
+        }
+
+
+        return;
+
+      }
+
+    }
 
 
     const wanted =

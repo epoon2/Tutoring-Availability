@@ -71,8 +71,12 @@ createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (route === '/events' && req.method === 'POST') {
-      const ev = { ...body, id: 'e' + (nextId++) };
-      events.push(ev);
+      // Create-or-update by id, exactly as production's route behaves:
+      // a body that names an existing id replaces that event wholesale.
+      const id = body.id || ('e' + (nextId++));
+      const ev = { ...body, id };
+      const at = events.findIndex(e => e.id === id);
+      if (at >= 0) { events[at] = ev; } else { events.push(ev); }
       return json(res, 200, { event: ev });
     }
     if (route.startsWith('/events/') && req.method === 'PUT') {
