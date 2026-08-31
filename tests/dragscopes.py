@@ -98,6 +98,7 @@ async def main():
             card.dispatchEvent(new DragEvent('dragstart',
                 { bubbles: true, clientY: grabY, dataTransfer: dt }));
             const rect = col.getBoundingClientRect();
+            const timeEl = card.querySelector('.event-time');
             const hover = (px) => {
                 col.dispatchEvent(new DragEvent('dragover',
                     { bubbles: true, cancelable: true, clientY: rect.top + px,
@@ -105,24 +106,28 @@ async def main():
                 const g = document.querySelector('.drag-ghost');
                 return g ? { top: g.style.top, height: g.style.height,
                              col: g.closest('.day-column').dataset.date,
-                             label: g.textContent } : null;
+                             ghostText: g.textContent,
+                             cardTime: timeEl.textContent } : null;
             };
             const sameSpot = hover(512 + 32);      // hand at 4:30, block top at 4:00
             const stepDown = hover(512 + 32 + 16); // hand 15 min lower
             card.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
-            return { sameSpot, stepDown, goneAfter: !document.querySelector('.drag-ghost') };
+            return { sameSpot, stepDown, goneAfter: !document.querySelector('.drag-ghost'),
+                     restored: timeEl.textContent };
         }""", [dates["thu"], dates["fri"]])
         g = ghost["sameSpot"]
         q = ghost["stepDown"]
         check("a ghost appears in the hovered column", bool(g) and g["col"] == dates["fri"], str(g))
         check("mid-block grab lands where the block sits", bool(g) and g["top"] == "512px", str(g))
         check("the ghost carries the block's hour", bool(g) and g["height"] == "64px", str(g))
-        check("the ghost names the block and its landing times", bool(g)
-              and "Maya - Algebra II" in g["label"] and "4" in g["label"]
-              and "5 PM" in g["label"], str(g))
-        check("a step down clicks to the quarter slot", bool(q) and q["top"] == "528px"
-              and "4:15" in q["label"], str(q))
+        check("the ghost itself stays wordless", bool(g) and g["ghostText"] == "", str(g))
+        check("the card's own time line reads the landing", bool(g)
+              and "4" in g["cardTime"] and "5 PM" in g["cardTime"], str(g))
+        check("a step down clicks card and ghost to the quarter slot", bool(q)
+              and q["top"] == "528px" and "4:15" in q["cardTime"], str(q))
         check("letting go clears the ghost", ghost["goneAfter"])
+        check("letting go restores the card's own time", "4:15" not in ghost["restored"]
+              and "4" in ghost["restored"], ghost["restored"])
 
         # ---- Cancel: a cancelled drag changes nothing.
         await drag_card(page, dates["thu"], dates["fri"], 16 * 60)

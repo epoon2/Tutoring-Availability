@@ -2641,9 +2641,20 @@
             );
 
 
-          state.draggingTitle =
-            event.title ||
-            '';
+          /*
+            The dragged card's own time line becomes the live readout
+            of the landing slot - the ghost sits under the browser's
+            drag image and any text on it would be covered.
+          */
+
+          state.draggingTimeEl =
+            card.querySelector( '.event-time' );
+
+
+          state.draggingTimeText =
+            state.draggingTimeEl
+              ? state.draggingTimeEl.textContent
+              : '';
 
 
           /*
@@ -2700,8 +2711,16 @@
             0;
 
 
-          state.draggingTitle =
-            '';
+          if ( state.draggingTimeEl ) {
+
+            state.draggingTimeEl.textContent =
+              state.draggingTimeText;
+
+
+            state.draggingTimeEl =
+              null;
+
+          }
 
 
           state.suppressNextScheduleClick =
@@ -3740,24 +3759,6 @@
         'drag-ghost';
 
 
-      const title =
-        document.createElement( 'span' );
-
-      title.className =
-        'drag-ghost-title';
-
-      ghost.appendChild( title );
-
-
-      const label =
-        document.createElement( 'span' );
-
-      label.className =
-        'drag-ghost-label';
-
-      ghost.appendChild( label );
-
-
       state.dragGhost =
         ghost;
 
@@ -3784,16 +3785,20 @@
       'px';
 
 
-    ghost.firstChild.textContent =
-      state.draggingTitle ||
-      '';
+    /*
+      The card in the hand announces the landing time; the ghost only
+      marks the spot.
+    */
 
+    if ( state.draggingTimeEl ) {
 
-    ghost.lastChild.textContent =
-      formatMinuteRange(
-        startMin,
-        endMin
-      );
+      state.draggingTimeEl.textContent =
+        formatMinuteRange(
+          startMin,
+          endMin
+        );
+
+    }
 
   }
 
@@ -4229,9 +4234,7 @@
     const items = [
       {
         label:
-          original.recurrence
-            ? 'Edit series'
-            : 'Edit',
+          'Edit',
         run:
           () => {
 
@@ -5123,6 +5126,457 @@
       setStatus( error.message );
 
     }
+
+  }
+
+
+  /* =========================================================
+     EDITING A REPEATING BLOCK WITH SCOPE
+  ========================================================= */
+
+  /*
+    The editor's save on a series, routed by the same radio dialog.
+    Returns the status line to show on success, false when cancelled
+    or failed - failure writes into the modal's own error line so the
+    editor stays open with everything the admin typed.
+  */
+
+  async function saveSeriesEditWithScope(
+    formEvent
+  ) {
+
+    const original =
+      getOriginalEvent({
+        id:
+          formEvent.id
+      });
+
+
+    const occurrence =
+      state.editingOccurrence ||
+      original;
+
+
+    const scope =
+      await siteDialog({
+        title:
+          'Edit recurring event',
+        mode:
+          'radio',
+        defaultValue:
+          'one',
+        choices: [
+          {
+            label:
+              'This event only',
+            value:
+              'one'
+          },
+          {
+            label:
+              'This and following events',
+            value:
+              'following'
+          },
+          {
+            label:
+              'All events, past and future',
+            value:
+              'all'
+          }
+        ]
+      });
+
+
+    if ( !scope ) {
+
+      return false;
+
+    }
+
+
+    try {
+
+      if ( scope === 'one' ) {
+
+        return await applyEditToOneOccurrence(
+          original,
+          occurrence,
+          formEvent
+        );
+
+      }
+
+
+      if ( scope === 'following' ) {
+
+        return await applyEditToFollowing(
+          original,
+          occurrence,
+          formEvent
+        );
+
+      }
+
+
+      return await applyEditToWholeSeries(
+        original,
+        occurrence,
+        formEvent
+      );
+
+    } catch (error) {
+
+      $('eventError')
+        .textContent =
+          error?.data?.code ===
+          'BLOCKED_CONFLICT'
+            ? 'Not saved: it would overlap another blocked session.'
+            : (
+                error.message ||
+                'The change failed.'
+              );
+
+
+      return false;
+
+    }
+
+  }
+
+
+  /*
+    One week steps out of line: the series records an exception on
+    the clicked date and a standalone event carries the edited
+    fields. If the standalone cannot be saved the exception is rolled
+    back, so a failed edit never deletes the week.
+  */
+
+  async function applyEditToOneOccurrence(
+    original,
+    occurrence,
+    formEvent
+  ) {
+
+    const id =
+      original.masterId ||
+      original.id;
+
+
+    await api(
+      '/events/' +
+        encodeURIComponent( id ) +
+        '/skip',
+      {
+        method:
+          'POST',
+        body:
+          JSON.stringify({
+            date:
+              occurrence.start.slice( 0, 10 )
+          })
+      }
+    );
+
+
+    try {
+
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify({
+
+              type:
+                formEvent.type,
+
+              title:
+                formEvent.title,
+
+              notes:
+                formEvent.notes,
+
+              start:
+                formEvent.start,
+
+              end:
+                formEvent.end,
+
+              recurrence:
+                null
+
+            })
+        }
+      );
+
+    } catch (error) {
+
+      await repostMaster(
+        original
+      );
+
+
+      throw error;
+
+    }
+
+
+    return occurrenceLabel( occurrence ) +
+      ' changed on its own. Every other week is untouched.';
+
+  }
+
+
+  /*
+    From the clicked week on, the series follows the edited fields:
+    the old master ends the day before the cut and a new series
+    starts from the form exactly as typed. Earlier weeks keep the
+    old shape.
+  */
+
+  async function applyEditToFollowing(
+    original,
+    occurrence,
+    formEvent
+  ) {
+
+    const cut =
+      occurrence.start.slice( 0, 10 );
+
+
+    const masterStart =
+      original.seriesStart ||
+      original.start;
+
+
+    if (
+      cut <=
+      masterStart.slice( 0, 10 )
+    ) {
+
+      return await applyEditToWholeSeries(
+        original,
+        occurrence,
+        formEvent
+      );
+
+    }
+
+
+    const truncated = {
+
+      frequency:
+        'WEEKLY',
+
+      interval:
+        original.recurrence.interval ||
+        1,
+
+      weekdays:
+        original.recurrence.weekdays,
+
+      endType:
+        'ON',
+
+      until:
+        shiftDateString(
+          cut,
+          -1
+        )
+
+    };
+
+
+    if ( original.recurrence.exdates ) {
+
+      truncated.exdates =
+        original.recurrence.exdates;
+
+    }
+
+
+    await api(
+      '/events',
+      {
+        method:
+          'POST',
+        body:
+          JSON.stringify(
+            masterPayload(
+              original,
+              truncated
+            )
+          )
+      }
+    );
+
+
+    try {
+
+      await api(
+        '/events',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify({
+
+              type:
+                formEvent.type,
+
+              title:
+                formEvent.title,
+
+              notes:
+                formEvent.notes,
+
+              start:
+                formEvent.start,
+
+              end:
+                formEvent.end,
+
+              recurrence:
+                formEvent.recurrence
+
+            })
+        }
+      );
+
+    } catch (error) {
+
+      await repostMaster(
+        original
+      );
+
+
+      throw error;
+
+    }
+
+
+    return 'Changed from ' +
+      occurrenceLabel( occurrence ) +
+      ' onward. Earlier weeks are untouched.';
+
+  }
+
+
+  /*
+    The whole series takes the edited fields while keeping its own
+    anchor: the form's date is read as a shift relative to the
+    clicked week and applied to the series start, so history does not
+    silently re-anchor to whichever week happened to be on screen.
+    Exception dates ride along, shifted by the same days.
+  */
+
+  async function applyEditToWholeSeries(
+    original,
+    occurrence,
+    formEvent
+  ) {
+
+    const dayDelta =
+      dayNumber(
+        formEvent.start.slice( 0, 10 )
+      ) -
+      dayNumber(
+        occurrence.start.slice( 0, 10 )
+      );
+
+
+    const masterStart =
+      original.seriesStart ||
+      original.start;
+
+
+    const newStart =
+      shiftDateString(
+        masterStart.slice( 0, 10 ),
+        dayDelta
+      ) +
+      formEvent.start.slice( 10 );
+
+
+    const duration =
+      localDateTimeToMinuteKey(
+        formEvent.end
+      ) -
+      localDateTimeToMinuteKey(
+        formEvent.start
+      );
+
+
+    const newEnd =
+      minuteKeyToLocalDateTime(
+        localDateTimeToMinuteKey(
+          newStart
+        ) +
+        duration
+      );
+
+
+    const recurrence = {
+      ...formEvent.recurrence
+    };
+
+
+    const oldExdates =
+      original.recurrence.exdates ||
+      [];
+
+
+    if ( oldExdates.length ) {
+
+      recurrence.exdates =
+        oldExdates.map(
+          (exdate) =>
+            shiftDateString(
+              exdate,
+              dayDelta
+            )
+        );
+
+    }
+
+
+    await api(
+      '/events',
+      {
+        method:
+          'POST',
+        body:
+          JSON.stringify({
+
+            id:
+              original.masterId ||
+              original.id,
+
+            type:
+              formEvent.type,
+
+            title:
+              formEvent.title,
+
+            notes:
+              formEvent.notes,
+
+            start:
+              newStart,
+
+            end:
+              newEnd,
+
+            recurrence
+
+          })
+      }
+    );
+
+
+    return 'The whole series changed, past weeks included.';
 
   }
 
@@ -9340,7 +9794,18 @@
       'T16:00';
 
 
+    /*
+      Opened from a card of a series, the editor shows THAT week's
+      date and time - the scope question at save decides how far the
+      change reaches. Without a clicked occurrence it falls back to
+      the series anchor as before.
+    */
+
     const originalStart =
+      (
+        occurrence &&
+        occurrence.start
+      ) ||
       (
         event &&
         (
@@ -9352,6 +9817,10 @@
 
 
     const originalEnd =
+      (
+        occurrence &&
+        occurrence.end
+      ) ||
       (
         event &&
         (
@@ -10024,6 +10493,53 @@
       recurrence
 
     };
+
+
+    /*
+      Saving an existing series asks how far the edit reaches - one
+      week, from here on, or everything - exactly like deleting one.
+      New events, one-time events, and a series being converted away
+      from repeating keep the plain save below.
+    */
+
+    if (
+      event.id &&
+      recurrence &&
+      getOriginalEvent({
+        id:
+          event.id
+      })?.recurrence
+    ) {
+
+      const outcome =
+        await saveSeriesEditWithScope(
+          event
+        );
+
+
+      if ( outcome ) {
+
+        closeModal(
+          'eventModal'
+        );
+
+
+        await clearAcceptedRequest();
+
+
+        await loadWeek();
+
+
+        setStatus(
+          outcome
+        );
+
+      }
+
+
+      return;
+
+    }
 
 
     $('saveEventBtn')

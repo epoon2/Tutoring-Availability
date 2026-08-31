@@ -110,8 +110,8 @@ async def main():
         # ---- recurring menu offers Delete…, and no Skip item
         await rclick_weekday(page, 4)
         items = await menu_items(page)
-        check("series menu reads Edit series/Duplicate/Copy/Delete…",
-              items == ["Edit series", "Duplicate", "Copy", "Delete…"], str(items))
+        check("series menu reads Edit/Duplicate/Copy/Delete…",
+              items == ["Edit", "Duplicate", "Copy", "Delete…"], str(items))
         check("no Skip item remains", not any(i.startswith("Skip") for i in items), str(items))
 
         # ---- scope: just this block (the Thursday)
@@ -157,7 +157,7 @@ async def main():
 
         # ---- scope: the whole series, reached from the editor
         await rclick_weekday(page, 2)
-        await click_menu(page, "Edit series")
+        await click_menu(page, "Edit")
         await page.wait_for_timeout(400)
         modal_open = await page.evaluate(
             "!document.getElementById('eventModal').classList.contains('hidden')")

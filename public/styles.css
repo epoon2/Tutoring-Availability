@@ -2095,29 +2095,6 @@ button.agenda-item:hover {
   border-radius: 8px;
   z-index: 4;
   pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow: hidden;
-  padding: 2px 4px;
-}
-
-.drag-ghost-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text);
-  opacity: 0.75;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.drag-ghost-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
 }
 
 
