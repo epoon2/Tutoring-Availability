@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""On a phone-sized screen the week grid itself renders - no agenda
-list - swiped sideways inside its own scroll, cards and all.
+"""Phones open in the week grid and a Grid/List toggle flips to the
+agenda list, remembered per device. Desktop never sees the toggle.
 
     python3 tests/mobilegrid.py
 """
@@ -14,11 +14,20 @@ def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
     print(("  PASS  " if cond else "  FAIL  ") + name + (f"   {extra}" if extra and not cond else ""))
 
+async def view_state(page):
+    return await page.evaluate("""() => ({
+        calendar: getComputedStyle(document.getElementById('calendar')).display,
+        agenda: getComputedStyle(document.getElementById('agenda')).display,
+        toggle: getComputedStyle(document.querySelector('.view-toggle')).display,
+        items: document.querySelectorAll('.agenda-item').length,
+        cards: document.querySelectorAll('.event-card').length
+    })""")
+
 async def main():
     async with async_playwright() as pw:
         b = await pw.chromium.launch()
 
-        # Seed on a desktop-sized page.
+        # Seed on a desktop-sized page, and check desktop never sees the toggle.
         seed = await (await b.new_context(viewport={"width": 1400, "height": 950})).new_page()
         await seed.goto(BASE, wait_until="networkidle")
         await seed.click("#adminBtn"); await seed.fill("#adminPasswordInput", "t")
@@ -36,37 +45,48 @@ async def main():
                 recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4],
                               endType: 'NEVER' } });
         }""")
+        desk = await view_state(seed)
+        check("desktop shows the grid, no toggle, no list",
+              desk["calendar"] == "grid" and desk["toggle"] == "none"
+              and desk["agenda"] == "none", str(desk))
 
-        # A phone.
-        phone = await (await b.new_context(
-            viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True,
-            device_scale_factor=3)).new_page()
+        # A phone, signed out.
+        ctx = await b.new_context(viewport={"width": 390, "height": 844},
+                                  is_mobile=True, has_touch=True, device_scale_factor=3)
+        phone = await ctx.new_page()
         errs = []
         phone.on("pageerror", lambda e: errs.append(str(e)))
         phone.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
         await phone.goto(BASE, wait_until="networkidle")
         await phone.wait_for_timeout(700)
 
-        grid = await phone.evaluate("""() => {
-            const cal = document.getElementById('calendar');
-            const style = getComputedStyle(cal);
-            return { display: style.display,
-                     columns: document.querySelectorAll('.day-column').length,
-                     cards: document.querySelectorAll('.event-card').length,
-                     agenda: !!document.getElementById('agenda'),
-                     scrollable: cal.scrollWidth > cal.clientWidth };
-        }""")
-        check("the grid renders on a phone", grid["display"] == "grid", str(grid))
-        check("all seven day columns are there", grid["columns"] == 7, str(grid))
-        check("the week's schedule shows as cards", grid["cards"] == 3, str(grid))
-        check("the agenda list is gone", not grid["agenda"], str(grid))
-        check("the week swipes sideways inside the grid", grid["scrollable"], str(grid))
+        st = await view_state(phone)
+        check("phones open in the grid by default",
+              st["calendar"] == "grid" and st["agenda"] == "none", str(st))
+        check("the toggle is offered on phones", st["toggle"] != "none", str(st))
+        check("the week's schedule shows as cards", st["cards"] == 3, str(st))
 
-        # The phone admin can still log in and see the same grid.
+        await phone.click("#viewListBtn"); await phone.wait_for_timeout(300)
+        st = await view_state(phone)
+        check("List flips to the agenda", st["calendar"] == "none"
+              and st["agenda"] == "block", str(st))
+        check("the agenda carries the week's entries", st["items"] >= 1, str(st))
+
+        await phone.reload(wait_until="networkidle"); await phone.wait_for_timeout(700)
+        st = await view_state(phone)
+        check("the choice is remembered on reload", st["calendar"] == "none"
+              and st["agenda"] == "block", str(st))
+
+        await phone.click("#viewGridBtn"); await phone.wait_for_timeout(300)
+        st = await view_state(phone)
+        check("Grid brings the week grid back", st["calendar"] == "grid"
+              and st["agenda"] == "none" and st["cards"] == 3, str(st))
+
+        # Admin on the phone still gets the grid with its extra card.
         await phone.click("#adminBtn"); await phone.fill("#adminPasswordInput", "t")
         await phone.click("#loginSubmitBtn"); await phone.wait_for_timeout(700)
-        admin_cards = await phone.locator(".event-card").count()
-        check("admin on the phone sees the grid too", admin_cards == 4, f"cards={admin_cards}")
+        st = await view_state(phone)
+        check("admin on the phone sees the grid too", st["cards"] == 4, str(st))
 
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
         check("no console errors", not real, str(real[:3]))

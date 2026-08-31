@@ -699,6 +699,105 @@ button:disabled {
 
 
 /* -----------------------------
+   MOBILE AGENDA
+----------------------------- */
+
+.agenda {
+  display: none;
+}
+
+
+.agenda-day {
+  overflow: hidden;
+
+  margin-bottom: 10px;
+
+  background: var(--card);
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+
+.agenda-day h3 {
+  margin: 0;
+
+  padding: 11px 12px;
+
+  border-bottom: 1px solid var(--border);
+
+  font-size: 15px;
+}
+
+
+.agenda-item {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 12px;
+
+  width: 100%;
+
+  padding: 11px 12px;
+
+  background: transparent;
+
+  color: inherit;
+
+  border: 0;
+  border-bottom: 1px solid #eef1f6;
+
+  text-align: left;
+}
+
+
+.agenda-item:last-child {
+  border-bottom: 0;
+}
+
+
+button.agenda-item {
+  cursor: pointer;
+}
+
+
+button.agenda-item:hover {
+  filter: brightness(0.98);
+}
+
+
+.agenda-item .meta {
+  color: var(--muted);
+
+  font-size: 13px;
+}
+
+
+.agenda-empty {
+  padding: 12px;
+
+  color: var(--muted);
+
+  font-size: 14px;
+}
+
+
+.agenda-item.available {
+  background: var(--available-bg);
+
+  color: var(--available);
+}
+
+
+.agenda-item.blocked {
+  background: var(--blocked-bg);
+
+  color: var(--blocked);
+}
+
+
+/* -----------------------------
    HELP
 ----------------------------- */
 
@@ -1703,6 +1802,21 @@ button:disabled {
   }
 
 
+  .view-toggle {
+    display: flex;
+  }
+
+
+  body.list-view .calendar {
+    display: none;
+  }
+
+
+  body.list-view .agenda {
+    display: block;
+  }
+
+
   .two-col {
     grid-template-columns: 1fr;
 
@@ -1992,4 +2106,33 @@ button:disabled {
   color: var(--muted);
   padding-top: 2px;
   white-space: nowrap;
+}
+
+
+/* ---- Grid/List switch (phones only) ---- */
+
+.view-toggle {
+  display: none;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.view-toggle button[aria-pressed="true"] {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+
+/*
+  This block sits after the main mobile media query, so the phone
+  override lives here too - a later plain rule would win the cascade
+  and keep the toggle hidden everywhere.
+*/
+
+@media (max-width: 760px) {
+
+  .view-toggle {
+    display: flex;
+  }
+
 }

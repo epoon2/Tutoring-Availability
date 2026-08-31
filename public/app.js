@@ -148,6 +148,10 @@
     $('calendar');
 
 
+  const agenda =
+    $('agenda');
+
+
 
   /* =========================================================
      INITIALIZATION
@@ -307,6 +311,9 @@
       60000
     );
 
+
+    applyMobileView();
+
   }
 
 
@@ -407,6 +414,28 @@
             );
 
           loadWeek();
+
+        }
+      );
+
+
+    $('viewGridBtn')
+      .addEventListener(
+        'click',
+        () => {
+
+          applyMobileView( 'grid' );
+
+        }
+      );
+
+
+    $('viewListBtn')
+      .addEventListener(
+        'click',
+        () => {
+
+          applyMobileView( 'list' );
 
         }
       );
@@ -1084,11 +1113,94 @@
 
 
 
+  /*
+    Phones choose between the week grid and the agenda list. Grid is
+    the default; the choice sticks per device. Desktop ignores all of
+    this - the toggle only renders under the mobile breakpoint.
+  */
+
+  function storedMobileView() {
+
+    try {
+
+      return localStorage.getItem( 'mobileView' ) === 'list'
+        ? 'list'
+        : 'grid';
+
+    } catch (error) {
+
+      return 'grid';
+
+    }
+
+  }
+
+
+  function applyMobileView(
+    next
+  ) {
+
+    if ( next ) {
+
+      state.mobileView =
+        next;
+
+
+      try {
+
+        localStorage.setItem(
+          'mobileView',
+          next
+        );
+
+      } catch (error) {
+
+        /* Private windows forget; the toggle still works today. */
+
+      }
+
+    } else if ( !state.mobileView ) {
+
+      state.mobileView =
+        storedMobileView();
+
+    }
+
+
+    const list =
+      state.mobileView ===
+      'list';
+
+
+    document.body.classList.toggle(
+      'list-view',
+      list
+    );
+
+
+    $('viewGridBtn')
+      .setAttribute(
+        'aria-pressed',
+        String( !list )
+      );
+
+
+    $('viewListBtn')
+      .setAttribute(
+        'aria-pressed',
+        String( list )
+      );
+
+  }
+
+
   function renderAll() {
 
     renderWeekLabel();
 
     renderCalendar();
+
+    renderAgenda();
 
     renderWeekSummary();
 
@@ -2637,6 +2749,250 @@
 
     return match ||
       event;
+
+  }
+
+
+
+  /* =========================================================
+     MOBILE AGENDA
+  ========================================================= */
+
+
+  function renderAgenda() {
+
+    agenda.innerHTML =
+      '';
+
+
+    for (
+      let d = 0;
+      d < 7;
+      d++
+    ) {
+
+      const date =
+        addDays(
+          state.weekStart,
+          d
+        );
+
+
+      const dateStr =
+        formatDate(
+          date
+        );
+
+
+      const segments =
+        getSegmentsForDate(
+          dateStr
+        );
+
+
+      const section =
+        document.createElement(
+          'section'
+        );
+
+
+      section.className =
+        'agenda-day';
+
+
+      const heading =
+        document.createElement(
+          'h3'
+        );
+
+
+      heading.textContent =
+        date.toLocaleDateString(
+          undefined,
+          {
+            weekday:
+              'long',
+
+            month:
+              'short',
+
+            day:
+              'numeric'
+          }
+        );
+
+
+      section.appendChild(
+        heading
+      );
+
+
+      if (
+        !segments.length
+      ) {
+
+        const empty =
+          document.createElement(
+            'div'
+          );
+
+
+        empty.className =
+          'agenda-empty';
+
+
+        empty.textContent =
+          state.isAdmin
+            ? 'No events'
+            : 'No availability';
+
+
+        section.appendChild(
+          empty
+        );
+
+      } else {
+
+        segments.forEach(
+          ({
+            event,
+            startMin,
+            endMin
+          }) => {
+
+            const item =
+              document.createElement(
+                state.isAdmin
+                  ? 'button'
+                  : 'div'
+              );
+
+
+            item.className =
+              'agenda-item ' +
+              (
+                event.type ===
+                'BLOCKED'
+                  ? 'blocked'
+                  : 'available'
+              );
+
+
+            const left =
+              document.createElement(
+                'span'
+              );
+
+
+            const title =
+              document.createElement(
+                'strong'
+              );
+
+
+            const meta =
+              document.createElement(
+                'div'
+              );
+
+
+            const right =
+              document.createElement(
+                'span'
+              );
+
+
+            title.textContent =
+              state.isAdmin
+                ? (
+                    event.title ||
+                    (
+                      event.type ===
+                      'BLOCKED'
+                        ? 'Blocked Session'
+                        : 'Available'
+                    )
+                  )
+                : (
+                    event.type ===
+                    'BLOCKED'
+                      ? 'Blocked Session'
+                      : 'Available'
+                  );
+
+
+            meta.className =
+              'meta';
+
+
+            meta.textContent =
+              formatMinutes(
+                startMin
+              ) +
+              ' – ' +
+              formatMinutes(
+                endMin
+              );
+
+
+            right.className =
+              'meta';
+
+
+            right.textContent =
+              event.type ===
+              'BLOCKED'
+                ? 'Blocked'
+                : 'Open';
+
+
+            left.append(
+              title,
+              meta
+            );
+
+
+            item.append(
+              left,
+              right
+            );
+
+
+            if (
+              state.isAdmin
+            ) {
+
+              item.addEventListener(
+                'click',
+                () => {
+
+                  openEventModal(
+                    getOriginalEvent(
+                      event
+                    )
+                  );
+
+                }
+              );
+
+            }
+
+
+            section.appendChild(
+              item
+            );
+
+          }
+        );
+
+      }
+
+
+      agenda.appendChild(
+        section
+      );
+
+    }
 
   }
 
