@@ -699,105 +699,6 @@ button:disabled {
 
 
 /* -----------------------------
-   MOBILE AGENDA
------------------------------ */
-
-.agenda {
-  display: none;
-}
-
-
-.agenda-day {
-  overflow: hidden;
-
-  margin-bottom: 10px;
-
-  background: var(--card);
-
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-
-.agenda-day h3 {
-  margin: 0;
-
-  padding: 11px 12px;
-
-  border-bottom: 1px solid var(--border);
-
-  font-size: 15px;
-}
-
-
-.agenda-item {
-  display: flex;
-
-  justify-content: space-between;
-
-  gap: 12px;
-
-  width: 100%;
-
-  padding: 11px 12px;
-
-  background: transparent;
-
-  color: inherit;
-
-  border: 0;
-  border-bottom: 1px solid #eef1f6;
-
-  text-align: left;
-}
-
-
-.agenda-item:last-child {
-  border-bottom: 0;
-}
-
-
-button.agenda-item {
-  cursor: pointer;
-}
-
-
-button.agenda-item:hover {
-  filter: brightness(0.98);
-}
-
-
-.agenda-item .meta {
-  color: var(--muted);
-
-  font-size: 13px;
-}
-
-
-.agenda-empty {
-  padding: 12px;
-
-  color: var(--muted);
-
-  font-size: 14px;
-}
-
-
-.agenda-item.available {
-  background: var(--available-bg);
-
-  color: var(--available);
-}
-
-
-.agenda-item.blocked {
-  background: var(--blocked-bg);
-
-  color: var(--blocked);
-}
-
-
-/* -----------------------------
    HELP
 ----------------------------- */
 
@@ -1789,13 +1690,16 @@ button.agenda-item:hover {
   }
 
 
+  /*
+    Phones get the same week grid as desktop, compacted: a slimmer
+    hour gutter and narrower day columns, swiped sideways inside the
+    grid's own scroll.
+  */
+
   .calendar {
-    display: none;
-  }
-
-
-  .agenda {
-    display: block;
+    grid-template-columns:
+      54px
+      repeat(7, minmax(96px, 1fr));
   }
 
 
