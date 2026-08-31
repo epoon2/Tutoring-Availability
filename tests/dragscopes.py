@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Drags repeating blocks in a real browser and answers the three-reach
-question each time: one block detaches to the kerb-snapped time, a cut
+"""Drags repeating blocks in a real browser and answers the radio-style
+scope dialog each time: one block detaches to the snapped time, a cut
 moves this-and-following to a new weekday, the whole series shifts an
-hour with its past, and Never mind changes nothing.
+hour with its past, and Cancel changes nothing. The landing ghost obeys
+the grab offset.
 
     python3 tests/dragscopes.py
 """
@@ -20,17 +21,24 @@ def check(name, cond, extra=""):
 def y_for(minutes):
     return int((minutes - DAY_START * 60) / 60 * 64)
 
-async def click_choice(page, prefix):
+async def choose_scope(page, label):
     await page.wait_for_selector(".choice-modal")
     await page.evaluate(
-        """(prefix) => [...document.querySelectorAll('.choice-modal button')]
-            .find(b => b.textContent.trim().startsWith(prefix)).click()""", prefix)
+        """(label) => [...document.querySelectorAll('.choice-modal .choice-radio-row')]
+            .find(r => r.textContent.trim() === label)
+            .querySelector('input').click()""", label)
+    await page.evaluate(
+        """() => [...document.querySelectorAll('.choice-modal button')]
+            .find(b => b.textContent.trim() === 'OK').click()""")
     await page.wait_for_timeout(900)
 
 async def drag_card(page, from_date, to_date, to_minutes):
+    # Grab near the block's top edge, so the grab offset is under one
+    # snap step and the drop lands on the aimed-at slot.
     src = page.locator(f'.day-column[data-date="{from_date}"] .event-card').first
     dst = page.locator(f'.day-column[data-date="{to_date}"]')
-    await src.drag_to(dst, target_position={"x": 60, "y": y_for(to_minutes)})
+    await src.drag_to(dst, source_position={"x": 30, "y": 2},
+                      target_position={"x": 60, "y": y_for(to_minutes)})
     await page.wait_for_timeout(400)
 
 async def fetch_week(page, start, end):
@@ -79,53 +87,65 @@ async def main():
         await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
         await page.click("#loginSubmitBtn"); await page.wait_for_timeout(800)
 
-        # ---- The grey ghost clicks to the snapped quarter-hour under the drag.
+        # ---- The ghost obeys the grab offset: a block grabbed by its
+        # middle shows the landing where the BLOCK sits, not where the
+        # hand is, and clicks slot to slot from there.
         ghost = await page.evaluate("""([thu, fri]) => {
             const card = document.querySelector(`.day-column[data-date="${thu}"] .event-card`);
             const col = document.querySelector(`.day-column[data-date="${fri}"]`);
             const dt = new DataTransfer();
-            card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+            const grabY = card.getBoundingClientRect().top + 32;  // mid-block: +30 min
+            card.dispatchEvent(new DragEvent('dragstart',
+                { bubbles: true, clientY: grabY, dataTransfer: dt }));
             const rect = col.getBoundingClientRect();
-            const hover = (mins) => {
-                const y = rect.top + (mins - 8 * 60) / 60 * 64;
+            const hover = (px) => {
                 col.dispatchEvent(new DragEvent('dragover',
-                    { bubbles: true, cancelable: true, clientY: y, dataTransfer: dt }));
+                    { bubbles: true, cancelable: true, clientY: rect.top + px,
+                      dataTransfer: dt }));
                 const g = document.querySelector('.drag-ghost');
                 return g ? { top: g.style.top, height: g.style.height,
                              col: g.closest('.day-column').dataset.date,
                              label: g.textContent } : null;
             };
-            const onHour = hover(16 * 60 + 7);      // pointing at 4:07 PM
-            const onQuarter = hover(16 * 60 + 22);  // pointing at 4:22 PM
+            const sameSpot = hover(512 + 32);      // hand at 4:30, block top at 4:00
+            const stepDown = hover(512 + 32 + 16); // hand 15 min lower
             card.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
-            return { onHour, onQuarter, goneAfter: !document.querySelector('.drag-ghost') };
+            return { sameSpot, stepDown, goneAfter: !document.querySelector('.drag-ghost') };
         }""", [dates["thu"], dates["fri"]])
-        g = ghost["onHour"]
-        q = ghost["onQuarter"]
+        g = ghost["sameSpot"]
+        q = ghost["stepDown"]
         check("a ghost appears in the hovered column", bool(g) and g["col"] == dates["fri"], str(g))
-        check("the ghost clicks to the 4:00 slot", bool(g) and g["top"] == "512px", str(g))
+        check("mid-block grab lands where the block sits", bool(g) and g["top"] == "512px", str(g))
         check("the ghost carries the block's hour", bool(g) and g["height"] == "64px", str(g))
-        check("the ghost names the landing times", bool(g) and "4" in g["label"]
+        check("the ghost names the block and its landing times", bool(g)
+              and "Maya - Algebra II" in g["label"] and "4" in g["label"]
               and "5 PM" in g["label"], str(g))
-        check("a lower hover clicks to the quarter slot", bool(q) and q["top"] == "528px"
+        check("a step down clicks to the quarter slot", bool(q) and q["top"] == "528px"
               and "4:15" in q["label"], str(q))
         check("letting go clears the ghost", ghost["goneAfter"])
 
-        # ---- Never mind: a cancelled drag changes nothing.
+        # ---- Cancel: a cancelled drag changes nothing.
         await drag_card(page, dates["thu"], dates["fri"], 16 * 60)
         await page.wait_for_selector(".choice-modal")
+        heading = await page.text_content(".choice-modal h2")
+        check("the dialog is titled like a calendar's", heading == "Edit recurring event", heading)
+        radios = await page.locator(".choice-modal input[type=radio]").count()
+        buttons = await page.evaluate(
+            "[...document.querySelectorAll('.choice-modal button')].map(b => b.textContent.trim())")
+        check("three radio scopes with Cancel and OK", radios == 3
+              and buttons == ["Cancel", "OK"], f"radios={radios} buttons={buttons}")
         await page.evaluate(
             """() => [...document.querySelectorAll('.choice-modal button')]
-                .find(b => b.textContent.trim() === 'Never mind').click()""")
+                .find(b => b.textContent.trim() === 'Cancel').click()""")
         await page.wait_for_timeout(600)
         ev = await fetch_week(page, dates["weekStart"], dates["weekEnd"])
-        check("Never mind leaves the week alone",
+        check("Cancel leaves the week alone",
               sorted(e["start"][:10] for e in ev) == sorted([dates["tue"], dates["thu"]]),
               str([e["start"] for e in ev]))
 
-        # ---- Just this block: Thursday detaches to Friday, snapped to :00.
+        # ---- This event only: Thursday detaches to Friday, snapped to :00.
         await drag_card(page, dates["thu"], dates["fri"], 16 * 60 + 7)
-        await click_choice(page, "Just this block")
+        await choose_scope(page, "This event only")
         ev = await fetch_week(page, dates["weekStart"], dates["weekEnd"])
         loose = [e for e in ev if not e.get("recurrence")]
         check("the moved block is a standalone on Friday", len(loose) == 1 and
@@ -144,7 +164,7 @@ async def main():
         # ---- This and every one after: next week's Tuesday moves to Wednesday.
         await page.click("#nextWeekBtn"); await page.wait_for_timeout(700)
         await drag_card(page, dates["nextTue"], dates["nextWed"], 16 * 60)
-        await click_choice(page, "This and every one after")
+        await choose_scope(page, "This and following events")
         ev = await fetch_week(page, dates["nextStart"], dates["nextEnd"])
         check("next week now runs Wed and Thu",
               sorted(e["start"][:10] for e in ev) == sorted([dates["nextWed"], dates["nextThu"]]),
@@ -161,7 +181,7 @@ async def main():
         # ---- The whole series: this week's Tuesday an hour later, past included.
         await page.click("#todayBtn"); await page.wait_for_timeout(700)
         await drag_card(page, dates["tue"], dates["tue"], 17 * 60)
-        await click_choice(page, "The whole series")
+        await choose_scope(page, "All events, past and future")
         ev = await fetch_week(page, dates["weekStart"], dates["weekEnd"])
         tue_ev = [e for e in ev if e["start"][:10] == dates["tue"]]
         check("this week's Tuesday runs at 5 PM", tue_ev and

@@ -31,6 +31,17 @@ async def click_choice(page, prefix):
             .find(b => b.textContent.trim().startsWith(prefix)).click()""", prefix)
     await page.wait_for_timeout(800)
 
+async def choose_scope(page, label):
+    await page.wait_for_selector(".choice-modal")
+    await page.evaluate(
+        """(label) => [...document.querySelectorAll('.choice-modal .choice-radio-row')]
+            .find(r => r.textContent.trim() === label)
+            .querySelector('input').click()""", label)
+    await page.evaluate(
+        """() => [...document.querySelectorAll('.choice-modal button')]
+            .find(b => b.textContent.trim() === 'OK').click()""")
+    await page.wait_for_timeout(800)
+
 async def cards(page):
     return await page.locator(".event-card").count()
 
@@ -106,10 +117,15 @@ async def main():
         # ---- scope: just this block (the Thursday)
         await click_menu(page, "Delete…")
         await page.wait_for_selector(".choice-modal")
-        labels = await page.evaluate(
+        heading = await page.text_content(".choice-modal h2")
+        check("the delete dialog is titled like a calendar's",
+              heading == "Delete recurring event", heading)
+        radios = await page.locator(".choice-modal input[type=radio]").count()
+        buttons = await page.evaluate(
             "[...document.querySelectorAll('.choice-modal button')].map(b => b.textContent.trim())")
-        check("dialog offers three scopes and a way out", len(labels) == 4, str(labels))
-        await click_choice(page, "Just this block")
+        check("three radio scopes with Cancel and OK", radios == 3
+              and buttons == ["Cancel", "OK"], f"radios={radios} buttons={buttons}")
+        await choose_scope(page, "This event only")
         wds = await card_weekdays(page)
         check("this week keeps only the Tuesday", wds == [2], str(wds))
         status = await page.text_content("#status")
@@ -124,7 +140,7 @@ async def main():
               f"cards={await cards(page)}")
         await rclick_weekday(page, 2)
         await click_menu(page, "Delete…")
-        await click_choice(page, "This and every one after")
+        await choose_scope(page, "This and following events")
         check("next week is emptied from the cut", await cards(page) == 0,
               f"cards={await cards(page)}")
         status = await page.text_content("#status")
@@ -147,7 +163,7 @@ async def main():
             "!document.getElementById('eventModal').classList.contains('hidden')")
         check("editor opens for the series", modal_open)
         await page.click("#deleteEventBtn")
-        await click_choice(page, "The whole series")
+        await choose_scope(page, "All events, past and future")
         modal_gone = await page.evaluate(
             "document.getElementById('eventModal').classList.contains('hidden')")
         check("editor closes after choosing", modal_gone)

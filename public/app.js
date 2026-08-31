@@ -2641,6 +2641,29 @@
             );
 
 
+          state.draggingTitle =
+            event.title ||
+            '';
+
+
+          /*
+            Where on the block the hand grabbed it, in minutes from
+            its visible top. Subtracted before snapping, so a block
+            grabbed by its middle lands where the BLOCK sits, not
+            half a block below the pointer.
+          */
+
+          state.draggingGrabOffset =
+            (
+              (
+                dragEvent.clientY -
+                card.getBoundingClientRect().top
+              ) /
+              64
+            ) *
+            60;
+
+
           dragEvent
             .dataTransfer
             .effectAllowed =
@@ -2671,6 +2694,14 @@
 
           state.draggingOccurrence =
             null;
+
+
+          state.draggingGrabOffset =
+            0;
+
+
+          state.draggingTitle =
+            '';
 
 
           state.suppressNextScheduleClick =
@@ -3559,6 +3590,13 @@
       );
 
 
+    /*
+      The pointer is wherever the hand grabbed the block, which is
+      rarely its top edge - so the grab offset recorded at dragstart
+      comes off before snapping. Without it, a block picked up by the
+      middle lands half a block below where it visibly sits.
+    */
+
     const snapped =
       Math.round(
         (
@@ -3568,7 +3606,11 @@
             y /
             64
           ) *
-          60
+          60 -
+          (
+            state.draggingGrabOffset ||
+            0
+          )
         ) /
         15
       ) *
@@ -3576,17 +3618,21 @@
 
 
     /*
-      Keep the start inside the day on screen.
-      Without this, a drop on the last row
-      rounds up past midnight and the event
-      lands on tomorrow, out of sight.
+      Keep the start inside the day on screen. Without the clamps, a
+      drop on the last row rounds up past midnight and lands on
+      tomorrow, and a tall block grabbed low pushes above the first
+      row.
     */
 
-    return Math.min(
-      snapped,
-      endHour *
-      60 -
-      15
+    return Math.max(
+      startHour *
+      60,
+      Math.min(
+        snapped,
+        endHour *
+        60 -
+        15
+      )
     );
 
   }
@@ -3694,6 +3740,15 @@
         'drag-ghost';
 
 
+      const title =
+        document.createElement( 'span' );
+
+      title.className =
+        'drag-ghost-title';
+
+      ghost.appendChild( title );
+
+
       const label =
         document.createElement( 'span' );
 
@@ -3730,6 +3785,11 @@
 
 
     ghost.firstChild.textContent =
+      state.draggingTitle ||
+      '';
+
+
+    ghost.lastChild.textContent =
       formatMinuteRange(
         startMin,
         endMin
@@ -4382,7 +4442,10 @@
     title,
     message,
     choices,
-    cancelLabel
+    cancelLabel,
+    mode,
+    defaultValue,
+    okLabel
   }) {
 
     return new Promise( (resolve) => {
@@ -4458,7 +4521,74 @@
       };
 
 
+      let selected =
+        defaultValue ||
+        (
+          choices &&
+          choices[0] &&
+          choices[0].value
+        );
+
+
       ( choices || [] ).forEach( (choice) => {
+
+        if ( mode === 'radio' ) {
+
+          /*
+            Calendar-style: picking a row only selects it. The
+            decision is committed by OK below, so a slip of the
+            pointer costs nothing.
+          */
+
+          const row =
+            document.createElement( 'label' );
+
+          row.className =
+            'choice-radio-row';
+
+
+          const input =
+            document.createElement( 'input' );
+
+          input.type =
+            'radio';
+
+          input.name =
+            'choice-scope';
+
+          input.value =
+            choice.value;
+
+          input.checked =
+            choice.value ===
+            selected;
+
+          input.addEventListener( 'change', () => {
+
+            selected =
+              choice.value;
+
+          });
+
+          row.appendChild( input );
+
+
+          const text =
+            document.createElement( 'span' );
+
+          text.textContent =
+            choice.label;
+
+          row.appendChild( text );
+
+
+          list.appendChild( row );
+
+
+          return;
+
+        }
+
 
         const button =
           document.createElement( 'button' );
@@ -4495,11 +4625,13 @@
         'button';
 
       cancel.className =
-        'btn choice-cancel';
+        mode === 'radio'
+          ? 'btn secondary'
+          : 'btn choice-cancel';
 
       cancel.textContent =
         cancelLabel ||
-        'Never mind';
+        'Cancel';
 
       cancel.addEventListener( 'click', () => {
 
@@ -4507,7 +4639,48 @@
 
       });
 
-      card.appendChild( cancel );
+
+      if ( mode === 'radio' ) {
+
+        const actions =
+          document.createElement( 'div' );
+
+        actions.className =
+          'choice-actions';
+
+
+        actions.appendChild( cancel );
+
+
+        const ok =
+          document.createElement( 'button' );
+
+        ok.type =
+          'button';
+
+        ok.className =
+          'btn primary';
+
+        ok.textContent =
+          okLabel ||
+          'OK';
+
+        ok.addEventListener( 'click', () => {
+
+          finish( selected );
+
+        });
+
+        actions.appendChild( ok );
+
+
+        card.appendChild( actions );
+
+      } else {
+
+        card.appendChild( cancel );
+
+      }
 
 
       /*
@@ -4548,7 +4721,7 @@
 
 
       const first =
-        list.querySelector( 'button' );
+        list.querySelector( 'button, input' );
 
       if ( first ) {
 
@@ -4662,34 +4835,33 @@
     const choice =
       await siteDialog({
         title:
-          'Delete from this series?',
+          'Delete recurring event',
         message:
           ( original.title || 'This event' ) +
-          ' repeats weekly. How much of it goes?',
+          ' — ' +
+          occurrenceLabel( clicked ),
+        mode:
+          'radio',
+        defaultValue:
+          'one',
         choices: [
           {
             label:
-              'Just this block (' +
-              occurrenceLabel( clicked ) +
-              ')',
+              'This event only',
             value:
               'one'
           },
           {
             label:
-              'This and every one after',
+              'This and following events',
             value:
-              'following',
-            danger:
-              true
+              'following'
           },
           {
             label:
-              'The whole series, past and future',
+              'All events, past and future',
             value:
-              'all',
-            danger:
-              true
+              'all'
           }
         ]
       });
@@ -5165,7 +5337,7 @@
     Dropping a repeating block asks the same three-reach question as
     deleting one: just this block, this and every one after, or the
     whole series. The dialog opens after the drop, with the landing
-    time in its message, and Never mind puts everything back.
+    time in its message, and Cancel puts everything back.
   */
 
   async function moveRecurringDrop(
@@ -5240,30 +5412,32 @@
     const choice =
       await siteDialog({
         title:
-          'Move this repeating block?',
+          'Edit recurring event',
         message:
           ( original.title || 'This event' ) +
           ' would land on ' +
           moveTargetLabel( newStart ) +
-          '. How much of the series moves?',
+          '.',
+        mode:
+          'radio',
+        defaultValue:
+          'one',
         choices: [
           {
             label:
-              'Just this block (' +
-              occurrenceLabel( occurrence ) +
-              ')',
+              'This event only',
             value:
               'one'
           },
           {
             label:
-              'This and every one after',
+              'This and following events',
             value:
               'following'
           },
           {
             label:
-              'The whole series, past and future',
+              'All events, past and future',
             value:
               'all'
           }
