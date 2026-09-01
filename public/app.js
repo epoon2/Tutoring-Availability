@@ -419,6 +419,17 @@
       );
 
 
+    $('saveWeekBtn')
+      .addEventListener(
+        'click',
+        () => {
+
+          downloadWeekImage();
+
+        }
+      );
+
+
     $('viewGridBtn')
       .addEventListener(
         'click',
@@ -3814,6 +3825,467 @@
         null;
 
     }
+
+  }
+
+
+  /* =========================================================
+     SAVE THE WEEK AS AN IMAGE
+  ========================================================= */
+
+  /*
+    Draw the whole week onto an offscreen canvas and hand it over as a
+    PNG. The point is phones: the grid is wider than any phone screen,
+    so a screenshot can never hold the week - this renders it at full
+    size straight from the data, whatever the zoom. Whoever clicks
+    gets exactly the view they are entitled to, because the cards come
+    from getSegmentsForDate, the same source the grid draws from.
+  */
+
+  function roundRectPath(
+    ctx,
+    x,
+    y,
+    w,
+    h,
+    r
+  ) {
+
+    ctx.beginPath();
+    ctx.moveTo( x + r, y );
+    ctx.arcTo( x + w, y, x + w, y + h, r );
+    ctx.arcTo( x + w, y + h, x, y + h, r );
+    ctx.arcTo( x, y + h, x, y, r );
+    ctx.arcTo( x, y, x + w, y, r );
+    ctx.closePath();
+
+  }
+
+
+  function clipCanvasText(
+    ctx,
+    text,
+    maxWidth
+  ) {
+
+    let out =
+      String( text || '' );
+
+
+    if ( ctx.measureText( out ).width <= maxWidth ) {
+
+      return out;
+
+    }
+
+
+    while (
+      out.length > 1 &&
+      ctx.measureText( out + '…' ).width > maxWidth
+    ) {
+
+      out =
+        out.slice( 0, -1 );
+
+    }
+
+
+    return out + '…';
+
+  }
+
+
+  function downloadWeekImage() {
+
+    const startHour =
+      Number(
+        state.config.dayStart ??
+        8
+      );
+
+
+    const endHour =
+      Number(
+        state.config.dayEnd ??
+        24
+      );
+
+
+    const HOUR_H = 48;
+    const GUTTER = 64;
+    const COL_W = 168;
+    const HEAD_H = 96;
+    const PAD = 16;
+
+
+    const gridH =
+      ( endHour - startHour ) *
+      HOUR_H;
+
+
+    const width =
+      PAD * 2 +
+      GUTTER +
+      COL_W * 7;
+
+
+    const height =
+      HEAD_H +
+      gridH +
+      PAD * 2;
+
+
+    const scale = 2;
+
+    const canvas =
+      document.createElement( 'canvas' );
+
+    canvas.width =
+      width * scale;
+
+    canvas.height =
+      height * scale;
+
+
+    const ctx =
+      canvas.getContext( '2d' );
+
+    ctx.scale( scale, scale );
+
+
+    const font =
+      (px, weight) =>
+        ( weight ? weight + ' ' : '' ) +
+        px +
+        'px Inter, system-ui, sans-serif';
+
+
+    ctx.fillStyle = '#f6f7fb';
+    ctx.fillRect( 0, 0, width, height );
+
+
+    ctx.fillStyle = '#172033';
+    ctx.font = font( 17, '700' );
+    ctx.fillText(
+      state.config.portalTitle || 'Schedule',
+      PAD,
+      PAD + 18
+    );
+
+    ctx.font = font( 13, '600' );
+    ctx.fillStyle = '#687188';
+    ctx.fillText(
+      $('weekLabel').textContent +
+      ( state.config.timezoneLabel
+        ? '   ·   ' + state.config.timezoneLabel
+        : '' ),
+      PAD,
+      PAD + 40
+    );
+
+
+    const gridTop = HEAD_H;
+    const gridLeft = PAD + GUTTER;
+
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(
+      PAD,
+      gridTop - 34,
+      GUTTER + COL_W * 7,
+      34 + gridH
+    );
+
+    ctx.strokeStyle = '#dde2ec';
+    ctx.strokeRect(
+      PAD + 0.5,
+      gridTop - 33.5,
+      GUTTER + COL_W * 7 - 1,
+      33 + gridH
+    );
+
+
+    ctx.font = font( 10 );
+
+    for (
+      let h = startHour;
+      h <= endHour;
+      h++
+    ) {
+
+      const y =
+        gridTop +
+        ( h - startHour ) *
+        HOUR_H;
+
+      ctx.strokeStyle = '#eef1f6';
+      ctx.beginPath();
+      ctx.moveTo( gridLeft, y + 0.5 );
+      ctx.lineTo( gridLeft + COL_W * 7, y + 0.5 );
+      ctx.stroke();
+
+      ctx.fillStyle = '#687188';
+      ctx.textAlign = 'right';
+      ctx.fillText(
+        formatMinutes( h * 60 ),
+        gridLeft - 8,
+        y + 3
+      );
+      ctx.textAlign = 'left';
+
+    }
+
+
+    const todayStr =
+      minuteKeyToLocalDateTime(
+        getPortalNowMinuteKey()
+      ).slice( 0, 10 );
+
+
+    for (
+      let d = 0;
+      d < 7;
+      d++
+    ) {
+
+      const date =
+        addDays(
+          state.weekStart,
+          d
+        );
+
+      const dateStr =
+        formatDate( date );
+
+      const x =
+        gridLeft +
+        d * COL_W;
+
+
+      ctx.strokeStyle = '#dde2ec';
+      ctx.beginPath();
+      ctx.moveTo( x + 0.5, gridTop - 34 );
+      ctx.lineTo( x + 0.5, gridTop + gridH );
+      ctx.stroke();
+
+
+      const isToday =
+        dateStr ===
+        todayStr;
+
+      ctx.fillStyle =
+        isToday
+          ? '#315efb'
+          : '#172033';
+
+      ctx.font = font( 12, '700' );
+      ctx.fillText(
+        date.toLocaleDateString(
+          undefined,
+          {
+            weekday: 'short',
+            month: 'numeric',
+            day: 'numeric'
+          }
+        ),
+        x + 8,
+        gridTop - 12
+      );
+
+
+      getSegmentsForDate( dateStr ).forEach(
+        ({ event, startMin, endMin }) => {
+
+          const from =
+            Math.max(
+              startMin,
+              startHour * 60
+            );
+
+          const to =
+            Math.min(
+              endMin,
+              endHour * 60
+            );
+
+          if ( to <= from ) {
+
+            return;
+
+          }
+
+
+          const top =
+            gridTop +
+            (
+              ( from - startHour * 60 ) /
+              60
+            ) *
+            HOUR_H;
+
+          const cardH =
+            Math.max(
+              ( ( to - from ) / 60 ) *
+              HOUR_H,
+              12
+            );
+
+          const blocked =
+            event.type ===
+            'BLOCKED';
+
+
+          ctx.fillStyle =
+            blocked
+              ? '#fee4e2'
+              : '#e7f5ec';
+
+          ctx.strokeStyle =
+            blocked
+              ? '#f5aaa3'
+              : '#b9dfc6';
+
+          roundRectPath(
+            ctx,
+            x + 3,
+            top + 1,
+            COL_W - 6,
+            cardH - 2,
+            5
+          );
+
+          ctx.fill();
+          ctx.stroke();
+
+
+          ctx.fillStyle =
+            blocked
+              ? '#b42318'
+              : '#2f7d4a';
+
+          ctx.font = font( 11, '700' );
+          ctx.fillText(
+            clipCanvasText(
+              ctx,
+              event.title ||
+              ( blocked
+                ? 'Blocked Session'
+                : 'Available' ),
+              COL_W - 16
+            ),
+            x + 9,
+            top + 14
+          );
+
+
+          if ( cardH >= 28 ) {
+
+            ctx.font = font( 10 );
+            ctx.fillText(
+              clipCanvasText(
+                ctx,
+                formatMinuteRange( from, to ),
+                COL_W - 16
+              ),
+              x + 9,
+              top + 27
+            );
+
+          }
+
+        }
+      );
+
+
+      if ( isToday ) {
+
+        const nowLocal =
+          minuteKeyToLocalDateTime(
+            getPortalNowMinuteKey()
+          );
+
+        const minutes =
+          Number( nowLocal.slice( 11, 13 ) ) *
+          60 +
+          Number( nowLocal.slice( 14, 16 ) );
+
+        if (
+          minutes >= startHour * 60 &&
+          minutes <= endHour * 60
+        ) {
+
+          const y =
+            gridTop +
+            (
+              ( minutes - startHour * 60 ) /
+              60
+            ) *
+            HOUR_H;
+
+          ctx.strokeStyle = '#e14b4b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo( x, y );
+          ctx.lineTo( x + COL_W, y );
+          ctx.stroke();
+          ctx.lineWidth = 1;
+
+        }
+
+      }
+
+    }
+
+
+    canvas.toBlob(
+      (blob) => {
+
+        if ( !blob ) {
+
+          setStatus(
+            'Could not build the week image.'
+          );
+
+          return;
+
+        }
+
+
+        const url =
+          URL.createObjectURL( blob );
+
+        const link =
+          document.createElement( 'a' );
+
+        link.href =
+          url;
+
+        link.download =
+          'scheduleweekof' +
+          formatDate( state.weekStart ).replace( /-/g, '' ) +
+          '.png';
+
+        document.body.appendChild( link );
+        link.click();
+        link.remove();
+
+        setTimeout(
+          () => {
+
+            URL.revokeObjectURL( url );
+
+          },
+          4000
+        );
+
+
+        setStatus(
+          'Week image saved to your downloads.'
+        );
+
+      },
+      'image/png'
+    );
 
   }
 
