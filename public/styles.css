@@ -2160,3 +2160,119 @@ button.agenda-item:hover {
   gap: 8px;
   margin-top: 6px;
 }
+
+
+/* ---- Day / Week / Month switch ---- */
+
+.view-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.view-switch button[aria-pressed="true"] {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+
+/* ---- Month view ---- */
+
+.calendar.month-mode {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.month-dow {
+  padding: 10px 6px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.month-cell {
+  min-height: 104px;
+  padding: 6px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.month-cell:hover {
+  background: #f8f9fc;
+}
+
+.month-cell.other-month {
+  background: #fafbfd;
+}
+
+.month-cell.other-month .month-num {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.month-num {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.month-cell.today .month-num {
+  background: var(--accent);
+  color: #fff;
+}
+
+.month-chip {
+  margin-bottom: 2px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.month-chip.available {
+  background: var(--available-bg);
+  color: var(--available);
+}
+
+.month-chip.blocked {
+  background: var(--blocked-bg);
+  color: var(--blocked);
+}
+
+.month-more {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* The weekly summary and the phone agenda both speak in weeks. */
+
+body:not(.view-week) #weekSummary {
+  display: none !important;
+}
+
+body:not(.view-week) .agenda {
+  display: none !important;
+}
+
+body:not(.view-week) .view-toggle {
+  display: none !important;
+}
+
+body:not(.view-week).list-view .calendar {
+  display: grid !important;
+}

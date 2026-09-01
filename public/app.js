@@ -2,6 +2,9 @@
 
   const state = {
 
+    view:
+      'week',
+
     weekStart:
       startOfWeek(
         new Date()
@@ -314,6 +317,8 @@
 
     applyMobileView();
 
+    applyView();
+
   }
 
 
@@ -402,18 +407,37 @@
 
   function bindButtons() {
 
+    const stepAnchor =
+      (direction) => {
+
+        state.weekStart =
+          state.view === 'day'
+            ? addDays(
+                state.weekStart,
+                direction
+              )
+            : state.view === 'month'
+              ? addMonthsToDate(
+                  state.weekStart,
+                  direction
+                )
+              : addDays(
+                  state.weekStart,
+                  direction *
+                  7
+                );
+
+        loadWeek();
+
+      };
+
+
     $('prevWeekBtn')
       .addEventListener(
         'click',
         () => {
 
-          state.weekStart =
-            addDays(
-              state.weekStart,
-              -7
-            );
-
-          loadWeek();
+          stepAnchor( -1 );
 
         }
       );
@@ -425,6 +449,39 @@
         () => {
 
           downloadWeekImage();
+
+        }
+      );
+
+
+    $('viewDayBtn')
+      .addEventListener(
+        'click',
+        () => {
+
+          switchView( 'day' );
+
+        }
+      );
+
+
+    $('viewWeekBtn')
+      .addEventListener(
+        'click',
+        () => {
+
+          switchView( 'week' );
+
+        }
+      );
+
+
+    $('viewMonthBtn')
+      .addEventListener(
+        'click',
+        () => {
+
+          switchView( 'month' );
 
         }
       );
@@ -457,13 +514,7 @@
         'click',
         () => {
 
-          state.weekStart =
-            addDays(
-              state.weekStart,
-              7
-            );
-
-          loadWeek();
+          stepAnchor( 1 );
 
         }
       );
@@ -474,10 +525,18 @@
         'click',
         () => {
 
+          const now =
+            new Date();
+
+          now.setHours( 0, 0, 0, 0 );
+
+
           state.weekStart =
-            startOfWeek(
-              new Date()
-            );
+            state.view === 'day'
+              ? now
+              : state.view === 'month'
+                ? firstOfMonth( now )
+                : startOfWeek( now );
 
           loadWeek();
 
@@ -951,17 +1010,22 @@
 
     try {
 
+      const range =
+        visibleRange();
+
+
       const start =
         formatDate(
-          state.weekStart
+          range.start
         );
 
 
       const end =
         formatDate(
           addDays(
-            state.weekStart,
-            6
+            range.start,
+            range.days -
+            1
           )
         );
 
@@ -1122,6 +1186,224 @@
 
   }
 
+
+
+  /* =========================================================
+     DAY / WEEK / MONTH VIEWS
+  ========================================================= */
+
+  /*
+    One anchor date serves all three views: the day itself in day
+    view, the week's Sunday in week view, the first of the month in
+    month view. visibleRange turns it into the span to load and draw.
+  */
+
+  function firstOfMonth(
+    date
+  ) {
+
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      1
+    );
+
+  }
+
+
+  function addMonthsToDate(
+    date,
+    count
+  ) {
+
+    return new Date(
+      date.getFullYear(),
+      date.getMonth() +
+      count,
+      1
+    );
+
+  }
+
+
+  function visibleRange() {
+
+    if ( state.view === 'day' ) {
+
+      return {
+        start:
+          state.weekStart,
+        days:
+          1
+      };
+
+    }
+
+
+    if ( state.view === 'month' ) {
+
+      return {
+        start:
+          startOfWeek(
+            firstOfMonth(
+              state.weekStart
+            )
+          ),
+        days:
+          42
+      };
+
+    }
+
+
+    return {
+      start:
+        state.weekStart,
+      days:
+        7
+    };
+
+  }
+
+
+  const VIEW_WORD = {
+    day: 'daily',
+    week: 'weekly',
+    month: 'monthly'
+  };
+
+
+  function applyView() {
+
+    [ 'day', 'week', 'month' ].forEach(
+      (name) => {
+
+        document.body.classList.toggle(
+          'view-' + name,
+          state.view ===
+          name
+        );
+
+
+        $('view' + name.charAt( 0 ).toUpperCase() + name.slice( 1 ) + 'Btn')
+          .setAttribute(
+            'aria-pressed',
+            String(
+              state.view ===
+              name
+            )
+          );
+
+      }
+    );
+
+
+    $('saveWeekBtn')
+      .textContent =
+        'Screenshot ' +
+        VIEW_WORD[ state.view ] +
+        ' schedule';
+
+  }
+
+
+  function switchView(
+    next
+  ) {
+
+    if (
+      state.view ===
+      next
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+      Leaving week view lands on today when today is on screen -
+      that is almost always the day being asked about - otherwise on
+      the start of the visible span.
+    */
+
+    let anchor =
+      new Date(
+        state.weekStart
+      );
+
+
+    if ( state.view === 'week' ) {
+
+      const today =
+        new Date();
+
+      today.setHours( 0, 0, 0, 0 );
+
+
+      if (
+        today >=
+          state.weekStart &&
+        today <=
+          addDays(
+            state.weekStart,
+            6
+          )
+      ) {
+
+        anchor =
+          today;
+
+      }
+
+    }
+
+
+    state.view =
+      next;
+
+
+    state.weekStart =
+      next === 'week'
+        ? startOfWeek( anchor )
+        : next === 'month'
+          ? firstOfMonth( anchor )
+          : anchor;
+
+
+    applyView();
+
+    loadWeek();
+
+  }
+
+
+  function switchToDay(
+    dateStr
+  ) {
+
+    const day =
+      new Date(
+        dateStr +
+        'T12:00'
+      );
+
+    day.setHours( 0, 0, 0, 0 );
+
+
+    state.view =
+      'day';
+
+
+    state.weekStart =
+      day;
+
+
+    applyView();
+
+    loadWeek();
+
+  }
 
 
   /*
@@ -1360,6 +1642,20 @@
 
 
     if ( !panel ) {
+
+      return;
+
+    }
+
+
+    /*
+      The summary speaks in weeks; in day and month views it would
+      count a different span than the one on screen, so it sits out.
+    */
+
+    if ( state.view !== 'week' ) {
+
+      panel.classList.add( 'hidden' );
 
       return;
 
@@ -1705,6 +2001,42 @@
 
   function renderWeekLabel() {
 
+    if ( state.view === 'day' ) {
+
+      $('weekLabel')
+        .textContent =
+          state.weekStart.toLocaleDateString(
+            undefined,
+            {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            }
+          );
+
+      return;
+
+    }
+
+
+    if ( state.view === 'month' ) {
+
+      $('weekLabel')
+        .textContent =
+          state.weekStart.toLocaleDateString(
+            undefined,
+            {
+              month: 'long',
+              year: 'numeric'
+            }
+          );
+
+      return;
+
+    }
+
+
     const end =
       addDays(
         state.weekStart,
@@ -1991,6 +2323,37 @@
 
   function renderCalendar() {
 
+    if ( state.view === 'month' ) {
+
+      renderMonthGrid();
+
+      return;
+
+    }
+
+
+    calendar.classList.remove( 'month-mode' );
+
+
+    /*
+      Day view is one wide column; the CSS week template only knows
+      seven, so the day template is set inline and cleared again for
+      week view, where the stylesheet - mobile compaction included -
+      stays in charge.
+    */
+
+    const dayCount =
+      state.view === 'day'
+        ? 1
+        : 7;
+
+
+    calendar.style.gridTemplateColumns =
+      state.view === 'day'
+        ? '70px 1fr'
+        : '';
+
+
     const startHour =
       Number(
         state.config
@@ -2050,7 +2413,7 @@
 
     for (
       let d = 0;
-      d < 7;
+      d < dayCount;
       d++
     ) {
 
@@ -2174,7 +2537,7 @@
 
     for (
       let d = 0;
-      d < 7;
+      d < dayCount;
       d++
     ) {
 
@@ -2824,6 +3187,18 @@
 
     agenda.innerHTML =
       '';
+
+
+    /*
+      The agenda list is the week view's phone companion; day and
+      month draw their own shapes.
+    */
+
+    if ( state.view !== 'week' ) {
+
+      return;
+
+    }
 
 
     for (
@@ -3830,6 +4205,214 @@
 
 
   /* =========================================================
+     MONTH VIEW
+  ========================================================= */
+
+  /*
+    A month is for shape, not surgery: each day is a cell of compact
+    chips, capped with a "+N more", and clicking a day opens it in the
+    day view, where every verb - create, edit, drag, delete - already
+    lives. Chips, times and visibility all come from
+    getSegmentsForDate, the same source the grid draws from.
+  */
+
+  function renderMonthGrid() {
+
+    calendar.classList.add( 'month-mode' );
+
+    calendar.style.gridTemplateColumns =
+      '';
+
+    calendar.innerHTML =
+      '';
+
+
+    const range =
+      visibleRange();
+
+
+    const monthIndex =
+      state.weekStart.getMonth();
+
+
+    const todayStr =
+      formatDate(
+        new Date()
+      );
+
+
+    for (
+      let d = 0;
+      d < 7;
+      d++
+    ) {
+
+      const head =
+        document.createElement( 'div' );
+
+      head.className =
+        'month-dow';
+
+      head.textContent =
+        addDays(
+          range.start,
+          d
+        ).toLocaleDateString(
+          undefined,
+          {
+            weekday: 'short'
+          }
+        );
+
+      calendar.appendChild( head );
+
+    }
+
+
+    for (
+      let d = 0;
+      d < 42;
+      d++
+    ) {
+
+      const date =
+        addDays(
+          range.start,
+          d
+        );
+
+      const dateStr =
+        formatDate( date );
+
+
+      const cell =
+        document.createElement( 'div' );
+
+      cell.className =
+        'month-cell' +
+        (
+          date.getMonth() !==
+          monthIndex
+            ? ' other-month'
+            : ''
+        ) +
+        (
+          dateStr ===
+          todayStr
+            ? ' today'
+            : ''
+        );
+
+
+      const num =
+        document.createElement( 'div' );
+
+      num.className =
+        'month-num';
+
+      num.textContent =
+        date.getDate();
+
+      cell.appendChild( num );
+
+
+      const segments =
+        getSegmentsForDate( dateStr )
+          .slice()
+          .sort(
+            (a, b) =>
+              a.startMin -
+              b.startMin
+          );
+
+
+      const MAX_CHIPS = 4;
+
+
+      segments
+        .slice( 0, MAX_CHIPS )
+        .forEach(
+          ({ event, startMin, endMin }) => {
+
+            const chip =
+              document.createElement( 'div' );
+
+            chip.className =
+              'month-chip ' +
+              (
+                event.type ===
+                'BLOCKED'
+                  ? 'blocked'
+                  : 'available'
+              );
+
+            chip.textContent =
+              formatMinutes( startMin ) +
+              ' ' +
+              (
+                event.title ||
+                (
+                  event.type ===
+                  'BLOCKED'
+                    ? 'Blocked'
+                    : 'Available'
+                )
+              );
+
+            chip.title =
+              formatMinuteRange(
+                startMin,
+                endMin
+              );
+
+            cell.appendChild( chip );
+
+          }
+        );
+
+
+      if (
+        segments.length >
+        MAX_CHIPS
+      ) {
+
+        const more =
+          document.createElement( 'div' );
+
+        more.className =
+          'month-more';
+
+        more.textContent =
+          '+' +
+          (
+            segments.length -
+            MAX_CHIPS
+          ) +
+          ' more';
+
+        cell.appendChild( more );
+
+      }
+
+
+      cell.addEventListener(
+        'click',
+        () => {
+
+          switchToDay( dateStr );
+
+        }
+      );
+
+
+      calendar.appendChild( cell );
+
+    }
+
+  }
+
+
+  /* =========================================================
      SAVE THE WEEK AS AN IMAGE
   ========================================================= */
 
@@ -3897,6 +4480,25 @@
 
   function downloadWeekImage() {
 
+    if ( state.view === 'month' ) {
+
+      downloadMonthImage();
+
+      return;
+
+    }
+
+
+    const range =
+      visibleRange();
+
+
+    const dayCount =
+      state.view === 'day'
+        ? 1
+        : 7;
+
+
     const startHour =
       Number(
         state.config.dayStart ??
@@ -3913,7 +4515,10 @@
 
     const HOUR_H = 48;
     const GUTTER = 64;
-    const COL_W = 168;
+    const COL_W =
+      state.view === 'day'
+        ? 420
+        : 168;
     const HEAD_H = 96;
     const PAD = 16;
 
@@ -3926,7 +4531,7 @@
     const width =
       PAD * 2 +
       GUTTER +
-      COL_W * 7;
+      COL_W * dayCount;
 
 
     const height =
@@ -3992,7 +4597,7 @@
     ctx.fillRect(
       PAD,
       gridTop - 34,
-      GUTTER + COL_W * 7,
+      GUTTER + COL_W * dayCount,
       34 + gridH
     );
 
@@ -4000,7 +4605,7 @@
     ctx.strokeRect(
       PAD + 0.5,
       gridTop - 33.5,
-      GUTTER + COL_W * 7 - 1,
+      GUTTER + COL_W * dayCount - 1,
       33 + gridH
     );
 
@@ -4021,7 +4626,7 @@
       ctx.strokeStyle = '#eef1f6';
       ctx.beginPath();
       ctx.moveTo( gridLeft, y + 0.5 );
-      ctx.lineTo( gridLeft + COL_W * 7, y + 0.5 );
+      ctx.lineTo( gridLeft + COL_W * dayCount, y + 0.5 );
       ctx.stroke();
 
       ctx.fillStyle = '#687188';
@@ -4044,13 +4649,13 @@
 
     for (
       let d = 0;
-      d < 7;
+      d < dayCount;
       d++
     ) {
 
       const date =
         addDays(
-          state.weekStart,
+          range.start,
           d
         );
 
@@ -4237,13 +4842,22 @@
     }
 
 
+    saveCanvasPng( canvas );
+
+  }
+
+
+  function saveCanvasPng(
+    canvas
+  ) {
+
     canvas.toBlob(
       (blob) => {
 
         if ( !blob ) {
 
           setStatus(
-            'Could not build the week image.'
+            'Could not build the schedule image.'
           );
 
           return;
@@ -4261,8 +4875,9 @@
           url;
 
         link.download =
-          'scheduleweekof' +
-          formatDate( state.weekStart ).replace( /-/g, '' ) +
+          'schedule' +
+          VIEW_WORD[ state.view ] +
+          formatDate( visibleRange().start ).replace( /-/g, '' ) +
           '.png';
 
         document.body.appendChild( link );
@@ -4280,12 +4895,298 @@
 
 
         setStatus(
-          'Week image saved to your downloads.'
+          'The ' +
+          VIEW_WORD[ state.view ] +
+          ' schedule image is saved to your downloads.'
         );
 
       },
       'image/png'
     );
+
+  }
+
+
+  /*
+    The month image mirrors the month view: a title, a weekday header
+    row, and 42 cells of compact chips - the shape of the month at a
+    glance, sized for sharing rather than surgery.
+  */
+
+  function downloadMonthImage() {
+
+    const range =
+      visibleRange();
+
+
+    const COL_W = 172;
+    const CELL_H = 112;
+    const DOW_H = 26;
+    const HEAD_H = 64;
+    const PAD = 16;
+
+
+    const width =
+      PAD * 2 +
+      COL_W * 7;
+
+
+    const height =
+      HEAD_H +
+      DOW_H +
+      CELL_H * 6 +
+      PAD * 2;
+
+
+    const scale = 2;
+
+    const canvas =
+      document.createElement( 'canvas' );
+
+    canvas.width =
+      width * scale;
+
+    canvas.height =
+      height * scale;
+
+
+    const ctx =
+      canvas.getContext( '2d' );
+
+    ctx.scale( scale, scale );
+
+
+    const font =
+      (px, weight) =>
+        ( weight ? weight + ' ' : '' ) +
+        px +
+        'px Inter, system-ui, sans-serif';
+
+
+    ctx.fillStyle = '#f6f7fb';
+    ctx.fillRect( 0, 0, width, height );
+
+    ctx.fillStyle = '#172033';
+    ctx.font = font( 17, '700' );
+    ctx.fillText(
+      state.config.portalTitle || 'Schedule',
+      PAD,
+      PAD + 18
+    );
+
+    ctx.font = font( 13, '600' );
+    ctx.fillStyle = '#687188';
+    ctx.fillText(
+      $('weekLabel').textContent,
+      PAD,
+      PAD + 40
+    );
+
+
+    const top = HEAD_H;
+    const left = PAD;
+
+
+    const monthIndex =
+      state.weekStart.getMonth();
+
+
+    const todayStr =
+      formatDate(
+        new Date()
+      );
+
+
+    for (
+      let d = 0;
+      d < 7;
+      d++
+    ) {
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect( left + d * COL_W, top, COL_W, DOW_H );
+      ctx.strokeStyle = '#dde2ec';
+      ctx.strokeRect( left + d * COL_W + 0.5, top + 0.5, COL_W - 1, DOW_H - 1 );
+
+      ctx.fillStyle = '#687188';
+      ctx.font = font( 10, '700' );
+      ctx.fillText(
+        addDays( range.start, d )
+          .toLocaleDateString( undefined, { weekday: 'short' } )
+          .toUpperCase(),
+        left + d * COL_W + 8,
+        top + 17
+      );
+
+    }
+
+
+    for (
+      let d = 0;
+      d < 42;
+      d++
+    ) {
+
+      const date =
+        addDays(
+          range.start,
+          d
+        );
+
+      const dateStr =
+        formatDate( date );
+
+      const x =
+        left +
+        ( d % 7 ) *
+        COL_W;
+
+      const y =
+        top +
+        DOW_H +
+        Math.floor( d / 7 ) *
+        CELL_H;
+
+
+      const inMonth =
+        date.getMonth() ===
+        monthIndex;
+
+
+      ctx.fillStyle =
+        inMonth
+          ? '#ffffff'
+          : '#fafbfd';
+
+      ctx.fillRect( x, y, COL_W, CELL_H );
+      ctx.strokeStyle = '#dde2ec';
+      ctx.strokeRect( x + 0.5, y + 0.5, COL_W - 1, CELL_H - 1 );
+
+
+      const isToday =
+        dateStr ===
+        todayStr;
+
+      if ( isToday ) {
+
+        ctx.fillStyle = '#315efb';
+        ctx.beginPath();
+        ctx.arc( x + 15, y + 14, 10, 0, Math.PI * 2 );
+        ctx.fill();
+
+      }
+
+      ctx.fillStyle =
+        isToday
+          ? '#ffffff'
+          : inMonth
+            ? '#172033'
+            : '#687188';
+
+      ctx.font = font( 11, '700' );
+      ctx.fillText(
+        String( date.getDate() ),
+        x + ( date.getDate() > 9 ? 9 : 12 ),
+        y + 18
+      );
+
+
+      const segments =
+        getSegmentsForDate( dateStr )
+          .slice()
+          .sort(
+            (a, b) =>
+              a.startMin -
+              b.startMin
+          );
+
+
+      const MAX_CHIPS = 4;
+
+
+      segments
+        .slice( 0, MAX_CHIPS )
+        .forEach(
+          ({ event, startMin }, index) => {
+
+            const blocked =
+              event.type ===
+              'BLOCKED';
+
+            const chipY =
+              y +
+              26 +
+              index * 19;
+
+            ctx.fillStyle =
+              blocked
+                ? '#fee4e2'
+                : '#e7f5ec';
+
+            roundRectPath(
+              ctx,
+              x + 4,
+              chipY,
+              COL_W - 8,
+              16,
+              4
+            );
+
+            ctx.fill();
+
+            ctx.fillStyle =
+              blocked
+                ? '#b42318'
+                : '#2f7d4a';
+
+            ctx.font = font( 9.5, '600' );
+            ctx.fillText(
+              clipCanvasText(
+                ctx,
+                formatMinutes( startMin ) +
+                ' ' +
+                (
+                  event.title ||
+                  ( blocked
+                    ? 'Blocked'
+                    : 'Available' )
+                ),
+                COL_W - 16
+              ),
+              x + 8,
+              chipY + 12
+            );
+
+          }
+        );
+
+
+      if (
+        segments.length >
+        MAX_CHIPS
+      ) {
+
+        ctx.fillStyle = '#687188';
+        ctx.font = font( 9 );
+        ctx.fillText(
+          '+' +
+          (
+            segments.length -
+            MAX_CHIPS
+          ) +
+          ' more',
+          x + 8,
+          y +
+          CELL_H -
+          6
+        );
+
+      }
+
+    }
+
+
+    saveCanvasPng( canvas );
 
   }
 

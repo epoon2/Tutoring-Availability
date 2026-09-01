@@ -47,12 +47,12 @@ async def main():
         name = dl.suggested_filename
         path = await dl.path()
         data = open(path, "rb").read()
-        check("the download is a png named for the week",
-              name.startswith("scheduleweekof") and name.endswith(".png"), name)
+        check("the download is a png named for the weekly view",
+              name.startswith("scheduleweekly") and name.endswith(".png"), name)
         check("it really is a PNG", data[:8] == b"\x89PNG\r\n\x1a\n", str(data[:8]))
         check("it is a full-size image, not a thumbnail", len(data) > 20000, f"{len(data)} bytes")
         status = await page.text_content("#status")
-        check("status confirms the save", "image saved" in status, status)
+        check("status confirms the save", "schedule image is saved" in status, status)
 
         # Signed out, the button still works and draws the public view.
         pub = await (await b.new_context(viewport={"width": 390, "height": 844},
