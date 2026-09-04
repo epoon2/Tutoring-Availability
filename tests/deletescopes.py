@@ -171,6 +171,58 @@ async def main():
         await page.click("#prevWeekBtn"); await page.wait_for_timeout(700)
         check("the past weeks are gone too", await cards(page) == 0, f"cards={await cards(page)}")
 
+        # ---- the reported bug: a weekly AVAILABILITY block wrapping a
+        # booked session. Deleting part of it re-saves the shortened
+        # series, which used to be refused as "overlaps an existing
+        # blocked session" - availability spanning sessions is the
+        # normal shape here, not a clash.
+        await page.click("#todayBtn"); await page.wait_for_timeout(700)
+        wed = await page.evaluate(
+            "[...document.querySelectorAll('.day-column')].map(c => c.dataset.date)"
+            ".find(d => new Date(d + 'T12:00').getDay() === 3)")
+        await page.evaluate(
+            "async (wed) => {"
+            "  const post = (body) => fetch('/api/events', { method: 'POST',"
+            "    headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},"
+            "    body: JSON.stringify(body) });"
+            "  await post({ id: 'wed-open', type: 'AVAILABLE', title: 'Open',"
+            "    start: wed + 'T09:00', end: wed + 'T12:00',"
+            "    recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [3], endType: 'NEVER' } });"
+            "  await post({ id: 'wed-session', type: 'BLOCKED', title: 'Noah - Geometry',"
+            "    start: wed + 'T10:00', end: wed + 'T11:00',"
+            "    recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [3], endType: 'NEVER' } });"
+            "}", wed)
+        await page.click("#todayBtn"); await page.wait_for_timeout(800)
+
+        # Right-click the AVAILABILITY card specifically: blocked cards are
+        # drawn first, so "the first card in the column" is the session.
+        opened = await page.evaluate(
+            "(wed) => {"
+            "  const card = document.querySelector("
+            "    '.day-column[data-date=\"' + wed + '\"] .event-card.available');"
+            "  if (!card) return false;"
+            "  card.dispatchEvent(new MouseEvent('contextmenu',"
+            "    { bubbles: true, cancelable: true, clientX: 300, clientY: 300 }));"
+            "  return true;"
+            "}", wed)
+        await page.wait_for_timeout(300)
+        check("the availability block is on screen with its own menu", opened)
+        await click_menu(page, "Delete…")
+        await choose_scope(page, "This and following events")
+        status = await page.text_content("#status")
+        check("deleting availability that wraps a session is not refused",
+              "overlap" not in status.lower(), status)
+        left = await page.evaluate(
+            "async (wed) => {"
+            "  const r = await fetch('/api/events?start=' + wed + '&end=' + wed,"
+            "    { headers: { 'x-admin-password': 't' } });"
+            "  const evs = (await r.json()).events;"
+            "  return { available: evs.filter(e => e.type === 'AVAILABLE').length,"
+            "           blocked: evs.filter(e => e.type === 'BLOCKED').length };"
+            "}", wed)
+        check("the availability is gone and the session it wrapped survives",
+              left["available"] == 0 and left["blocked"] == 1, str(left))
+
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
         check("no console errors", not real, str(real[:3]))
 

@@ -2106,6 +2106,31 @@ function findBlockedConflicts(
   storedEvents
 ) {
 
+  /*
+    Only a BLOCKED session can conflict with another one. Availability
+    that spans booked sessions is not a clash - it is the normal shape
+    of this schedule, and the public view is literally built by
+    subtracting blocked time out of available time. Checking it warned
+    on every ordinary edit, and worse, it refused the internal saves
+    that deleting or moving part of a series performs.
+  */
+
+  if (
+    incoming.type !==
+    "BLOCKED"
+  ) {
+
+    return {
+      total:
+        0,
+
+      conflicts:
+        []
+    };
+
+  }
+
+
   const incomingStart =
     localDateTimeToMinuteKey(
       incoming.start
@@ -3199,7 +3224,8 @@ export {
   expandEventsForRange,
   expandWeeklyEvent,
   localDateTimeToMinuteKey,
-  buildPublicSchedule
+  buildPublicSchedule,
+  findBlockedConflicts
 };
 
 

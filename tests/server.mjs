@@ -8,7 +8,7 @@ import { extname, join, normalize } from 'node:path';
 // the way production does (run `node tests/install-shim.mjs` once first).
 import {
   expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey,
-  buildPublicSchedule
+  buildPublicSchedule, findBlockedConflicts
 } from '../netlify/functions/api.mjs';
 
 const ROOT = new URL('../public/', import.meta.url).pathname;
@@ -75,6 +75,19 @@ createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (route === '/events' && req.method === 'POST') {
+      // Production refuses a save that puts one blocked session on top of
+      // another unless the caller forces past it. The stub enforces the
+      // same rule with the same code, so the browser tests exercise the
+      // real gate rather than a permissive fiction.
+      const conflicts = findBlockedConflicts(body, events);
+      if (body.forceConflict !== true && conflicts.total > 0) {
+        return json(res, 409, {
+          code: 'BLOCKED_CONFLICT',
+          error: 'This event overlaps an existing blocked session.',
+          totalConflicts: conflicts.total,
+          conflicts: conflicts.conflicts,
+        });
+      }
       // Create-or-update by id, exactly as production's route behaves:
       // a body that names an existing id replaces that event wholesale.
       const id = body.id || ('e' + (nextId++));

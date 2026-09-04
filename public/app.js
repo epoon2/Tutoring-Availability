@@ -6422,6 +6422,14 @@
           body:
             JSON.stringify({
 
+              /*
+                Ending a series early only removes sessions, so this
+                never waits on the conflict check.
+              */
+
+              forceConflict:
+                true,
+
               id:
                 original.masterId ||
                 original.id,
@@ -6971,6 +6979,17 @@
   ) {
 
     return {
+
+      /*
+        Every use of this is a truncation or a rollback: the series is
+        re-saved shortened, or restored exactly as it was. Neither can
+        introduce a clash, so neither waits on the conflict check -
+        which otherwise refuses the internal save and leaves the admin
+        told that a deletion "overlaps an existing blocked session".
+      */
+
+      forceConflict:
+        true,
 
       id:
         original.masterId ||
