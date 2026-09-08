@@ -191,17 +191,56 @@ async def main():
             await page.click("[data-close='eventModal']")
             await page.wait_for_timeout(300)
 
-        # ---------- 8. left-click on a card still creates new ----------
-        if cards:
-            await page.locator(".event-card").first.click()
-            await page.wait_for_timeout(400)
-            on_card = await page.evaluate("""() => ({
+        # ---------- 8. left-click: a session edits, everything else adds ----------
+        async def modal_state():
+            return await page.evaluate("""() => ({
                 open: !document.getElementById('eventModal').classList.contains('hidden'),
                 id: document.getElementById('eventId').value,
-                title: document.getElementById('eventModalTitle').textContent.trim()
+                title: document.getElementById('eventModalTitle').textContent.trim(),
+                name: document.getElementById('eventTitle').value,
+                type: document.getElementById('eventType').value
             })""")
-            check("left-click on a card opens a NEW session (not edit)",
-                  on_card["open"] and on_card["id"]=="" and on_card["title"]=="Add time", str(on_card))
+        if cards:
+            # The blocked session saved above: a left-click opens it for editing.
+            await page.locator(".event-card.blocked").first.click()
+            await page.wait_for_timeout(400)
+            on_card = await modal_state()
+            check("left-click on a blocked session opens it for editing",
+                  on_card["open"] and on_card["id"] != "" and on_card["title"] == "Edit time"
+                  and on_card["name"] == "Maya - Algebra II", str(on_card))
+            check("the editor is the full form, not a fresh one",
+                  on_card["type"] == "BLOCKED", str(on_card))
+            await page.click("[data-close='eventModal']")
+            await page.wait_for_timeout(300)
+
+            # An availability block on the same first day: a left-click on it
+            # still adds a new session, exactly like empty space.
+            await page.evaluate("""async () => {
+                const day = document.querySelector('.day-column').dataset.date;
+                await fetch('/api/events', { method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
+                    body: JSON.stringify({ type: 'AVAILABLE', title: 'Open',
+                        start: day + 'T17:00', end: day + 'T19:00' }) });
+            }""")
+            await page.click("#todayBtn")
+            await page.wait_for_timeout(700)
+            avail = page.locator(".event-card.available").first
+            check("availability block rendered", await avail.count() == 1)
+            await avail.click()
+            await page.wait_for_timeout(400)
+            on_avail = await modal_state()
+            check("left-click on availability adds a NEW session (not edit)",
+                  on_avail["open"] and on_avail["id"] == "" and on_avail["title"] == "Add time", str(on_avail))
+            await page.click("[data-close='eventModal']")
+            await page.wait_for_timeout(300)
+
+            # Empty space, unchanged.
+            box4 = await page.locator(".day-column").nth(3).bounding_box()
+            await page.mouse.click(box4["x"] + box4["width"]/2, box4["y"] + 260)
+            await page.wait_for_timeout(400)
+            on_empty = await modal_state()
+            check("left-click on empty space adds a NEW session",
+                  on_empty["open"] and on_empty["id"] == "" and on_empty["title"] == "Add time", str(on_empty))
             await page.click("[data-close='eventModal']")
 
         real = [e for e in errors if "favicon" not in e and "manifest" not in e.lower()]

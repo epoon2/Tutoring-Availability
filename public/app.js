@@ -3122,12 +3122,63 @@
 
 
       /*
-        Left click anywhere on the schedule
-        opens a new session for that slot,
-        cards included. Editing an existing
-        one moved to the right-click menu so
-        this one gesture is never ambiguous.
+        Left-clicking a booked session opens it
+        for editing - the block already is the
+        thing you mean. Availability and empty
+        space keep bubbling to the column, where
+        a click adds a new session in that slot.
       */
+
+      if (
+        event.type ===
+        'BLOCKED'
+      ) {
+
+        card.addEventListener(
+          'click',
+          (clickEvent) => {
+
+            clickEvent
+              .stopPropagation();
+
+
+            /*
+              A drop also ends in a click on the
+              card. Swallow that one, the same
+              way the column does.
+            */
+
+            if ( state.suppressNextScheduleClick ) {
+
+              state.suppressNextScheduleClick =
+                false;
+
+              return;
+
+            }
+
+
+            if ( state.openContextMenu ) {
+
+              closeContextMenu();
+
+              return;
+
+            }
+
+
+            openEventModal(
+              original,
+              recurring
+                ? event
+                : original
+            );
+
+          }
+        );
+
+      }
+
 
       card.addEventListener(
         'contextmenu',

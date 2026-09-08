@@ -100,7 +100,21 @@ async def main():
             "[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
         check("series menu says plain Edit now",
               items == ["Edit", "Duplicate", "Copy", "Delete…"], str(items))
-        await click_menu(page, "Edit")
+        # Close the menu and reach the editor the short way instead: a
+        # left-click on the session itself, which must carry the same
+        # occurrence the right-click menu would have.
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+        await page.evaluate("""() => {
+            const card = [...document.querySelectorAll('.event-card')].find(c =>
+                new Date(c.closest('.day-column').dataset.date + 'T12:00').getDay() === 4);
+            card.click();
+        }""")
+        await page.wait_for_timeout(400)
+        opened = await page.evaluate("""() => ({
+            open: !document.getElementById('eventModal').classList.contains('hidden'),
+            title: document.getElementById('eventModalTitle').textContent.trim() })""")
+        check("left-clicking a recurring session opens the series editor",
+              opened["open"] and opened["title"] == "Edit recurring event", str(opened))
         form_date = await page.evaluate("document.getElementById('eventStartDate').value")
         check("the editor opens on the clicked week's date", form_date == dates["thu"], form_date)
         await set_time(page, "Start", "5", "00p")
