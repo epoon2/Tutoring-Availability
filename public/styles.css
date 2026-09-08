@@ -388,6 +388,50 @@ button:disabled {
 
 
 /* -----------------------------
+   GOOGLE SYNC NOTICE
+   Shown only when a change was
+   saved here but did not reach
+   Google Calendar.
+----------------------------- */
+
+.sync-notice {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  gap: 10px;
+
+  margin-bottom: 12px;
+
+  padding: 10px 14px;
+
+  background: #fff4e5;
+
+  border: 1px solid #f5c98a;
+
+  border-radius: 12px;
+
+  color: #7a4b00;
+
+  font-size: 13px;
+}
+
+.sync-notice span {
+  flex: 1 1 240px;
+}
+
+.sync-notice.ok {
+  background: #e9f8ee;
+
+  border-color: #a9dfbb;
+
+  color: #1d5c35;
+}
+
+
+/* -----------------------------
    CALENDAR
 ----------------------------- */
 

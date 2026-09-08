@@ -581,6 +581,27 @@
       );
 
 
+    $('googleSyncBtn')
+      .addEventListener(
+        'click',
+        resyncGoogleCalendar
+      );
+
+
+    $('syncNoticeRetryBtn')
+      .addEventListener(
+        'click',
+        resyncGoogleCalendar
+      );
+
+
+    $('syncNoticeCloseBtn')
+      .addEventListener(
+        'click',
+        hideSyncNotice
+      );
+
+
     $('requestBtn')
       .addEventListener(
         'click',
@@ -982,7 +1003,215 @@
     }
 
 
+    /*
+      A change that reached the portal but not Google Calendar comes
+      back with sync.google === 'failed'. The change stands; the page
+      says so once, with a way to push everything again.
+    */
+
+    noteGoogleSync(
+      data.sync
+    );
+
+
     return data;
+
+  }
+
+
+
+  /* =========================================================
+     GOOGLE CALENDAR SYNC
+  ========================================================= */
+
+  function noteGoogleSync(
+    sync
+  ) {
+
+    if (
+      !sync ||
+      sync.google !== 'failed'
+    ) {
+
+      return;
+
+    }
+
+
+    showSyncNotice(
+      'Saved here, but Google Calendar was not updated' +
+      (
+        sync.error
+          ? ` (${sync.error}).`
+          : '.'
+      ),
+      false
+    );
+
+  }
+
+
+  function showSyncNotice(
+    text,
+    ok
+  ) {
+
+    const notice =
+      $('syncNotice');
+
+
+    $('syncNoticeText')
+      .textContent =
+        text;
+
+
+    notice
+      .classList
+      .toggle(
+        'ok',
+        Boolean( ok )
+      );
+
+
+    $('syncNoticeRetryBtn')
+      .classList
+      .toggle(
+        'hidden',
+        Boolean( ok )
+      );
+
+
+    notice
+      .classList
+      .remove(
+        'hidden'
+      );
+
+  }
+
+
+  function hideSyncNotice() {
+
+    $('syncNotice')
+      .classList
+      .add(
+        'hidden'
+      );
+
+  }
+
+
+  /*
+    Push every booked session to Google again and drop anything the
+    portal put there that no longer has a session behind it.
+  */
+
+  async function resyncGoogleCalendar() {
+
+    const button =
+      $('googleSyncBtn');
+
+
+    button.disabled =
+      true;
+
+
+    setStatus(
+      'Syncing Google Calendar…'
+    );
+
+
+    try {
+
+      const result =
+        await api(
+          '/google/resync',
+          {
+            method:
+              'POST',
+
+            body:
+              '{}'
+          }
+        );
+
+
+      if (
+        result.google === 'ok'
+      ) {
+
+        showSyncNotice(
+          `Google Calendar is up to date: ${
+            result.pushed
+          } session${
+            result.pushed === 1
+              ? ''
+              : 's'
+          } pushed` +
+          (
+            result.removed
+              ? `, ${result.removed} stale removed.`
+              : '.'
+          ),
+          true
+        );
+
+      } else if (
+        result.google === 'off'
+      ) {
+
+        showSyncNotice(
+          'Google Calendar sync is not set up on this site.',
+          false
+        );
+
+      } else {
+
+        const failed =
+          (
+            result.failed ||
+            []
+          ).length;
+
+
+        showSyncNotice(
+          `Google Calendar sync did not finish` +
+          (
+            failed
+              ? ` - ${failed} session${
+                  failed === 1
+                    ? ''
+                    : 's'
+                } failed`
+              : ''
+          ) +
+          (
+            result.error
+              ? ` (${result.error}).`
+              : '.'
+          ),
+          false
+        );
+
+      }
+
+
+      setStatus(
+        ''
+      );
+
+    } catch (error) {
+
+      handleError(
+        error
+      );
+
+    } finally {
+
+      button.disabled =
+        false;
+
+    }
 
   }
 
@@ -1156,6 +1385,30 @@
         'hidden',
         !state.isAdmin
       );
+
+
+    /*
+      Only where the site has Google
+      credentials; otherwise the button
+      would do nothing.
+    */
+
+    $('googleSyncBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !(
+          state.isAdmin &&
+          state.config.googleSync
+        )
+      );
+
+
+    if ( !state.isAdmin ) {
+
+      hideSyncNotice();
+
+    }
 
 
     $('requestsBtn')

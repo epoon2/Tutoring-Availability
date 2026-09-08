@@ -19,10 +19,19 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 let events = [];
 let nextId = 1;
 
+// FAKE_GOOGLE=ok|failed pretends the site has Google credentials and
+// answers every write with that sync outcome, so the page's notice and
+// the Sync button can be driven without a real calendar.
+const FAKE_GOOGLE = process.env.FAKE_GOOGLE || '';
+const syncResult = () => FAKE_GOOGLE === 'failed'
+  ? { google: 'failed', error: 'Google 401: invalid key' }
+  : FAKE_GOOGLE ? { google: 'ok' } : { google: 'off' };
+
 const config = {
   portalTitle: "Ethan's Tutoring Availability",
   tutorName: 'Ethan', timezone: 'America/Los_Angeles',
-  dayStart: 8, dayEnd: 24
+  dayStart: 8, dayEnd: 24,
+  googleSync: Boolean(FAKE_GOOGLE)
 };
 
 const json = (res, code, body) => {
@@ -72,7 +81,7 @@ createServer(async (req, res) => {
         .some(o => o.start.slice(0, 10) === date);
       if (!lands) return json(res, 400, { error: 'That series has no session on that date.' });
       event.recurrence.exdates = [...new Set([...(event.recurrence.exdates || []), date])].sort();
-      return json(res, 200, { ok: true });
+      return json(res, 200, { ok: true, sync: syncResult() });
     }
     if (route === '/events' && req.method === 'POST') {
       // Production refuses a save that puts one blocked session on top of
@@ -94,7 +103,7 @@ createServer(async (req, res) => {
       const ev = { ...body, id };
       const at = events.findIndex(e => e.id === id);
       if (at >= 0) { events[at] = ev; } else { events.push(ev); }
-      return json(res, 200, { event: ev });
+      return json(res, 200, { event: ev, id, sync: syncResult() });
     }
     if (route.startsWith('/events/') && req.method === 'PUT') {
       const id = decodeURIComponent(route.slice(8));
@@ -104,7 +113,12 @@ createServer(async (req, res) => {
     if (route.startsWith('/events/') && req.method === 'DELETE') {
       const id = decodeURIComponent(route.slice(8));
       events = events.filter(e => e.id !== id);
-      return json(res, 200, { ok: true });
+      return json(res, 200, { ok: true, sync: syncResult() });
+    }
+    if (route === '/google/resync' && req.method === 'POST') {
+      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      if (!FAKE_GOOGLE) return json(res, 200, { google: 'off' });
+      return json(res, 200, { google: 'ok', pushed: events.filter(e => e.type === 'BLOCKED').length, removed: 0 });
     }
     return json(res, 404, { error: 'no route ' + route });
   }

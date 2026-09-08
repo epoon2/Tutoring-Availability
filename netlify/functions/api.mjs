@@ -15,6 +15,13 @@ import {
   FEED_WEEKS_AHEAD
 } from "./feeds.mjs";
 
+import {
+  googleSyncConfigured,
+  mirrorSavedEvent,
+  mirrorDeletedEvent,
+  resyncAll
+} from "./googlesync.mjs";
+
 
 const STORE_NAME =
   "tutoring-availability";
@@ -453,10 +460,22 @@ export default async (req) => {
       );
 
 
+      /*
+        The schedule is saved; the Google mirror follows and reports
+        how it went rather than deciding whether the save succeeded.
+      */
+
+      const sync =
+        await mirrorSavedEvent(
+          nextEvent
+        );
+
+
       return json({
         id,
         updatedAt:
-          now
+          now,
+        sync
       });
 
     }
@@ -753,9 +772,16 @@ export default async (req) => {
       );
 
 
+      const sync =
+        await mirrorSavedEvent(
+          event
+        );
+
+
       return json({
         ok:
-          true
+          true,
+        sync
       });
 
     }
@@ -818,10 +844,47 @@ export default async (req) => {
       );
 
 
+      const sync =
+        await mirrorDeletedEvent(
+          id
+        );
+
+
       return json({
         ok:
-          true
+          true,
+        sync
       });
+
+    }
+
+
+    /*
+      REPLAY THE WHOLE SCHEDULE TO GOOGLE
+
+      For first setup and after an outage: every booked session pushed
+      again, and stale mirrored events removed.
+    */
+
+    if (
+      req.method === "POST" &&
+      route === "/google/resync"
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      const events =
+        await readEvents();
+
+
+      return json(
+        await resyncAll(
+          events
+        )
+      );
 
     }
 
@@ -891,6 +954,15 @@ function getConfig() {
 
     timezoneId:
       TIMEZONE_ID,
+
+    /*
+      Lets the admin page show the Google
+      sync controls only where they do
+      something.
+    */
+
+    googleSync:
+      googleSyncConfigured(),
 
     dayStart:
       8,

@@ -1,0 +1,418 @@
+/*
+  Google Calendar mirror.
+
+  Every booked session on the schedule is kept as a matching event on
+  one Google calendar, titled "Tutoring" and nothing more - no student
+  name, no notes. Availability is never mirrored.
+
+  Setup is two environment variables on Netlify:
+
+    GOOGLE_SERVICE_ACCOUNT_JSON  the JSON key of a Google Cloud service
+                                 account (the whole file, as one line)
+    GOOGLE_CALENDAR_ID           the id of the calendar to write to,
+                                 shared with that service account's
+                                 email under "Make changes to events"
+
+  Without both, nothing here runs. With them, every save, skip and
+  delete on the portal pushes straight through, and a failure to reach
+  Google is reported back to the page but never fails the save itself -
+  the portal's own copy is the source of truth, and "Resync" replays it.
+
+  A repeating session becomes one Google event with an RRULE (and EXDATE
+  lines for skipped weeks), so a series edit is one update, not fifty.
+  The Google event id is derived from the portal's id, which is what
+  lets an update find its event without a lookup table.
+*/
+
+import crypto from "node:crypto";
+
+const TIMEZONE_ID = "America/Los_Angeles";
+const DEFAULT_API_BASE = "https://www.googleapis.com/calendar/v3";
+const DEFAULT_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const SCOPE = "https://www.googleapis.com/auth/calendar.events";
+const SOURCE_TAG = "tutoring-availability";
+const REQUEST_TIMEOUT_MS = 7000;
+const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+
+/*
+  CONFIG
+*/
+
+export function googleSyncSettings(env = process.env) {
+  const raw = env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const calendarId = env.GOOGLE_CALENDAR_ID;
+  if (!raw || !calendarId) return null;
+  let account;
+  try { account = JSON.parse(raw); } catch { return null; }
+  if (!account?.client_email || !account?.private_key) return null;
+  return {
+    account,
+    calendarId,
+    apiBase: env.GOOGLE_API_BASE || DEFAULT_API_BASE,
+    tokenUrl: env.GOOGLE_TOKEN_URL || DEFAULT_TOKEN_URL
+  };
+}
+
+export function googleSyncConfigured(env = process.env) {
+  return googleSyncSettings(env) !== null;
+}
+
+
+/*
+  EVENT MAPPING
+*/
+
+/*
+  Google event ids may only use a-v and 0-9. Hex is inside that
+  alphabet, so a hash of the portal id is a valid, stable Google id.
+*/
+
+export function googleEventId(portalId) {
+  return "t" + crypto.createHash("sha1").update(String(portalId)).digest("hex");
+}
+
+
+export function buildGoogleEvent(event) {
+  const body = {
+    summary: "Tutoring",
+    status: "confirmed",
+    start: { dateTime: `${event.start}:00`, timeZone: TIMEZONE_ID },
+    end: { dateTime: `${event.end}:00`, timeZone: TIMEZONE_ID },
+    extendedProperties: {
+      private: { tutoringId: String(event.id), tutoringSource: SOURCE_TAG }
+    }
+  };
+
+  const recurrence = event.recurrence;
+  if (recurrence && recurrence.frequency === "WEEKLY") {
+    /*
+      Google takes DTSTART as the first instance whatever BYDAY says, so
+      the event must start on the first day the series really lands on.
+    */
+    const first = firstOccurrence(event);
+    body.start.dateTime = `${first.start}:00`;
+    body.end.dateTime = `${first.end}:00`;
+
+    const parts = [
+      "FREQ=WEEKLY",
+      "WKST=SU",
+      `INTERVAL=${recurrence.interval || 1}`,
+      `BYDAY=${[...recurrence.weekdays].sort((a, b) => a - b).map((d) => WEEKDAY_CODES[d]).join(",")}`
+    ];
+    if (recurrence.endType === "COUNT") parts.push(`COUNT=${recurrence.count}`);
+    if (recurrence.endType === "ON") parts.push(`UNTIL=${rruleUntil(recurrence.until)}`);
+    body.recurrence = [`RRULE:${parts.join(";")}`];
+
+    const time = event.start.slice(11);
+    const exdates = [...new Set(recurrence.exdates || [])].sort();
+    if (exdates.length) {
+      body.recurrence.push(
+        `EXDATE;TZID=${TIMEZONE_ID}:` +
+        exdates.map((date) => icsLocal(`${date}T${time}`)).join(",")
+      );
+    }
+  }
+
+  return body;
+}
+
+
+/*
+  The portal's weeks start on Sunday and the anchor is the week of the
+  series start; the first occurrence is the earliest listed weekday on
+  or after the start date, in that week or the next interval week.
+*/
+
+export function firstOccurrence(event) {
+  const recurrence = event.recurrence;
+  const startDate = event.start.slice(0, 10);
+  const time = event.start.slice(11);
+  const durationMinutes = minutesBetween(event.start, event.end);
+  const startDay = utcDay(startDate);
+  const weekStart = addDays(startDay, -startDay.getUTCDay());
+  const weekdays = [...recurrence.weekdays].sort((a, b) => a - b);
+  const interval = recurrence.interval || 1;
+  for (let cycle = 0; cycle < 60; cycle++) {
+    const week = addDays(weekStart, cycle * interval * 7);
+    for (const weekday of weekdays) {
+      const day = addDays(week, weekday);
+      if (day < startDay) continue;
+      const start = `${isoDate(day)}T${time}`;
+      return { start, end: addMinutes(start, durationMinutes) };
+    }
+  }
+  return { start: event.start, end: event.end };
+}
+
+
+/*
+  RRULE wants UNTIL in UTC; the portal's end date is inclusive and local,
+  so UNTIL is the last minute of that day in Los Angeles.
+*/
+
+export function rruleUntil(untilDate) {
+  const utc = new Date(zonedLocalToUtc(`${untilDate}T23:59`, TIMEZONE_ID).getTime() + 59000);
+  return utc.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+export function zonedLocalToUtc(local, timeZone) {
+  const [date, time] = local.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  const offset = (instant) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+    }).formatToParts(new Date(instant));
+    const v = {};
+    for (const p of parts) v[p.type] = p.value;
+    const asUtc = Date.UTC(Number(v.year), Number(v.month) - 1, Number(v.day), Number(v.hour), Number(v.minute));
+    return asUtc - instant;
+  };
+  // two passes settle on the right side of a DST change
+  let result = guess - offset(guess);
+  result = guess - offset(result);
+  return new Date(result);
+}
+
+
+/*
+  HTTP
+*/
+
+let cachedToken = null;
+
+async function accessToken(settings) {
+  if (cachedToken && cachedToken.expires > Date.now() + 60000
+      && cachedToken.email === settings.account.client_email) {
+    return cachedToken.value;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claims = base64url(JSON.stringify({
+    iss: settings.account.client_email,
+    scope: SCOPE,
+    aud: settings.tokenUrl,
+    iat: now,
+    exp: now + 3600
+  }));
+  const signer = crypto.createSign("RSA-SHA256");
+  signer.update(`${header}.${claims}`);
+  const signature = signer.sign(settings.account.private_key, "base64url");
+  const assertion = `${header}.${claims}.${signature}`;
+
+  const response = await timedFetch(settings.tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Google token request failed (${response.status}): ${await safeText(response)}`);
+  }
+  const data = await response.json();
+  cachedToken = {
+    value: data.access_token,
+    email: settings.account.client_email,
+    expires: Date.now() + (Number(data.expires_in) || 3600) * 1000
+  };
+  return cachedToken.value;
+}
+
+export function resetTokenCache() { cachedToken = null; }
+
+async function googleRequest(settings, method, path, body) {
+  const token = await accessToken(settings);
+  const response = await timedFetch(`${settings.apiBase}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body ? { "Content-Type": "application/json" } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return response;
+}
+
+function calendarPath(settings, suffix = "") {
+  return `/calendars/${encodeURIComponent(settings.calendarId)}/events${suffix}`;
+}
+
+
+/*
+  One session -> one Google event. Update first, because an id that was
+  deleted on Google once is still there as "cancelled" and only an update
+  can bring it back; a never-seen id gets an insert.
+*/
+
+export async function upsertGoogleEvent(event, settings) {
+  const id = googleEventId(event.id);
+  const body = { ...buildGoogleEvent(event), id };
+  let response = await googleRequest(settings, "PUT", calendarPath(settings, `/${id}`), body);
+  if (response.status === 404) {
+    response = await googleRequest(settings, "POST", calendarPath(settings), body);
+  }
+  if (!response.ok) {
+    throw new Error(`Google ${response.status}: ${await safeText(response)}`);
+  }
+  return id;
+}
+
+export async function deleteGoogleEvent(portalId, settings) {
+  const id = googleEventId(portalId);
+  const response = await googleRequest(settings, "DELETE", calendarPath(settings, `/${id}`));
+  // 404 and 410: already gone, which is the state we wanted
+  if (!response.ok && response.status !== 404 && response.status !== 410) {
+    throw new Error(`Google ${response.status}: ${await safeText(response)}`);
+  }
+  return id;
+}
+
+
+/*
+  ENTRY POINTS FOR THE ROUTES
+
+  Each returns { google: "ok" | "off" | "failed", error? } and never
+  throws: the schedule has already been saved by the time these run.
+*/
+
+export async function mirrorSavedEvent(event, env = process.env) {
+  const settings = googleSyncSettings(env);
+  if (!settings) return { google: "off" };
+  try {
+    if (event.type === "BLOCKED") {
+      await upsertGoogleEvent(event, settings);
+    } else {
+      // an event edited from booked to available leaves the calendar
+      await deleteGoogleEvent(event.id, settings);
+    }
+    return { google: "ok" };
+  } catch (error) {
+    console.error("Google sync failed", error);
+    return { google: "failed", error: error.message };
+  }
+}
+
+export async function mirrorDeletedEvent(portalId, env = process.env) {
+  const settings = googleSyncSettings(env);
+  if (!settings) return { google: "off" };
+  try {
+    await deleteGoogleEvent(portalId, settings);
+    return { google: "ok" };
+  } catch (error) {
+    console.error("Google sync failed", error);
+    return { google: "failed", error: error.message };
+  }
+}
+
+
+/*
+  Replay the whole schedule: every booked session upserted, and any
+  event this portal put on the calendar that no longer has a session
+  behind it removed. Used on first setup and after an outage.
+*/
+
+export async function resyncAll(events, env = process.env) {
+  const settings = googleSyncSettings(env);
+  if (!settings) return { google: "off" };
+  const blocked = events.filter((event) => event.type === "BLOCKED");
+  const result = { google: "ok", pushed: 0, removed: 0, failed: [] };
+  try {
+    for (const event of blocked) {
+      try {
+        await upsertGoogleEvent(event, settings);
+        result.pushed++;
+      } catch (error) {
+        result.failed.push({ id: event.id, error: error.message });
+      }
+    }
+
+    const keep = new Set(blocked.map((event) => googleEventId(event.id)));
+    let pageToken = null;
+    do {
+      const query = new URLSearchParams({
+        privateExtendedProperty: `tutoringSource=${SOURCE_TAG}`,
+        showDeleted: "false",
+        maxResults: "250"
+      });
+      if (pageToken) query.set("pageToken", pageToken);
+      const response = await googleRequest(settings, "GET", calendarPath(settings, `?${query}`));
+      if (!response.ok) throw new Error(`Google ${response.status}: ${await safeText(response)}`);
+      const page = await response.json();
+      for (const item of page.items || []) {
+        if (!keep.has(item.id)) {
+          const gone = await googleRequest(settings, "DELETE", calendarPath(settings, `/${item.id}`));
+          if (gone.ok || gone.status === 404 || gone.status === 410) result.removed++;
+          else result.failed.push({ id: item.id, error: `Google ${gone.status}` });
+        }
+      }
+      pageToken = page.nextPageToken || null;
+    } while (pageToken);
+  } catch (error) {
+    console.error("Google resync failed", error);
+    result.google = "failed";
+    result.error = error.message;
+  }
+  if (result.failed.length && result.google === "ok") result.google = "partial";
+  return result;
+}
+
+
+/*
+  HELPERS
+*/
+
+async function timedFetch(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function safeText(response) {
+  try { return (await response.text()).slice(0, 300); } catch { return ""; }
+}
+
+function base64url(text) {
+  return Buffer.from(text).toString("base64url");
+}
+
+function icsLocal(local) {
+  return local.replace(/-/g, "").replace(":", "") + "00";
+}
+
+function utcDay(date) {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function addDays(day, n) {
+  return new Date(day.getTime() + n * 86400000);
+}
+
+function isoDate(day) {
+  return day.toISOString().slice(0, 10);
+}
+
+function minutesBetween(a, b) {
+  return (wallMs(b) - wallMs(a)) / 60000;
+}
+
+function addMinutes(local, minutes) {
+  const d = new Date(wallMs(local) + minutes * 60000);
+  return d.toISOString().slice(0, 16);
+}
+
+function wallMs(local) {
+  const [date, time] = local.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  return Date.UTC(y, m - 1, d, hh, mm);
+}

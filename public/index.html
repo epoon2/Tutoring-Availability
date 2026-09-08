@@ -151,6 +151,14 @@
         </button>
 
         <button
+          id="googleSyncBtn"
+          class="btn secondary hidden"
+          title="Push every booked session to Google Calendar again"
+        >
+          Sync Google Calendar
+        </button>
+
+        <button
           id="addBtn"
           class="btn primary hidden"
         >
@@ -370,6 +378,34 @@
       class="status"
       aria-live="polite"
     ></div>
+
+
+    <!-- GOOGLE SYNC NOTICE (ADMIN) -->
+
+    <div
+      id="syncNotice"
+      class="sync-notice hidden"
+      role="status"
+    >
+
+      <span id="syncNoticeText"></span>
+
+      <button
+        id="syncNoticeRetryBtn"
+        class="text-btn"
+      >
+        Sync now
+      </button>
+
+      <button
+        id="syncNoticeCloseBtn"
+        class="text-btn"
+        aria-label="Dismiss"
+      >
+        Dismiss
+      </button>
+
+    </div>
 
 
     <div
