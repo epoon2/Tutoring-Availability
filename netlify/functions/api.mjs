@@ -8,6 +8,13 @@ import {
 
 import crypto from "node:crypto";
 
+import {
+  feedTokenIsValid,
+  buildIcs,
+  FEED_WEEKS_BACK,
+  FEED_WEEKS_AHEAD
+} from "./feeds.mjs";
+
 
 const STORE_NAME =
   "tutoring-availability";
@@ -191,6 +198,96 @@ export default async (req) => {
           req,
           admin
         )
+      );
+
+    }
+
+
+    /*
+      CALENDAR FEED
+
+      /api/feed/<token>/tutoring.ics - every booked session as a
+      plain "Tutoring" block, for Google Calendar to subscribe to.
+
+      The token is the whole secret, so a wrong or absent one is a
+      plain 404 - nothing here says whether the feed exists.
+    */
+
+    if (
+      req.method === "GET" &&
+      route.startsWith(
+        "/feed/"
+      )
+    ) {
+
+      const feedMatch =
+        /^\/feed\/([^/]+)\/tutoring\.ics$/
+          .exec(
+            route
+          );
+
+
+      if (
+        !feedMatch ||
+        !feedTokenIsValid(
+          decodeURIComponent(
+            feedMatch[1]
+          )
+        )
+      ) {
+
+        return json(
+          {
+            error:
+              "Not found."
+          },
+          404
+        );
+
+      }
+
+
+      const events =
+        await readEvents();
+
+
+      const nowKey =
+        currentMinuteKey();
+
+
+      const expanded =
+        expandEventsForRange(
+          events,
+          nowKey -
+            FEED_WEEKS_BACK *
+            7 *
+            1440,
+          nowKey +
+            FEED_WEEKS_AHEAD *
+            7 *
+            1440
+        );
+
+
+      return new Response(
+        buildIcs(
+          expanded
+        ),
+        {
+          status:
+            200,
+
+          headers: {
+            "Cache-Control":
+              "private, no-store",
+
+            "Content-Type":
+              "text/calendar; charset=utf-8",
+
+            "Content-Disposition":
+              'inline; filename="tutoring.ics"'
+          }
+        }
       );
 
     }
