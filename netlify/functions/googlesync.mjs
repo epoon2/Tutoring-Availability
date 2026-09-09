@@ -311,6 +311,52 @@ export async function mirrorDeletedEvent(portalId, env = process.env) {
 
 
 /*
+  After an undo or redo the schedule jumps to a stored snapshot; only
+  what differs needs to reach Google. Sessions added or changed are
+  pushed, sessions gone are removed, and a session that turned into
+  availability is removed too.
+*/
+
+export async function mirrorDifference(before, after, env = process.env) {
+  const settings = googleSyncSettings(env);
+  if (!settings) return { google: "off" };
+  const was = new Map(before.map((event) => [event.id, event]));
+  const now = new Map(after.map((event) => [event.id, event]));
+  const failed = [];
+  let changed = 0;
+
+  for (const [id, event] of now) {
+    const previous = was.get(id);
+    const same = previous && JSON.stringify(previous) === JSON.stringify(event);
+    if (same) continue;
+    if (event.type !== "BLOCKED" && !(previous && previous.type === "BLOCKED")) continue;
+    changed++;
+    try {
+      if (event.type === "BLOCKED") await upsertGoogleEvent(event, settings);
+      else await deleteGoogleEvent(id, settings);
+    } catch (error) {
+      failed.push({ id, error: error.message });
+    }
+  }
+  for (const [id, event] of was) {
+    if (now.has(id) || event.type !== "BLOCKED") continue;
+    changed++;
+    try {
+      await deleteGoogleEvent(id, settings);
+    } catch (error) {
+      failed.push({ id, error: error.message });
+    }
+  }
+
+  if (failed.length) {
+    console.error("Google sync failed", failed);
+    return { google: "failed", error: failed[0].error, changed, failed };
+  }
+  return { google: "ok", changed };
+}
+
+
+/*
   Replay the whole schedule: every booked session upserted, and any
   event this portal put on the calendar that no longer has a session
   behind it removed. Used on first setup and after an outage.

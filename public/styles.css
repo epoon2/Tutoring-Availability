@@ -387,6 +387,23 @@ button:disabled {
 }
 
 
+.admin-banner-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 4px;
+
+  flex-shrink: 0;
+}
+
+.admin-banner-actions .text-btn:disabled {
+  opacity: 0.45;
+
+  cursor: default;
+}
+
+
 /* -----------------------------
    GOOGLE SYNC NOTICE
    Shown only when a change was
@@ -1870,6 +1887,21 @@ button.agenda-item:hover {
 
   .admin-banner {
     align-items: flex-start;
+
+    /*
+      Undo, Redo and Public view take
+      their own row under the text on a
+      phone instead of squeezing it.
+    */
+
+    flex-wrap: wrap;
+  }
+
+
+  .admin-banner-actions {
+    width: 100%;
+
+    justify-content: flex-end;
   }
 
 

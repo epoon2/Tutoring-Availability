@@ -19,8 +19,16 @@ import {
   googleSyncConfigured,
   mirrorSavedEvent,
   mirrorDeletedEvent,
+  mirrorDifference,
   resyncAll
 } from "./googlesync.mjs";
+
+import {
+  recordBeforeWrite,
+  applyUndo,
+  applyRedo,
+  summarizeHistory
+} from "./history.mjs";
 
 
 const STORE_NAME =
@@ -42,6 +50,10 @@ const LEGACY_EVENTS_KEY =
 
 const REQUESTS_KEY =
   "requests-v1";
+
+
+const HISTORY_KEY =
+  "history-v1";
 
 /*
   The submit endpoint is open to anyone, so the queue is bounded
@@ -197,7 +209,25 @@ export default async (req) => {
                 ranged
               ),
 
-        lastUpdated
+        lastUpdated,
+
+        /*
+          What the Undo and Redo buttons
+          can offer right now. Admin only;
+          the public body is cached and
+          must not vary with it.
+        */
+
+        ...(
+          admin
+            ? {
+                history:
+                  summarizeHistory(
+                    await readHistory()
+                  )
+              }
+            : {}
+        )
 
       },
         200,
@@ -437,6 +467,12 @@ export default async (req) => {
       };
 
 
+      const before =
+        events.map(
+          (event) => event
+        );
+
+
       if (
         index >= 0
       ) {
@@ -455,7 +491,9 @@ export default async (req) => {
       }
 
 
-      await writeEvents(
+      await commitEvents(
+        req,
+        before,
         events
       );
 
@@ -757,6 +795,20 @@ export default async (req) => {
       }
 
 
+      const before =
+        events.map(
+          (item) =>
+            item === event
+              ? {
+                  ...item,
+                  recurrence: {
+                    ...item.recurrence
+                  }
+                }
+              : item
+        );
+
+
       event.recurrence.exdates =
         [ ...new Set(
           [
@@ -767,7 +819,9 @@ export default async (req) => {
           .sort();
 
 
-      await writeEvents(
+      await commitEvents(
+        req,
+        before,
         events
       );
 
@@ -839,7 +893,9 @@ export default async (req) => {
       }
 
 
-      await writeEvents(
+      await commitEvents(
+        req,
+        events,
         next
       );
 
@@ -853,6 +909,104 @@ export default async (req) => {
       return json({
         ok:
           true,
+        sync
+      });
+
+    }
+
+
+    /*
+      UNDO / REDO
+
+      Swap the schedule for the snapshot taken before the last action
+      (or after it, for redo), then bring Google in line with only
+      what changed.
+    */
+
+    if (
+      req.method === "POST" &&
+      (
+        route === "/undo" ||
+        route === "/redo"
+      )
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      const current =
+        await readEvents();
+
+
+      const history =
+        await readHistory();
+
+
+      const result =
+        route === "/undo"
+          ? applyUndo(
+              history,
+              current
+            )
+          : applyRedo(
+              history,
+              current
+            );
+
+
+      if ( !result ) {
+
+        return json(
+          {
+            error:
+              route === "/undo"
+                ? "Nothing to undo."
+                : "Nothing to redo."
+          },
+          409
+        );
+
+      }
+
+
+      await writeHistory(
+        result.history
+      );
+
+
+      await writeEvents(
+        result.events
+      );
+
+
+      const sync =
+        await mirrorDifference(
+          current,
+          result.events
+        );
+
+
+      return json({
+        ok:
+          true,
+
+        undone:
+          route === "/undo"
+            ? result.entry
+            : null,
+
+        redone:
+          route === "/redo"
+            ? result.entry
+            : null,
+
+        history:
+          summarizeHistory(
+            result.history
+          ),
+
         sync
       });
 
@@ -1086,6 +1240,98 @@ async function writeEvents(
   }
 
 }
+
+/*
+  Every write goes through here so the schedule as it was lands on the
+  undo stack first. The page names the action with two headers: an id
+  that groups the several writes one gesture can make, and a label for
+  the Undo button to show.
+*/
+
+async function commitEvents(
+  req,
+  previousEvents,
+  nextEvents
+) {
+
+  const actionId =
+    (
+      req.headers.get(
+        "x-action-id"
+      ) ||
+      ""
+    ).slice( 0, 80 ) ||
+    null;
+
+
+  const label =
+    req.headers.get(
+      "x-action-label"
+    );
+
+
+  const history =
+    recordBeforeWrite(
+      await readHistory(),
+      {
+        actionId,
+        label,
+        previousEvents
+      }
+    );
+
+
+  await writeHistory(
+    history
+  );
+
+
+  await writeEvents(
+    nextEvents
+  );
+
+}
+
+
+async function readHistory() {
+
+  const store =
+    getStore(
+      STORE_NAME
+    );
+
+
+  return await store.get(
+    HISTORY_KEY,
+    {
+      type:
+        "json",
+
+      consistency:
+        "strong"
+    }
+  );
+
+}
+
+
+async function writeHistory(
+  history
+) {
+
+  const store =
+    getStore(
+      STORE_NAME
+    );
+
+
+  await store.setJSON(
+    HISTORY_KEY,
+    history
+  );
+
+}
+
 
 async function readRequests() {
 

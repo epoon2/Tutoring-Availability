@@ -588,6 +588,28 @@
       );
 
 
+    $('undoBtn')
+      .addEventListener(
+        'click',
+        () =>
+          undoOrRedo( 'undo' )
+      );
+
+
+    $('redoBtn')
+      .addEventListener(
+        'click',
+        () =>
+          undoOrRedo( 'redo' )
+      );
+
+
+    document.addEventListener(
+      'keydown',
+      handleUndoKeys
+    );
+
+
     $('syncNoticeRetryBtn')
       .addEventListener(
         'click',
@@ -956,6 +978,62 @@
     }
 
 
+    /*
+      Every write to the schedule names the user action it belongs
+      to, so the server records one undo step per gesture rather
+      than one per request. Reading the schedule back marks the end
+      of the gesture.
+    */
+
+    const method =
+      String(
+        options.method ||
+        'GET'
+      ).toUpperCase();
+
+
+    if (
+      path.startsWith( '/events' )
+    ) {
+
+      if ( method === 'GET' ) {
+
+        endAction();
+
+      } else {
+
+        if ( !state.action ) {
+
+          beginAction(
+            describeWrite(
+              path,
+              method,
+              options.body
+            )
+          );
+
+        }
+
+
+        headers.set(
+          'x-action-id',
+          state.action.id
+        );
+
+
+        headers.set(
+          'x-action-label',
+          state.action.label
+        );
+
+
+        armActionTimer();
+
+      }
+
+    }
+
+
     const response =
       await fetch(
         '/api' +
@@ -1015,6 +1093,389 @@
 
 
     return data;
+
+  }
+
+
+
+  /* =========================================================
+     UNDO / REDO
+  ========================================================= */
+
+  /*
+    A gesture on the page - a save, a drag, a scoped delete - can be
+    several requests. They share one action id, so the server keeps
+    a single snapshot for the lot and Undo puts the whole gesture
+    back. The action ends when the schedule is reloaded, when the
+    editor opens, or after a few idle seconds.
+  */
+
+  function beginAction(
+    label
+  ) {
+
+    state.action = {
+      id:
+        newActionId(),
+
+      label:
+        label ||
+        'change'
+    };
+
+
+    armActionTimer();
+
+  }
+
+
+  function endAction() {
+
+    state.action =
+      null;
+
+
+    if ( state.actionTimer ) {
+
+      clearTimeout(
+        state.actionTimer
+      );
+
+
+      state.actionTimer =
+        null;
+
+    }
+
+  }
+
+
+  function armActionTimer() {
+
+    if ( state.actionTimer ) {
+
+      clearTimeout(
+        state.actionTimer
+      );
+
+    }
+
+
+    state.actionTimer =
+      setTimeout(
+        endAction,
+        5000
+      );
+
+  }
+
+
+  function newActionId() {
+
+    if (
+      window.crypto &&
+      typeof window.crypto.randomUUID === 'function'
+    ) {
+
+      return window.crypto.randomUUID();
+
+    }
+
+
+    return String( Date.now() ) +
+      Math.random()
+        .toString( 16 )
+        .slice( 2 );
+
+  }
+
+
+  /*
+    A label for a write nobody named first.
+  */
+
+  function describeWrite(
+    path,
+    method,
+    body
+  ) {
+
+    if ( path.endsWith( '/skip' ) ) {
+
+      return 'skip a week';
+
+    }
+
+
+    if ( method === 'DELETE' ) {
+
+      return 'delete session';
+
+    }
+
+
+    try {
+
+      const parsed =
+        JSON.parse(
+          body ||
+          '{}'
+        );
+
+
+      const noun =
+        parsed.type === 'AVAILABLE'
+          ? 'availability'
+          : 'session';
+
+
+      return parsed.id
+        ? `edit ${noun}`
+        : `add ${noun}`;
+
+    } catch {
+
+      return 'change';
+
+    }
+
+  }
+
+
+  function applyHistory(
+    history
+  ) {
+
+    state.history =
+      history ||
+      {
+        undo: 0,
+        redo: 0,
+        undoLabel: null,
+        redoLabel: null
+      };
+
+
+    renderUndoButtons();
+
+  }
+
+
+  function renderUndoButtons() {
+
+    const history =
+      state.history ||
+      {};
+
+
+    const undoBtn =
+      $('undoBtn');
+
+
+    const redoBtn =
+      $('redoBtn');
+
+
+    undoBtn.disabled =
+      !history.undo;
+
+
+    redoBtn.disabled =
+      !history.redo;
+
+
+    undoBtn.title =
+      history.undo
+        ? `Undo: ${history.undoLabel} (Ctrl+Z)`
+        : 'Nothing to undo';
+
+
+    redoBtn.title =
+      history.redo
+        ? `Redo: ${history.redoLabel} (Ctrl+Shift+Z)`
+        : 'Nothing to redo';
+
+  }
+
+
+  async function undoOrRedo(
+    which
+  ) {
+
+    if (
+      !state.isAdmin ||
+      state.historyBusy
+    ) {
+
+      return;
+
+    }
+
+
+    const history =
+      state.history ||
+      {};
+
+
+    if (
+      which === 'undo'
+        ? !history.undo
+        : !history.redo
+    ) {
+
+      return;
+
+    }
+
+
+    state.historyBusy =
+      true;
+
+
+    endAction();
+
+
+    try {
+
+      const result =
+        await api(
+          `/${which}`,
+          {
+            method:
+              'POST',
+
+            body:
+              '{}'
+          }
+        );
+
+
+      await loadWeek(
+        true
+      );
+
+
+      const entry =
+        result.undone ||
+        result.redone;
+
+
+      setStatus(
+        `${
+          which === 'undo'
+            ? 'Undid'
+            : 'Redid'
+        }: ${
+          entry
+            ? entry.label
+            : 'change'
+        }.`
+      );
+
+    } catch (error) {
+
+      handleError(
+        error
+      );
+
+    } finally {
+
+      state.historyBusy =
+        false;
+
+    }
+
+  }
+
+
+  /*
+    Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) while nothing is being typed
+    and no dialog is open. Inside a text field the browser's own
+    undo keeps its meaning.
+  */
+
+  function handleUndoKeys(
+    event
+  ) {
+
+    if (
+      !state.isAdmin ||
+      !(
+        event.ctrlKey ||
+        event.metaKey
+      ) ||
+      event.altKey
+    ) {
+
+      return;
+
+    }
+
+
+    const key =
+      event.key.toLowerCase();
+
+
+    const isUndo =
+      key === 'z' &&
+      !event.shiftKey;
+
+
+    const isRedo =
+      (
+        key === 'z' &&
+        event.shiftKey
+      ) ||
+      key === 'y';
+
+
+    if (
+      !isUndo &&
+      !isRedo
+    ) {
+
+      return;
+
+    }
+
+
+    const target =
+      event.target;
+
+
+    if (
+      target &&
+      (
+        target.isContentEditable ||
+        [ 'INPUT', 'TEXTAREA', 'SELECT' ]
+          .includes( target.tagName )
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      document.querySelector(
+        '.modal-backdrop:not(.hidden), .choice-modal'
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    event.preventDefault();
+
+
+    undoOrRedo(
+      isUndo
+        ? 'undo'
+        : 'redo'
+    );
 
   }
 
@@ -1296,6 +1757,10 @@
 
       applyMode();
 
+      applyHistory(
+        data.history
+      );
+
       renderAll();
 
 
@@ -1401,6 +1866,22 @@
           state.isAdmin &&
           state.config.googleSync
         )
+      );
+
+
+    $('undoBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
+      );
+
+
+    $('redoBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
       );
 
 
@@ -5501,6 +5982,9 @@
     column
   ) {
 
+    beginAction( 'move session' );
+
+
     event.preventDefault();
 
 
@@ -6594,6 +7078,9 @@
     occurrence
   ) {
 
+    beginAction( "delete this week's session" );
+
+
     const date =
       occurrence.start.slice( 0, 10 );
 
@@ -6649,6 +7136,9 @@
     original,
     occurrence
   ) {
+
+    beginAction( 'delete this and following sessions' );
+
 
     const cut =
       occurrence.start.slice( 0, 10 );
@@ -6781,6 +7271,9 @@
   async function deleteWholeSeries(
     original
   ) {
+
+    beginAction( 'delete the whole series' );
+
 
     const id =
       original.masterId ||
@@ -6943,6 +7436,9 @@
     formEvent
   ) {
 
+    beginAction( "edit this week's session" );
+
+
     const id =
       original.masterId ||
       original.id;
@@ -7026,6 +7522,9 @@
     occurrence,
     formEvent
   ) {
+
+    beginAction( 'edit this and following sessions' );
+
 
     const cut =
       occurrence.start.slice( 0, 10 );
@@ -7162,6 +7661,9 @@
     occurrence,
     formEvent
   ) {
+
+    beginAction( 'edit the whole series' );
+
 
     const dayDelta =
       dayNumber(
@@ -7650,6 +8152,9 @@
     newEnd
   ) {
 
+    beginAction( "move this week's session" );
+
+
     const id =
       original.masterId ||
       original.id;
@@ -7763,6 +8268,9 @@
     dayDelta,
     timeDelta
   ) {
+
+    beginAction( 'move this and following sessions' );
+
 
     const cut =
       occurrence.start.slice( 0, 10 );
@@ -8037,6 +8545,9 @@
     timeDelta
   ) {
 
+    beginAction( 'move the whole series' );
+
+
     const recurrence =
       original.recurrence;
 
@@ -8223,6 +8734,9 @@
   async function deleteEventById(
     original
   ) {
+
+    beginAction( 'delete session' );
+
 
     const id =
       original.masterId ||
@@ -11436,6 +11950,9 @@
     occurrence
   ) {
 
+    endAction();
+
+
     if (
       !state.isAdmin
     ) {
@@ -12325,6 +12842,9 @@
 
 
   async function deleteEventFromModal() {
+
+    beginAction( 'delete session' );
+
 
     const id =
       $('eventId')

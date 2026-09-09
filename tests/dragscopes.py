@@ -51,7 +51,9 @@ async def fetch_week(page, start, end):
 async def main():
     async with async_playwright() as pw:
         b = await pw.chromium.launch()
-        page = await (await b.new_context(viewport={"width": 1400, "height": 950})).new_page()
+        # Tall enough that a late-afternoon card never sits on the viewport edge,
+        # where a drag can fail to start before the page scrolls.
+        page = await (await b.new_context(viewport={"width": 1400, "height": 1100})).new_page()
         errs = []
         page.on("pageerror", lambda e: errs.append(str(e)))
         page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)

@@ -10,6 +10,9 @@ import {
   expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey,
   buildPublicSchedule, findBlockedConflicts
 } from '../netlify/functions/api.mjs';
+import {
+  recordBeforeWrite, applyUndo, applyRedo, summarizeHistory, emptyHistory
+} from '../netlify/functions/history.mjs';
 
 const ROOT = new URL('../public/', import.meta.url).pathname;
 const PORT = Number(process.argv[2] || 8877);
@@ -18,6 +21,17 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 
 let events = [];
 let nextId = 1;
+
+// The same undo bookkeeping production does, with the same module.
+let history = emptyHistory();
+const commit = (req, previous, next) => {
+  history = recordBeforeWrite(history, {
+    actionId: req.headers['x-action-id'] || null,
+    label: req.headers['x-action-label'],
+    previousEvents: previous,
+  });
+  events = next;
+};
 
 // FAKE_GOOGLE=ok|failed pretends the site has Google credentials and
 // answers every write with that sync outcome, so the page's notice and
@@ -67,7 +81,8 @@ createServer(async (req, res) => {
         // production builds; admins get the raw expanded events.
         events: admin === 'admin' ? served : buildPublicSchedule(served),
         config, mode: admin,
-        updatedAt: new Date().toISOString(), updatedBy: 'test'
+        updatedAt: new Date().toISOString(), updatedBy: 'test',
+        ...(admin === 'admin' ? { history: summarizeHistory(history) } : {})
       });
     }
     if (route.startsWith('/events/') && route.endsWith('/skip') && req.method === 'POST') {
@@ -80,7 +95,9 @@ createServer(async (req, res) => {
       const lands = expandWeeklyEvent(event, dayStart, dayStart + 1440)
         .some(o => o.start.slice(0, 10) === date);
       if (!lands) return json(res, 400, { error: 'That series has no session on that date.' });
+      const before = events.map(e => e === event ? { ...e, recurrence: { ...e.recurrence } } : e);
       event.recurrence.exdates = [...new Set([...(event.recurrence.exdates || []), date])].sort();
+      commit(req, before, events);
       return json(res, 200, { ok: true, sync: syncResult() });
     }
     if (route === '/events' && req.method === 'POST') {
@@ -102,7 +119,9 @@ createServer(async (req, res) => {
       const id = body.id || ('e' + (nextId++));
       const ev = { ...body, id };
       const at = events.findIndex(e => e.id === id);
-      if (at >= 0) { events[at] = ev; } else { events.push(ev); }
+      const next = events.slice();
+      if (at >= 0) { next[at] = ev; } else { next.push(ev); }
+      commit(req, events, next);
       return json(res, 200, { event: ev, id, sync: syncResult() });
     }
     if (route.startsWith('/events/') && req.method === 'PUT') {
@@ -112,8 +131,18 @@ createServer(async (req, res) => {
     }
     if (route.startsWith('/events/') && req.method === 'DELETE') {
       const id = decodeURIComponent(route.slice(8));
-      events = events.filter(e => e.id !== id);
+      commit(req, events, events.filter(e => e.id !== id));
       return json(res, 200, { ok: true, sync: syncResult() });
+    }
+    if ((route === '/undo' || route === '/redo') && req.method === 'POST') {
+      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      const result = route === '/undo' ? applyUndo(history, events) : applyRedo(history, events);
+      if (!result) return json(res, 409, { error: route === '/undo' ? 'Nothing to undo.' : 'Nothing to redo.' });
+      history = result.history; events = result.events;
+      return json(res, 200, { ok: true,
+        undone: route === '/undo' ? result.entry : null,
+        redone: route === '/redo' ? result.entry : null,
+        history: summarizeHistory(history), sync: syncResult() });
     }
     if (route === '/google/resync' && req.method === 'POST') {
       if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
