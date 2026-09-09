@@ -4190,7 +4190,10 @@
                   openEventModal(
                     getOriginalEvent(
                       event
-                    )
+                    ),
+                    event.masterId
+                      ? event
+                      : undefined
                   );
 
                 }
@@ -4709,8 +4712,16 @@
           closeBlockedSessions();
 
 
+          /*
+            A block of a series opens on ITS week, so "this event
+            only" in the editor means the block that was tapped.
+          */
+
           openEventModal(
-            event
+            event,
+            event.masterId
+              ? event
+              : undefined
           );
 
         }
@@ -7397,20 +7408,139 @@
     editor stays open with everything the admin typed.
   */
 
+  /*
+    The series behind the editor, wherever the editor was opened from.
+    This week's loaded events are the first place to look; failing
+    that, the record the editor was opened with (the Blocked Sessions
+    list hands over occurrences from other weeks); failing that, the
+    server, for the week on the form. Returns null when the id is not
+    a series at all, so the caller keeps its plain path.
+  */
+
+  async function resolveEditingSeries(
+    id
+  ) {
+
+    const loaded =
+      getOriginalEvent({
+        id
+      });
+
+
+    let original =
+      loaded?.recurrence
+        ? loaded
+        : null;
+
+
+    const opened =
+      state.editingEvent;
+
+
+    if (
+      !original &&
+      opened?.recurrence &&
+      (
+        opened.masterId ||
+        opened.id
+      ) === id
+    ) {
+
+      original =
+        opened;
+
+    }
+
+
+    if ( !original ) {
+
+      const date =
+        $('eventStartDate').value;
+
+
+      if ( date ) {
+
+        try {
+
+          const data =
+            await api(
+              `/events?start=${encodeURIComponent(date)}&end=${encodeURIComponent(date)}`
+            );
+
+
+          original =
+            (
+              data.events ||
+              []
+            ).find(
+              (item) =>
+                (
+                  item.masterId ||
+                  item.id
+                ) === id &&
+                item.recurrence
+            ) ||
+            null;
+
+        } catch {
+
+          original =
+            null;
+
+        }
+
+      }
+
+    }
+
+
+    if ( !original ) {
+
+      return null;
+
+    }
+
+
+    /*
+      "Just this one" means the block that was opened: the clicked
+      card when there was one, else the record the editor holds if it
+      is a dated occurrence of this series, else the master itself.
+    */
+
+    const occurrence =
+      state.editingOccurrence ||
+      (
+        opened &&
+        opened.masterId === id
+          ? opened
+          : original
+      );
+
+
+    return {
+      original,
+      occurrence
+    };
+
+  }
+
+
   async function saveSeriesEditWithScope(
     formEvent
   ) {
 
+    const series =
+      await resolveEditingSeries(
+        formEvent.id
+      );
+
+
     const original =
-      getOriginalEvent({
-        id:
-          formEvent.id
-      });
+      series.original;
 
 
     const occurrence =
-      state.editingOccurrence ||
-      original;
+      series.occurrence;
 
 
     const scope =
@@ -12069,6 +12199,17 @@
       null;
 
 
+    /*
+      And the record itself. Opened from the Blocked Sessions list or
+      from another week, the series may not be among this week's
+      loaded events, and the scope dialogs still need its master.
+    */
+
+    state.editingEvent =
+      event ||
+      null;
+
+
     const defaultDate =
       formatDate(
         new Date()
@@ -12796,10 +12937,9 @@
     if (
       event.id &&
       recurrence &&
-      getOriginalEvent({
-        id:
-          event.id
-      })?.recurrence
+      await resolveEditingSeries(
+        event.id
+      )
     ) {
 
       const outcome =
@@ -12954,19 +13094,18 @@
 
     if ( recurring ) {
 
-      const original =
-        getOriginalEvent({
+      const series =
+        await resolveEditingSeries(
           id
-        });
+        );
 
 
-      if ( original?.recurrence ) {
+      if ( series ) {
 
         const acted =
           await confirmScopedDelete(
-            original,
-            state.editingOccurrence ||
-            original
+            series.original,
+            series.occurrence
           );
 
 
