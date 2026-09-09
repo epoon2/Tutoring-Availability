@@ -6434,11 +6434,24 @@
 
 
             setStatus(
-              'Copied. Right-click a slot to paste it.'
+              'Copied. Right-click a slot or an availability block to paste it.'
             );
 
           }
       },
+
+
+      /*
+        Availability is where sessions go, so its menu also offers
+        the slot under the pointer - the same two verbs empty space
+        gets - instead of making the admin find a bare patch of grid.
+      */
+
+      ...availabilitySlotItems(
+        event,
+        original
+      ),
+
       {
         label:
           original.recurrence
@@ -6483,6 +6496,71 @@
     );
 
   }
+
+
+  function availabilitySlotItems(
+    menuEvent,
+    original
+  ) {
+
+    if ( original.type !== 'AVAILABLE' ) {
+
+      return [];
+
+    }
+
+
+    const column =
+      menuEvent.target
+        .closest( '.day-column' );
+
+
+    if ( !column ) {
+
+      return [];
+
+    }
+
+
+    const slot =
+      scheduleSlotFromPointer(
+        column,
+        menuEvent.clientY
+      );
+
+
+    const items = [
+      {
+        label:
+          'New session here',
+        run:
+          () => {
+            openEventModal( slot );
+          }
+      }
+    ];
+
+
+    if ( state.clipboardEvent ) {
+
+      items.push({
+        label:
+          'Paste "' +
+          clipboardLabel() +
+          '" here',
+        run:
+          () => {
+            pasteClipboardInto( slot );
+          }
+      });
+
+    }
+
+
+    return items;
+
+  }
+
 
 
   /*

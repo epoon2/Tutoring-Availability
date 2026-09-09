@@ -242,6 +242,32 @@ async def main():
             check("left-click on empty space adds a NEW session",
                   on_empty["open"] and on_empty["id"] == "" and on_empty["title"] == "Add time", str(on_empty))
             await page.click("[data-close='eventModal']")
+            await page.wait_for_timeout(300)
+
+            # ---------- 9. paste lands on availability too ----------
+            # Copy the session, then right-click the availability block:
+            # its menu offers the slot under the pointer, like empty space.
+            await page.locator(".event-card.blocked").first.click(button="right")
+            await page.wait_for_timeout(250)
+            await page.evaluate("""() => [...document.querySelectorAll('.context-menu-item')]
+                .find(i => i.textContent.trim() === 'Copy').click()""")
+            await page.wait_for_timeout(250)
+            await page.locator(".event-card.available").first.click(button="right")
+            await page.wait_for_timeout(300)
+            items3 = await page.evaluate("[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
+            check("an availability block's menu offers New session here and Paste",
+                  "New session here" in items3 and any(i.startswith("Paste") for i in items3)
+                  and items3[:3] == ["Edit", "Duplicate", "Copy"], str(items3))
+            await page.evaluate("""() => [...document.querySelectorAll('.context-menu-item')]
+                .find(i => i.textContent.trim().startsWith('Paste')).click()""")
+            await page.wait_for_timeout(400)
+            pasted2 = await modal_state()
+            day0 = await page.evaluate("document.querySelector('.day-column').dataset.date")
+            pasted2_date = await page.evaluate("document.getElementById('eventStartDate').value")
+            check("pasting onto availability opens a new session with the copied details on that day",
+                  pasted2["open"] and pasted2["id"] == "" and pasted2["name"] == "Maya - Algebra II"
+                  and pasted2["type"] == "BLOCKED" and pasted2_date == day0, str(pasted2) + " " + pasted2_date)
+            await page.click("[data-close='eventModal']")
 
         real = [e for e in errors if "favicon" not in e and "manifest" not in e.lower()]
         check("no console errors", not real, str(real[:3]))
