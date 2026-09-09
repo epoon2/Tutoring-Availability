@@ -27,7 +27,11 @@ ok('the right token validates', feedTokenIsValid(TOKEN, TOKEN));
 ok('a wrong token does not', !feedTokenIsValid(TOKEN + 'x', TOKEN));
 
 // ---- seed the store the way the app would, around today
-const today = new Date();
+// "Today" is the server's day - Los Angeles - not UTC's, or the count
+// of Wednesdays in the window is off by one every evening.
+const laParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles',
+  year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const today = new Date(laParts + 'T00:00:00Z');
 const iso = (d) => d.toISOString().slice(0, 10);
 const shift = (n) => { const d = new Date(today); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
 const dow = today.getUTCDay();
@@ -66,10 +70,14 @@ ok('lines end in CRLF', ics.includes('\r\n') && !/[^\r]\n/.test(ics));
 ok('carries the Los Angeles VTIMEZONE', ics.includes('TZID:America/Los_Angeles')
   && ics.includes('TZNAME:PDT'));
 const events = ics.split('BEGIN:VEVENT').length - 1;
-// 52 Wednesdays fall inside the year-ahead window whichever weekday
-// today is; one is skipped, and the Friday one-off joins them.
+// Every Wednesday from the first one to the end of the year-ahead window
+// (52 of them, or 51 when today is itself a Wednesday and the series
+// starts next week), minus the skipped one, plus the Friday one-off.
+const windowEnd = new Date(today.getTime() + 52 * 7 * 86400000);
+let wednesdays = 0;
+for (let d = new Date(wed + 'T00:00:00Z'); d < windowEnd; d.setUTCDate(d.getUTCDate() + 7)) wednesdays++;
 ok('the year ahead of Wednesdays, minus the skipped one, plus the Friday',
-  events === 52 - 1 + 1, `events=${events}`);
+  events === wednesdays - 1 + 1, `events=${events} wednesdays=${wednesdays}`);
 ok('every block reads Tutoring and nothing else',
   (ics.match(/SUMMARY:Tutoring\r\n/g) || []).length === events);
 ok('no student name, subject or notes leak', !ics.includes('Maya') && !ics.includes('Noah')
