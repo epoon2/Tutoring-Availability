@@ -405,6 +405,135 @@ button:disabled {
 
 
 /* -----------------------------
+   HISTORY DRAWER
+----------------------------- */
+
+.history-drawer {
+  width: min(640px, 92vw);
+}
+
+.history-list {
+  background: #ffffff;
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+
+  overflow: hidden;
+}
+
+.history-step {
+  padding: 13px 15px;
+
+  border-bottom: 1px solid #eef1f6;
+}
+
+.history-step:last-child {
+  border-bottom: 0;
+}
+
+.history-step-head {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: baseline;
+
+  gap: 12px;
+}
+
+.history-step-label {
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+.history-step-when {
+  flex-shrink: 0;
+
+  color: var(--muted);
+
+  font-size: 12px;
+}
+
+.history-change {
+  display: flex;
+
+  align-items: baseline;
+
+  gap: 8px;
+
+  margin-top: 6px;
+
+  font-size: 13px;
+}
+
+.history-change-kind {
+  flex-shrink: 0;
+
+  width: 62px;
+
+  color: var(--muted);
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.04em;
+}
+
+.history-change-kind.added {
+  color: var(--available);
+}
+
+.history-change-kind.removed {
+  color: var(--blocked);
+}
+
+.history-change-what {
+  flex: 1;
+}
+
+.history-change-what .muted {
+  color: var(--muted);
+}
+
+.history-step-actions {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 6px;
+
+  margin-top: 8px;
+}
+
+.history-redo {
+  margin-top: 18px;
+}
+
+.history-redo h3 {
+  margin: 0 0 4px;
+
+  font-size: 16px;
+}
+
+.history-redo .blocked-drawer-subtitle {
+  margin-bottom: 8px;
+}
+
+.history-empty {
+  padding: 24px 16px;
+
+  color: var(--muted);
+
+  font-size: 14px;
+
+  text-align: center;
+}
+
+
+/* -----------------------------
    GOOGLE SYNC NOTICE
    Shown only when a change was
    saved here but did not reach

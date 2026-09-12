@@ -610,6 +610,38 @@
     );
 
 
+    $('historyBtn')
+      .addEventListener(
+        'click',
+        openHistory
+      );
+
+
+    $('closeHistoryDrawerBtn')
+      .addEventListener(
+        'click',
+        closeHistory
+      );
+
+
+    $('historyDrawerBackdrop')
+      .addEventListener(
+        'click',
+        (event) => {
+
+          if (
+            event.target ===
+            $('historyDrawerBackdrop')
+          ) {
+
+            closeHistory();
+
+          }
+
+        }
+      );
+
+
     $('syncNoticeRetryBtn')
       .addEventListener(
         'click',
@@ -993,7 +1025,8 @@
 
 
     if (
-      path.startsWith( '/events' )
+      path.startsWith( '/events' ) ||
+      path === '/history/restore'
     ) {
 
       if ( method === 'GET' ) {
@@ -1355,6 +1388,17 @@
       );
 
 
+      if (
+        !$('historyDrawerBackdrop')
+          .classList
+          .contains( 'hidden' )
+      ) {
+
+        await refreshHistory();
+
+      }
+
+
       const entry =
         result.undone ||
         result.redone;
@@ -1476,6 +1520,1027 @@
         ? 'undo'
         : 'redo'
     );
+
+  }
+
+
+
+  /* =========================================================
+     HISTORY DRAWER
+  ========================================================= */
+
+  /*
+    The undo stack as a list the admin can read: each step with the
+    sessions it added, removed or changed, "Undo to here" on any of
+    them, and "Restore" beside anything a step removed - which puts
+    just that session back, as a fresh change, without touching what
+    happened since.
+  */
+
+  async function openHistory() {
+
+    if ( !state.isAdmin ) {
+
+      return;
+
+    }
+
+
+    $('historyDrawerBackdrop')
+      .classList
+      .remove(
+        'hidden'
+      );
+
+
+    await refreshHistory();
+
+  }
+
+
+  function closeHistory() {
+
+    $('historyDrawerBackdrop')
+      .classList
+      .add(
+        'hidden'
+      );
+
+  }
+
+
+  async function refreshHistory() {
+
+    $('historyStatus')
+      .textContent =
+        'Loading…';
+
+
+    try {
+
+      const data =
+        await api(
+          '/history'
+        );
+
+
+      renderHistory(
+        data
+      );
+
+
+      $('historyStatus')
+        .textContent =
+          '';
+
+    } catch (error) {
+
+      $('historyStatus')
+        .textContent =
+          error.message;
+
+    }
+
+  }
+
+
+  function renderHistory(
+    data
+  ) {
+
+    const list =
+      $('historyList');
+
+
+    list.innerHTML =
+      '';
+
+
+    const undo =
+      data.undo ||
+      [];
+
+
+    if ( !undo.length ) {
+
+      const empty =
+        document.createElement(
+          'div'
+        );
+
+
+      empty.className =
+        'history-empty';
+
+
+      empty.textContent =
+        'No changes recorded yet. Every save, move, skip and delete from here on will be listed.';
+
+
+      list.appendChild(
+        empty
+      );
+
+    }
+
+
+    undo.forEach(
+      (entry, index) => {
+
+        list.appendChild(
+          renderHistoryStep(
+            entry,
+            {
+              side:
+                'undo',
+
+              first:
+                index === 0
+            }
+          )
+        );
+
+      }
+    );
+
+
+    const redo =
+      data.redo ||
+      [];
+
+
+    $('historyRedoSection')
+      .classList
+      .toggle(
+        'hidden',
+        !redo.length
+      );
+
+
+    const redoList =
+      $('historyRedoList');
+
+
+    redoList.innerHTML =
+      '';
+
+
+    redo.forEach(
+      (entry, index) => {
+
+        redoList.appendChild(
+          renderHistoryStep(
+            entry,
+            {
+              side:
+                'redo',
+
+              first:
+                index === 0
+            }
+          )
+        );
+
+      }
+    );
+
+  }
+
+
+  function renderHistoryStep(
+    entry,
+    { side, first }
+  ) {
+
+    const step =
+      document.createElement(
+        'div'
+      );
+
+
+    step.className =
+      'history-step';
+
+
+    step.dataset.entryId =
+      entry.id;
+
+
+    const head =
+      document.createElement(
+        'div'
+      );
+
+
+    head.className =
+      'history-step-head';
+
+
+    const label =
+      document.createElement(
+        'div'
+      );
+
+
+    label.className =
+      'history-step-label';
+
+
+    label.textContent =
+      capitalize(
+        entry.label
+      );
+
+
+    const when =
+      document.createElement(
+        'div'
+      );
+
+
+    when.className =
+      'history-step-when';
+
+
+    when.textContent =
+      describeWhen(
+        entry.at
+      );
+
+
+    head.append(
+      label,
+      when
+    );
+
+
+    step.appendChild(
+      head
+    );
+
+
+    const lines = [
+      ...( entry.removed || [] ).map(
+        (item) => [ 'removed', item ]
+      ),
+      ...( entry.added || [] ).map(
+        (item) => [ 'added', item ]
+      ),
+      ...( entry.changed || [] ).map(
+        (item) => [ 'changed', item ]
+      )
+    ];
+
+
+    for (
+      const [ kind, item ] of lines
+    ) {
+
+      const line =
+        document.createElement(
+          'div'
+        );
+
+
+      line.className =
+        'history-change';
+
+
+      const badge =
+        document.createElement(
+          'span'
+        );
+
+
+      badge.className =
+        'history-change-kind ' +
+        kind;
+
+
+      badge.textContent =
+        kind;
+
+
+      const what =
+        document.createElement(
+          'span'
+        );
+
+
+      what.className =
+        'history-change-what';
+
+
+      what.innerHTML =
+        describeBrief(
+          item,
+          kind
+        );
+
+
+      line.append(
+        badge,
+        what
+      );
+
+
+      step.appendChild(
+        line
+      );
+
+    }
+
+
+    const actions =
+      document.createElement(
+        'div'
+      );
+
+
+    actions.className =
+      'history-step-actions';
+
+
+    const jump =
+      document.createElement(
+        'button'
+      );
+
+
+    jump.className =
+      'btn secondary small';
+
+
+    if ( side === 'undo' ) {
+
+      jump.textContent =
+        first
+          ? 'Undo'
+          : 'Undo to here';
+
+
+      jump.title =
+        first
+          ? 'Take back this step'
+          : 'Take back this step and every step after it';
+
+    } else {
+
+      jump.textContent =
+        first
+          ? 'Redo'
+          : 'Redo to here';
+
+
+      jump.title =
+        first
+          ? 'Bring this step back'
+          : 'Bring back every undone step up to this one';
+
+    }
+
+
+    jump.addEventListener(
+      'click',
+      () =>
+        jumpHistory(
+          side,
+          entry
+        )
+    );
+
+
+    actions.appendChild(
+      jump
+    );
+
+
+    /*
+      On the undo side a removed session can come back on its own.
+      (Redo entries describe what a step would re-add; Redo is the
+      verb for those.)
+    */
+
+    if ( side === 'undo' ) {
+
+      for (
+        const item of entry.removed || []
+      ) {
+
+        /*
+          Already back on the schedule (restored, or re-added by an
+          undo): nothing to offer.
+        */
+
+        if ( item.present ) {
+
+          continue;
+
+        }
+
+        const restore =
+          document.createElement(
+            'button'
+          );
+
+
+        restore.className =
+          'btn secondary small';
+
+
+        restore.textContent =
+          'Restore ' +
+          shortTitle(
+            item
+          );
+
+
+        restore.title =
+          'Put just this back, as it was, leaving everything else alone';
+
+
+        restore.addEventListener(
+          'click',
+          () =>
+            restoreFromHistory(
+              entry,
+              item,
+              restore
+            )
+        );
+
+
+        actions.appendChild(
+          restore
+        );
+
+      }
+
+    }
+
+
+    step.appendChild(
+      actions
+    );
+
+
+    return step;
+
+  }
+
+
+  async function jumpHistory(
+    side,
+    entry
+  ) {
+
+    if ( state.historyBusy ) {
+
+      return;
+
+    }
+
+
+    state.historyBusy =
+      true;
+
+
+    endAction();
+
+
+    $('historyStatus')
+      .textContent =
+        side === 'undo'
+          ? 'Undoing…'
+          : 'Redoing…';
+
+
+    try {
+
+      const result =
+        await api(
+          `/${side}`,
+          {
+            method:
+              'POST',
+
+            body:
+              JSON.stringify({
+                until:
+                  entry.id
+              })
+          }
+        );
+
+
+      await loadWeek(
+        true
+      );
+
+
+      await refreshHistory();
+
+
+      const count =
+        result.steps ||
+        1;
+
+
+      setStatus(
+        `${
+          side === 'undo'
+            ? 'Undid'
+            : 'Redid'
+        } ${
+          count === 1
+            ? entry.label
+            : `${count} steps, back to "${entry.label}"`
+        }.`
+      );
+
+    } catch (error) {
+
+      $('historyStatus')
+        .textContent =
+          error.message;
+
+    } finally {
+
+      state.historyBusy =
+        false;
+
+    }
+
+  }
+
+
+  async function restoreFromHistory(
+    entry,
+    item,
+    button
+  ) {
+
+    if ( state.historyBusy ) {
+
+      return;
+
+    }
+
+
+    state.historyBusy =
+      true;
+
+
+    button.disabled =
+      true;
+
+
+    beginAction(
+      'restore ' +
+      shortTitle(
+        item
+      )
+    );
+
+
+    try {
+
+      await api(
+        '/history/restore',
+        {
+          method:
+            'POST',
+
+          body:
+            JSON.stringify({
+              entryId:
+                entry.id,
+
+              eventId:
+                item.id
+            })
+        }
+      );
+
+
+      await loadWeek(
+        true
+      );
+
+
+      await refreshHistory();
+
+
+      setStatus(
+        `Restored ${
+          shortTitle(
+            item
+          )
+        }.`
+      );
+
+    } catch (error) {
+
+      button.disabled =
+        false;
+
+
+      $('historyStatus')
+        .textContent =
+          error.message;
+
+    } finally {
+
+      state.historyBusy =
+        false;
+
+    }
+
+  }
+
+
+  /*
+    "Maya - Algebra II · Tue Sep 15, 4–5 PM · weekly on Tue, Thu"
+  */
+
+  function describeBrief(
+    item,
+    kind
+  ) {
+
+    const parts = [];
+
+
+    parts.push(
+      `<strong>${
+        escapeHtml(
+          shortTitle(
+            item
+          )
+        )
+      }</strong>`
+    );
+
+
+    parts.push(
+      escapeHtml(
+        describeWhenBlock(
+          item.start,
+          item.end
+        )
+      )
+    );
+
+
+    if ( item.recurrence ) {
+
+      parts.push(
+        escapeHtml(
+          describeRecurrence(
+            item.recurrence
+          )
+        )
+      );
+
+    }
+
+
+    let text =
+      parts.join(
+        ' <span class="muted">·</span> '
+      );
+
+
+    if (
+      kind === 'changed' &&
+      item.was
+    ) {
+
+      const before = [];
+
+
+      if ( item.was.title !== item.title ) {
+
+        before.push(
+          `was "${item.was.title}"`
+        );
+
+      }
+
+
+      if (
+        item.was.start !== item.start ||
+        item.was.end !== item.end
+      ) {
+
+        before.push(
+          'was ' +
+          describeWhenBlock(
+            item.was.start,
+            item.was.end
+          )
+        );
+
+      }
+
+
+      if (
+        item.was.recurring !==
+        Boolean( item.recurrence )
+      ) {
+
+        before.push(
+          item.was.recurring
+            ? 'was repeating'
+            : 'was one-time'
+        );
+
+      }
+
+
+      if ( before.length ) {
+
+        text +=
+          ` <span class="muted">(${
+            escapeHtml(
+              before.join( '; ' )
+            )
+          })</span>`;
+
+      }
+
+    }
+
+
+    return text;
+
+  }
+
+
+  function shortTitle(
+    item
+  ) {
+
+    const title =
+      (
+        item.title ||
+        ''
+      ).trim();
+
+
+    if ( title ) {
+
+      return title.length > 40
+        ? title.slice( 0, 39 ) + '…'
+        : title;
+
+    }
+
+
+    return item.type === 'AVAILABLE'
+      ? 'availability'
+      : 'session';
+
+  }
+
+
+  function describeWhenBlock(
+    start,
+    end
+  ) {
+
+    const startKey =
+      localDateTimeToMinuteKey(
+        start
+      );
+
+
+    const endKey =
+      localDateTimeToMinuteKey(
+        end
+      );
+
+
+    if (
+      startKey === null ||
+      endKey === null
+    ) {
+
+      return '';
+
+    }
+
+
+    const day =
+      new Date(
+        start.slice( 0, 10 ) +
+        'T12:00'
+      );
+
+
+    const dayLabel =
+      day.toLocaleDateString(
+        undefined,
+        {
+          weekday:
+            'short',
+
+          month:
+            'short',
+
+          day:
+            'numeric'
+        }
+      );
+
+
+    const dayStart =
+      localDateTimeToMinuteKey(
+        start.slice( 0, 10 ) +
+        'T00:00'
+      );
+
+
+    return `${dayLabel}, ${
+      formatMinuteRange(
+        startKey - dayStart,
+        endKey - dayStart
+      )
+    }`;
+
+  }
+
+
+  function describeRecurrence(
+    recurrence
+  ) {
+
+    const names =
+      [ 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' ];
+
+
+    const days =
+      (
+        recurrence.weekdays ||
+        []
+      )
+        .slice()
+        .sort(
+          (a, b) => a - b
+        )
+        .map(
+          (d) => names[ d ]
+        )
+        .join( ', ' );
+
+
+    const every =
+      recurrence.interval > 1
+        ? `every ${recurrence.interval} weeks`
+        : 'weekly';
+
+
+    let text =
+      `${every} on ${days}`;
+
+
+    if (
+      recurrence.endType === 'ON' &&
+      recurrence.until
+    ) {
+
+      text +=
+        ` until ${recurrence.until}`;
+
+    } else if (
+      recurrence.endType === 'COUNT' &&
+      recurrence.count
+    ) {
+
+      text +=
+        `, ${recurrence.count} times`;
+
+    }
+
+
+    if (
+      recurrence.exdates &&
+      recurrence.exdates.length
+    ) {
+
+      text +=
+        `, ${recurrence.exdates.length} week${
+          recurrence.exdates.length === 1
+            ? ''
+            : 's'
+        } skipped`;
+
+    }
+
+
+    return text;
+
+  }
+
+
+  function describeWhen(
+    iso
+  ) {
+
+    const date =
+      new Date(
+        iso
+      );
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return '';
+
+    }
+
+
+    const minutes =
+      Math.round(
+        (
+          Date.now() -
+          date.getTime()
+        ) /
+        60000
+      );
+
+
+    if ( minutes < 1 ) {
+
+      return 'just now';
+
+    }
+
+
+    if ( minutes < 60 ) {
+
+      return `${minutes} min ago`;
+
+    }
+
+
+    if ( minutes < 24 * 60 ) {
+
+      const hours =
+        Math.round(
+          minutes / 60
+        );
+
+
+      return `${hours} hour${
+        hours === 1
+          ? ''
+          : 's'
+      } ago`;
+
+    }
+
+
+    return formatUpdated(
+      iso
+    );
+
+  }
+
+
+  function capitalize(
+    text
+  ) {
+
+    const value =
+      String(
+        text ||
+        ''
+      );
+
+
+    return value.charAt( 0 ).toUpperCase() +
+      value.slice( 1 );
+
+  }
+
+
+  function escapeHtml(
+    text
+  ) {
+
+    return String(
+      text ??
+      ''
+    )
+      .replace( /&/g, '&amp;' )
+      .replace( /</g, '&lt;' )
+      .replace( />/g, '&gt;' )
+      .replace( /"/g, '&quot;' );
 
   }
 
@@ -1883,6 +2948,21 @@
         'hidden',
         !state.isAdmin
       );
+
+
+    $('historyBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
+      );
+
+
+    if ( !state.isAdmin ) {
+
+      closeHistory();
+
+    }
 
 
     if ( !state.isAdmin ) {

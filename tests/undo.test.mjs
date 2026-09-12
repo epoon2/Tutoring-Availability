@@ -143,6 +143,67 @@ view = await res.json();
 ok('undoing the skip brings the week back with no exdate left behind',
   view.events.some(e => e.start === '2026-09-15T16:00') && !(view.events[0].recurrence.exdates || []).length);
 
+// ---- the history list, undo-to-here, and restoring one removed event
+const { describeChange, listHistory, findRemovedEvent } = await import('../netlify/functions/history.mjs');
+const d = describeChange(
+  [{ id: 'a', type: 'BLOCKED', title: 'A', start: '2026-09-10T10:00', end: '2026-09-10T11:00' },
+   { id: 'b', type: 'BLOCKED', title: 'B', start: '2026-09-11T10:00', end: '2026-09-11T11:00' }],
+  [{ id: 'a', type: 'BLOCKED', title: 'A', start: '2026-09-10T12:00', end: '2026-09-10T13:00' },
+   { id: 'c', type: 'AVAILABLE', title: 'Open', start: '2026-09-12T09:00', end: '2026-09-12T12:00', recurrence: null }]);
+ok('describeChange sorts a step into added, removed and changed',
+  d.added.map(x => x.id).join() === 'c' && d.removed.map(x => x.id).join() === 'b'
+  && d.changed.length === 1 && d.changed[0].was.start === '2026-09-10T10:00' && d.changed[0].start === '2026-09-10T12:00');
+
+// a fresh schedule: three steps, each a different kind
+await call('POST', '/undo', {}); // clear the AVAILABLE from above (and its history noise is fine)
+res = await call('POST', '/events', { type: 'BLOCKED', title: 'Maya - Algebra II', start: '2026-09-08T16:00', end: '2026-09-08T17:00',
+  recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4], endType: 'NEVER' } },
+  { 'x-action-id': 'h1', 'x-action-label': 'add session' });
+const maya = (await res.json()).id;
+res = await call('POST', '/events', { type: 'BLOCKED', title: 'Noah', start: '2026-09-09T10:00', end: '2026-09-09T11:00', recurrence: null },
+  { 'x-action-id': 'h2', 'x-action-label': 'add session' });
+const noah = (await res.json()).id;
+await call('DELETE', `/events/${maya}`, null, { 'x-action-id': 'h3', 'x-action-label': 'delete the whole series' });
+res = await call('GET', '/history');
+let hist = await res.json();
+ok('the history lists steps newest first with their changes',
+  hist.undo[0].label === 'delete the whole series' && hist.undo[0].removed.length === 1
+  && hist.undo[0].removed[0].title === 'Maya - Algebra II' && hist.undo[0].removed[0].recurrence.weekdays.join() === '2,4'
+  && hist.undo[1].added[0].title === 'Noah' && hist.undo[2].added[0].id === maya, JSON.stringify(hist.undo.map(e => e.label)));
+ok('listing is admin-only', (await handler(new Request('http://localhost/api/history'))).status === 401);
+
+// restore just Maya, leaving Noah in place - as a new undoable step
+const deleteStep = hist.undo[0].id;
+res = await call('POST', '/history/restore', { entryId: deleteStep, eventId: maya }, { 'x-action-label': 'restore Maya - Algebra II' });
+data = await res.json();
+ok('restore puts the removed series back as it was', res.status === 200 && data.event.id === maya
+  && data.event.recurrence.weekdays.join() === '2,4', JSON.stringify(data));
+view = await admin();
+ok('both sessions are on the schedule now', view.events.some(e => (e.masterId || e.id) === maya) && view.events.some(e => e.id === noah));
+ok('Google got the restored series back', store.has(googleEventId(maya)));
+res = await call('POST', '/history/restore', { entryId: deleteStep, eventId: maya });
+ok('restoring twice is refused, not duplicated', res.status === 409);
+res = await call('POST', '/history/restore', { entryId: deleteStep, eventId: 'nope' });
+ok('an unknown event in a step is a 404', res.status === 404);
+hist = await (await call('GET', '/history')).json();
+ok('the restore is itself a step on the stack', hist.undo[0].label === 'restore Maya - Algebra II' && hist.undo[0].added[0].id === maya);
+
+// undo back to a chosen step: everything above it goes in one request
+const target = hist.undo.find(e => e.label === 'delete the whole series').id;
+res = await call('POST', '/undo', { until: target });
+data = await res.json();
+ok('undo "until" walks several steps in one go', data.steps === 2 && data.undone.label === 'delete the whole series', JSON.stringify(data));
+view = await admin();
+ok('the schedule is back to before the delete: Maya and Noah, no restore copy',
+  view.events.filter(e => (e.masterId || e.id) === maya).length >= 1 && view.events.some(e => e.id === noah)
+  && view.history.redo === 2, JSON.stringify(view.history));
+hist = await (await call('GET', '/history')).json();
+ok('the undone steps are listed on the redo side, newest first',
+  hist.redo.length === 2 && hist.redo[0].label === 'delete the whole series' && hist.redo[1].label === 'restore Maya - Algebra II');
+res = await call('POST', '/redo', { until: hist.redo[1].id });
+data = await res.json();
+ok('redo "until" brings both back', data.steps === 2 && (await admin()).history.redo === 0);
+
 fake.close();
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\nundo: all ${ran} checks passed`);
 process.exit(fails.length ? 1 : 0);

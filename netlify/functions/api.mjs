@@ -27,7 +27,9 @@ import {
   recordBeforeWrite,
   applyUndo,
   applyRedo,
-  summarizeHistory
+  summarizeHistory,
+  listHistory,
+  findRemovedEvent
 } from "./history.mjs";
 
 
@@ -940,20 +942,96 @@ export default async (req) => {
         await readEvents();
 
 
-      const history =
+      let history =
         await readHistory();
 
 
-      const result =
-        route === "/undo"
-          ? applyUndo(
-              history,
-              current
-            )
-          : applyRedo(
-              history,
-              current
-            );
+      /*
+        One step by default; with "until", every step down to and
+        including the named one, so the history list can offer
+        "undo back to here" without the page looping requests.
+      */
+
+      let body =
+        {};
+
+      try {
+        body =
+          await req.json();
+      } catch {
+        body =
+          {};
+      }
+
+
+      const until =
+        typeof body?.until === "string"
+          ? body.until
+          : null;
+
+
+      let result =
+        null;
+
+
+      let events =
+        current;
+
+
+      const entries =
+        [];
+
+
+      for (
+        let step = 0;
+        step < 200;
+        step++
+      ) {
+
+        const next =
+          route === "/undo"
+            ? applyUndo(
+                history,
+                events
+              )
+            : applyRedo(
+                history,
+                events
+              );
+
+
+        if ( !next ) {
+          break;
+        }
+
+
+        history =
+          next.history;
+
+        events =
+          next.events;
+
+        entries.push(
+          next.entry
+        );
+
+        result =
+          {
+            history,
+            events,
+            entry:
+              next.entry
+          };
+
+
+        if (
+          !until ||
+          next.entry.id === until
+        ) {
+          break;
+        }
+
+      }
 
 
       if ( !result ) {
@@ -1002,10 +1080,140 @@ export default async (req) => {
             ? result.entry
             : null,
 
+        steps:
+          entries.length,
+
         history:
           summarizeHistory(
             result.history
           ),
+
+        sync
+      });
+
+    }
+
+
+    /*
+      THE HISTORY, STEP BY STEP
+    */
+
+    if (
+      req.method === "GET" &&
+      route === "/history"
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      return json(
+        listHistory(
+          await readHistory(),
+          await readEvents()
+        )
+      );
+
+    }
+
+
+    /*
+      PUT ONE REMOVED EVENT BACK
+
+      Not an undo: the event a step removed is re-added as it was, on
+      top of everything that happened since, as a fresh change of its
+      own (so it is itself undoable).
+    */
+
+    if (
+      req.method === "POST" &&
+      route === "/history/restore"
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      const body =
+        await req.json();
+
+
+      const restored =
+        findRemovedEvent(
+          await readHistory(),
+          String( body?.entryId || "" ),
+          String( body?.eventId || "" )
+        );
+
+
+      if ( !restored ) {
+
+        return json(
+          {
+            error:
+              "That step has no such event to restore."
+          },
+          404
+        );
+
+      }
+
+
+      const events =
+        await readEvents();
+
+
+      if (
+        events.some(
+          (event) =>
+            event.id === restored.id
+        )
+      ) {
+
+        return json(
+          {
+            error:
+              "That event is already on the schedule."
+          },
+          409
+        );
+
+      }
+
+
+      const nextEvent = {
+        ...restored,
+
+        updatedAt:
+          new Date()
+            .toISOString()
+      };
+
+
+      await commitEvents(
+        req,
+        events,
+        [
+          ...events,
+          nextEvent
+        ]
+      );
+
+
+      const sync =
+        await mirrorSavedEvent(
+          nextEvent
+        );
+
+
+      return json({
+        ok:
+          true,
+
+        event:
+          nextEvent,
 
         sync
       });

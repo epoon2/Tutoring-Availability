@@ -210,6 +210,14 @@
         </button>
 
         <button
+          id="historyBtn"
+          class="text-btn hidden"
+          title="Every change, newest first - undo back to any step or restore a deleted session"
+        >
+          History
+        </button>
+
+        <button
           id="exitAdminBtn"
           class="text-btn"
         >
@@ -1794,6 +1802,80 @@
 
 
   <!-- BLOCKED SESSION ADMIN PANEL -->
+
+  <!-- HISTORY DRAWER (ADMIN) -->
+
+  <div
+    id="historyDrawerBackdrop"
+    class="drawer-backdrop hidden"
+  >
+
+    <aside
+      id="historyDrawer"
+      class="blocked-drawer history-drawer"
+    >
+
+      <div class="blocked-drawer-header">
+
+        <div>
+
+          <h2>
+            History
+          </h2>
+
+          <div class="blocked-drawer-subtitle">
+            Every change to the schedule, newest first. Undo back to any step, or put one deleted session back on its own.
+          </div>
+
+        </div>
+
+        <button
+          id="closeHistoryDrawerBtn"
+          class="close-btn"
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div
+        id="historyStatus"
+        class="status"
+      ></div>
+
+
+      <div
+        id="historyList"
+        class="history-list"
+      ></div>
+
+
+      <section
+        id="historyRedoSection"
+        class="history-redo hidden"
+      >
+
+        <h3>
+          Undone
+        </h3>
+
+        <div class="blocked-drawer-subtitle">
+          Steps taken back. Redo to here brings them back in order.
+        </div>
+
+        <div
+          id="historyRedoList"
+          class="history-list"
+        ></div>
+
+      </section>
+
+    </aside>
+
+  </div>
+
 
   <div
     id="blockedDrawerBackdrop"

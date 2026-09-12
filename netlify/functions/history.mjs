@@ -109,3 +109,98 @@ function cryptoId() {
     ? globalThis.crypto.randomUUID()
     : String(Date.now()) + Math.random().toString(16).slice(2);
 }
+
+
+/*
+  WHAT A STEP CHANGED
+
+  Snapshots are whole schedules; the page wants to show each step as
+  the events it added, removed or changed. Comparing the snapshot
+  before a step with the state after it gives exactly that.
+*/
+
+export function describeChange(before, after) {
+  const was = new Map((before || []).map((event) => [event.id, event]));
+  const now = new Map((after || []).map((event) => [event.id, event]));
+  const added = [], removed = [], changed = [];
+  for (const [id, event] of now) {
+    const previous = was.get(id);
+    if (!previous) added.push(brief(event));
+    else if (JSON.stringify(previous) !== JSON.stringify(event)) changed.push(brief(event, previous));
+  }
+  for (const [id, event] of was) {
+    if (!now.has(id)) removed.push(brief(event));
+  }
+  return { added, removed, changed };
+}
+
+function brief(event, previous) {
+  const out = {
+    id: event.id,
+    type: event.type,
+    title: event.title || "",
+    start: event.start,
+    end: event.end,
+    recurrence: event.recurrence
+      ? {
+          weekdays: [...(event.recurrence.weekdays || [])],
+          interval: event.recurrence.interval || 1,
+          endType: event.recurrence.endType || "NEVER",
+          until: event.recurrence.until || null,
+          count: event.recurrence.count || null,
+          exdates: [...(event.recurrence.exdates || [])]
+        }
+      : null
+  };
+  if (previous) {
+    out.was = {
+      title: previous.title || "",
+      start: previous.start,
+      end: previous.end,
+      recurring: Boolean(previous.recurrence)
+    };
+  }
+  return out;
+}
+
+
+/*
+  The history as a list, newest first, each step with its changes.
+  The undo side compares each snapshot with the state that followed
+  it (the next snapshot up, or the current schedule at the top). The
+  redo side holds post-step states, so it reads the other way round.
+*/
+
+export function listHistory(history, currentEvents) {
+  const h = normalizeHistory(history);
+  const present = new Set((currentEvents || []).map((event) => event.id));
+  const undo = [];
+  for (let i = h.undo.length - 1; i >= 0; i--) {
+    const entry = h.undo[i];
+    const after = i === h.undo.length - 1 ? currentEvents : h.undo[i + 1].events;
+    const change = describeChange(entry.events, after);
+    // a removed event that is back on the schedule now has nothing to restore
+    change.removed = change.removed.map((item) => ({ ...item, present: present.has(item.id) }));
+    undo.push({ id: entry.id, label: entry.label, at: entry.at, ...change });
+  }
+  const redo = [];
+  for (let j = h.redo.length - 1; j >= 0; j--) {
+    const entry = h.redo[j];
+    const before = j === h.redo.length - 1 ? currentEvents : h.redo[j + 1].events;
+    redo.push({ id: entry.id, label: entry.label, at: entry.at, ...describeChange(before, entry.events) });
+  }
+  return { undo, redo };
+}
+
+
+/*
+  A removed event, as it was in the snapshot of the step that removed
+  it - for putting just that one back.
+*/
+
+export function findRemovedEvent(history, entryId, eventId) {
+  const h = normalizeHistory(history);
+  const entry = [...h.undo, ...h.redo].find((item) => item.id === entryId);
+  if (!entry) return null;
+  return (entry.events || []).find((event) => event.id === eventId) || null;
+}

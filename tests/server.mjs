@@ -11,7 +11,8 @@ import {
   buildPublicSchedule, findBlockedConflicts
 } from '../netlify/functions/api.mjs';
 import {
-  recordBeforeWrite, applyUndo, applyRedo, summarizeHistory, emptyHistory
+  recordBeforeWrite, applyUndo, applyRedo, summarizeHistory, emptyHistory,
+  listHistory, findRemovedEvent
 } from '../netlify/functions/history.mjs';
 
 const ROOT = new URL('../public/', import.meta.url).pathname;
@@ -136,13 +137,32 @@ createServer(async (req, res) => {
     }
     if ((route === '/undo' || route === '/redo') && req.method === 'POST') {
       if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
-      const result = route === '/undo' ? applyUndo(history, events) : applyRedo(history, events);
+      // one step, or every step down to "until" - the same loop production runs
+      let result = null, steps = 0;
+      for (let i = 0; i < 200; i++) {
+        const next = route === '/undo' ? applyUndo(history, events) : applyRedo(history, events);
+        if (!next) break;
+        history = next.history; events = next.events; result = next; steps++;
+        if (!body.until || next.entry.id === body.until) break;
+      }
       if (!result) return json(res, 409, { error: route === '/undo' ? 'Nothing to undo.' : 'Nothing to redo.' });
-      history = result.history; events = result.events;
-      return json(res, 200, { ok: true,
+      return json(res, 200, { ok: true, steps,
         undone: route === '/undo' ? result.entry : null,
         redone: route === '/redo' ? result.entry : null,
         history: summarizeHistory(history), sync: syncResult() });
+    }
+    if (route === '/history' && req.method === 'GET') {
+      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      return json(res, 200, listHistory(history, events));
+    }
+    if (route === '/history/restore' && req.method === 'POST') {
+      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      const restored = findRemovedEvent(history, String(body.entryId || ''), String(body.eventId || ''));
+      if (!restored) return json(res, 404, { error: 'That step has no such event to restore.' });
+      if (events.some(e => e.id === restored.id)) return json(res, 409, { error: 'That event is already on the schedule.' });
+      const ev = { ...restored, updatedAt: new Date().toISOString() };
+      commit(req, events, [...events, ev]);
+      return json(res, 200, { ok: true, event: ev, sync: syncResult() });
     }
     if (route === '/google/resync' && req.method === 'POST') {
       if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
