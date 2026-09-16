@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Block colours in a real browser: the editor's swatch row with a custom
+hex picker, the Colour… menu with its four reaches on a two-day series
+(nothing split), colours travelling
+with copy and paste, the summary's dots, and a public page that stays
+red and green.
+
+    python3 tests/colors.py
+"""
+import asyncio, subprocess, sys, time, urllib.request
+from playwright.async_api import async_playwright
+
+PORT = 8981
+BASE = f"http://127.0.0.1:{PORT}"
+oks, fails = [], []
+def check(name, cond, extra=""):
+    (oks if cond else fails).append(name)
+    print(("  PASS  " if cond else "  FAIL  ") + name + (f"   {extra}" if extra and not cond else ""))
+
+async def menu_items(page):
+    return await page.evaluate("[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
+
+async def click_menu(page, label):
+    await page.evaluate("""(label) => [...document.querySelectorAll('.context-menu-item')]
+        .find(i => i.textContent.trim() === label).click()""", label)
+    await page.wait_for_timeout(300)
+
+async def scope_labels(page):
+    await page.wait_for_selector(".choice-modal")
+    return await page.evaluate("[...document.querySelectorAll('.choice-modal .choice-radio-row')].map(r => r.textContent.trim())")
+
+async def choose_scope(page, label, ok="OK"):
+    await page.wait_for_selector(".choice-modal")
+    if label:
+        await page.evaluate("""(label) => [...document.querySelectorAll('.choice-modal .choice-radio-row')]
+            .find(r => r.textContent.trim() === label).querySelector('input').click()""", label)
+    await page.evaluate("""(ok) => [...document.querySelectorAll('.choice-modal button')]
+        .find(b => b.textContent.trim() === ok).click()""", ok)
+    await page.wait_for_timeout(800)
+
+async def pick_swatch(page, root, title):
+    await page.evaluate("""([root, title]) => document.querySelector(root + ' .color-swatch[title="' + title + '"]').click()""", [root, title])
+    await page.wait_for_timeout(150)
+
+async def set_custom(page, root, hex_):
+    # the native picker cannot be driven; feed the input the value it would produce
+    await page.evaluate("""([root, hex]) => { const i = document.querySelector(root + ' .color-custom-input');
+        i.value = hex; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); }""", [root, hex_])
+    await page.wait_for_timeout(150)
+
+async def card_colors(page):
+    """{weekday: ink colour or '' } for every card on the grid"""
+    return await page.evaluate("""() => Object.fromEntries([...document.querySelectorAll('.event-card')].map(c => [
+        new Date(c.closest('.day-column').dataset.date + 'T12:00').getDay(),
+        c.classList.contains('tinted') ? c.style.getPropertyValue('--card-ink') : '' ]))""")
+
+async def rclick_weekday(page, wd):
+    await page.evaluate("""(wd) => {
+        const card = [...document.querySelectorAll('.event-card')].find(c =>
+            new Date(c.closest('.day-column').dataset.date + 'T12:00').getDay() === wd);
+        card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 }));
+    }""", wd)
+    await page.wait_for_timeout(250)
+
+async def click_weekday(page, wd):
+    await page.evaluate("""(wd) => [...document.querySelectorAll('.event-card')].find(c =>
+        new Date(c.closest('.day-column').dataset.date + 'T12:00').getDay() === wd).click()""", wd)
+    await page.wait_for_timeout(400)
+
+async def masters(page):
+    return await page.evaluate("fetch('/api/events', {headers: {'x-admin-password': 't'}}).then(r => r.json()).then(d => d.events)")
+
+async def main():
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch()
+        page = await (await b.new_context(viewport={"width": 1400, "height": 950})).new_page()
+        errs = []
+        page.on("pageerror", lambda e: errs.append(str(e)))
+        page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
+
+        await page.goto(BASE, wait_until="networkidle")
+        await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
+        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
+
+        # ---- the editor's swatch row
+        col = page.locator(".day-column").nth(1)  # Monday
+        box = await col.bounding_box()
+        await page.mouse.click(box["x"] + box["width"] / 2, box["y"] + 200); await page.wait_for_timeout(400)
+        swatches = await page.evaluate("[...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => s.title)")
+        check("the editor offers Default, ten basic colours and Custom",
+              swatches[0] == "Default" and len(swatches) == 12 and swatches[-1] == "Custom colour…", str(swatches))
+        check("Default is selected on a new block", await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Default")
+        check("the custom swatch is a real colour input",
+              await page.evaluate("document.querySelector('#eventColorRow input[type=color]') !== null"))
+        await page.select_option("#eventType", "BLOCKED"); await page.wait_for_timeout(100)
+        check("the Default swatch shows the type's colour",
+              await page.evaluate("document.querySelector('#eventColorRow .is-default').style.getPropertyValue('--swatch')") == "#b42318")
+        await page.fill("#eventTitle", "Maya - Algebra II")
+        await pick_swatch(page, "#eventColorRow", "Blue")
+        check("picking a swatch names it", await page.text_content("#eventColorRow .color-caption") == "Blue")
+        # repeat on Mon + Wed
+        await page.select_option("#repeatType", "WEEKLY"); await page.wait_for_timeout(200)
+        await page.evaluate("""() => [...document.querySelectorAll('#eventModal .weekday-btn')].forEach(el => {
+            const wd = Number(el.dataset.day); const on = el.classList.contains('selected');
+            if ((wd === 1 || wd === 3) !== on) el.click(); })""")
+        await page.click("#saveEventBtn"); await page.wait_for_timeout(900)
+        colors = await card_colors(page)
+        check("a two-day series saves blue and draws tinted", colors.get("1") == "#1d4ed8" and colors.get("3") == "#1d4ed8", str(colors))
+        series = await masters(page)
+        check("one series, no split", len({e.get("masterId") or e["id"] for e in series}) == 1 and series[0]["recurrence"]["weekdays"] == [1, 3], str(series))
+        series_id = series[0].get("masterId") or series[0]["id"]
+
+        # ---- Colour… from the menu, all Wednesdays
+        await rclick_weekday(page, 3)
+        items = await menu_items(page)
+        check("the block menu offers Colour… after Edit", items[:2] == ["Edit", "Colour…"], str(items))
+        await click_menu(page, "Colour…")
+        labels = await scope_labels(page)
+        check("a two-day series offers four reaches, including All Wednesdays",
+              labels == ["This event only", "This and following events", "All Wednesdays", "All events in the series"], str(labels))
+        check("the dialog carries the swatches with the block's colour selected",
+              await page.evaluate("document.querySelector('.choice-modal .color-swatch.selected').title") == "Blue")
+        await pick_swatch(page, ".choice-modal", "Purple")
+        await choose_scope(page, "All Wednesdays", ok="Apply")
+        colors = await card_colors(page)
+        check("Wednesday is purple, Monday still blue", colors.get("3") == "#6d28d9" and colors.get("1") == "#1d4ed8", str(colors))
+        series = await masters(page)
+        check("still one series - a colour rule, not a split", len({e.get("masterId") or e["id"] for e in series}) == 1
+              and series[0]["recurrence"]["colorRules"] == [{"weekday": 3, "color": "#6d28d9"}], str(series[0]["recurrence"]))
+        status = await page.text_content("#status")
+        check("the status names the colour", "Purple" in status, status)
+
+        # ---- a custom hex from the editor, this event only, stays one series
+        await click_weekday(page, 1)
+        check("the editor opens with the block's colour", await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Blue")
+        await set_custom(page, "#eventColorRow", "#ff8800")
+        check("a custom colour shows its hex", await page.text_content("#eventColorRow .color-caption") == "#FF8800")
+        check("and the custom swatch takes the colour",
+              await page.evaluate("document.querySelector('#eventColorRow .color-custom').classList.contains('selected')"))
+        await page.click("#saveEventBtn")
+        heading = await page.text_content(".choice-modal h2")
+        check("a colour-only save asks about colour, not editing", heading == "Colour recurring event", heading)
+        labels = await scope_labels(page)
+        check("with All Mondays on offer", "All Mondays" in labels, str(labels))
+        await choose_scope(page, "This event only")
+        await page.wait_for_timeout(400)
+        colors = await card_colors(page)
+        check("this Monday is orange (darkened for the text)", colors.get("1") not in ("", "#1d4ed8") and colors.get("3") == "#6d28d9", str(colors))
+        series = await masters(page)
+        check("the series is still one record", len({e.get("masterId") or e["id"] for e in series}) == 1
+              and any(r.get("date") and r["color"] == "#ff8800" for r in series[0]["recurrence"]["colorRules"]), str(series[0]["recurrence"]))
+        # next week's Monday is still blue
+        await page.click("#nextWeekBtn"); await page.wait_for_timeout(600)
+        colors = await card_colors(page)
+        check("next Monday keeps the series blue", colors.get("1") == "#1d4ed8", str(colors))
+        await page.click("#prevWeekBtn"); await page.wait_for_timeout(600)
+
+        # ---- an edit that changes more than colour still goes through Edit recurring event
+        await click_weekday(page, 3)
+        await page.fill("#eventTitle", "Maya - Calculus")
+        await page.click("#saveEventBtn")
+        heading = await page.text_content(".choice-modal h2")
+        check("a real edit still asks how far the edit reaches", heading == "Edit recurring event", heading)
+        await choose_scope(page, "All events, past and future")
+        colors = await card_colors(page)
+        check("an untouched swatch leaves every colour alone", colors.get("3") == "#6d28d9" and colors.get("1") not in ("", "#1d4ed8"), str(colors))
+
+        # ---- the summary marks the student with the dominant colour
+        dot = await page.evaluate("document.querySelector('#summaryList .week-summary-dot') && document.querySelector('#summaryList .week-summary-dot').style.getPropertyValue('--dot')")
+        check("the summary's dot is coloured", bool(dot) and dot != "", str(dot))
+
+        # ---- copy and paste carry the colour
+        await rclick_weekday(page, 3)
+        await click_menu(page, "Copy")
+        fri = page.locator(".day-column").nth(5)
+        fbox = await fri.bounding_box()
+        await page.mouse.click(fbox["x"] + fbox["width"] / 2, fbox["y"] + 300, button="right"); await page.wait_for_timeout(300)
+        items = await menu_items(page)
+        await click_menu(page, next(i for i in items if i.startswith("Paste")))
+        check("the pasted block opens with the copied colour", await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Purple")
+        await page.click("#saveEventBtn"); await page.wait_for_timeout(800)
+        colors = await card_colors(page)
+        check("and saves purple", colors.get("5") == "#6d28d9", str(colors))
+
+        # ---- the public page keeps red and green
+        await page.click("#exitAdminBtn"); await page.wait_for_timeout(700)
+        tinted = await page.evaluate("document.querySelectorAll('.event-card.tinted').length")
+        check("the public view has no tinted cards", tinted == 0, str(tinted))
+        body = await page.evaluate("fetch('/api/events?start=2020-01-01&end=2030-01-01').then(r => r.text())")
+        check("and the public API never mentions colour", "color" not in body)
+        await page.click("#adminBtn"); await page.wait_for_timeout(700)
+
+        # ---- undo takes the pasted copy back
+        await page.click("#undoBtn"); await page.wait_for_timeout(900)
+        colors = await card_colors(page)
+        check("undo removes the pasted copy", "5" not in colors, str(colors))
+
+        real = [e for e in errs if "fonts" not in e and "favicon" not in e]
+        check("no page errors", not real, str(real[:3]))
+        print(f"\n{len(oks)} passed, {len(fails)} failed")
+        await b.close()
+        return 1 if fails else 0
+
+def run():
+    subprocess.run(["node", "tests/install-shim.mjs"], check=True, stdout=subprocess.DEVNULL)
+    server = subprocess.Popen(["node", "tests/server.mjs", str(PORT)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    for _ in range(50):
+        try:
+            urllib.request.urlopen(f"{BASE}/index.html", timeout=1).read(); break
+        except Exception:
+            time.sleep(0.2)
+    else:
+        print("server failed:", server.stderr.read().decode()[:400]); return 1
+    try:
+        return asyncio.run(main())
+    finally:
+        server.terminate()
+
+sys.exit(run())

@@ -100,7 +100,7 @@ async def main():
         # ---- plain delete of a one-time event goes through the site dialog
         await rclick_weekday(page, 5)
         items = await menu_items(page)
-        check("one-time menu unchanged", items[:4] == ["Edit", "Duplicate", "Copy", "Delete"], str(items))
+        check("one-time menu unchanged", items[:5] == ["Edit", "Colour…", "Duplicate", "Copy", "Delete"], str(items))
         await click_menu(page, "Delete")
         await page.wait_for_selector(".choice-modal")
         await click_choice(page, "Delete")
@@ -110,8 +110,8 @@ async def main():
         # ---- recurring menu offers Delete…, and no Skip item
         await rclick_weekday(page, 4)
         items = await menu_items(page)
-        check("series menu reads Edit/Duplicate/Copy/Delete…",
-              items == ["Edit", "Duplicate", "Copy", "Delete…"], str(items))
+        check("series menu reads Edit/Colour…/Duplicate/Copy/Delete…",
+              items == ["Edit", "Colour…", "Duplicate", "Copy", "Delete…"], str(items))
         check("no Skip item remains", not any(i.startswith("Skip") for i in items), str(items))
 
         # ---- scope: just this block (the Thursday)

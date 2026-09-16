@@ -5,6 +5,15 @@
     view:
       'week',
 
+    /*
+      The editor's colour swatch: what is picked now, and what the
+      editor opened with, so a save knows whether it was touched.
+    */
+    editorColor:
+      null,
+    editorColorLoaded:
+      null,
+
     weekStart:
       startOfWeek(
         new Date()
@@ -917,20 +926,28 @@
     ]
       .forEach(
         (id) => {
-
           $(id)
             .addEventListener(
               'input',
               clearConflictWarning
             );
-
-
           $(id)
             .addEventListener(
               'change',
               clearConflictWarning
             );
-
+        }
+      );
+    /*
+      The Default swatch shows the colour the type would get.
+    */
+    $('eventType')
+      .addEventListener(
+        'change',
+        () => {
+          renderEditorColorRow(
+            $('eventType').value
+          );
         }
       );
 
@@ -3687,25 +3704,30 @@
                 {
                   name,
                   minutes: 0,
-                  sessions: []
+                  sessions: [],
+                  colors: new Map()
                 }
               );
-
             }
-
-
             const record =
               byStudent.get( name );
-
-
             record.minutes += minutes;
-
-
             record.sessions.push({
               date,
               startMin,
               endMin
             });
+            /*
+              The colour most of this student's time is drawn in
+              marks their row; the default red counts as a colour.
+            */
+            const hex =
+              normalizeHex( event.color ) ||
+              defaultColorFor( 'BLOCKED' );
+            record.colors.set(
+              hex,
+              ( record.colors.get( hex ) || 0 ) + minutes
+            );
 
           }
         );
@@ -3788,9 +3810,27 @@
           const who =
             document
               .createElement( 'strong' );
-
-
-          who.textContent = record.name;
+          const dot =
+            document
+              .createElement( 'span' );
+          dot.className =
+            'week-summary-dot';
+          const dominant =
+            [ ...record.colors.entries() ]
+              .sort(
+                (a, b) =>
+                  b[1] - a[1]
+              )[0];
+          dot.style.setProperty(
+            '--dot',
+            cardShades( dominant[0] ).ink
+          );
+          dot.title =
+            colorName( dominant[0] );
+          who.append(
+            dot,
+            document.createTextNode( record.name )
+          );
 
 
           const hours =
@@ -4847,13 +4887,13 @@
     card.style.top =
       top +
       'px';
-
-
     card.style.height =
       height +
       'px';
-
-
+    applyEventColor(
+      card,
+      event
+    );
     /*
       Public users never see
       private blocked titles.
@@ -5319,6 +5359,10 @@
                   ? 'blocked'
                   : 'available'
               );
+            applyEventColor(
+              item,
+              event
+            );
 
 
             const left =
@@ -7631,13 +7675,23 @@
           'Edit',
         run:
           () => {
-
             openEventModal(
               original,
               occurrence ||
               original
             );
-
+          }
+      },
+      {
+        label:
+          'Colour…',
+        run:
+          () => {
+            openColorDialog(
+              original,
+              occurrence ||
+              original
+            );
           }
       },
       {
@@ -7645,8 +7699,7 @@
           'Duplicate',
         run:
           () => {
-
-            copyEvent( original );
+            copyEvent( occurrence || original );
 
             pasteClipboardInto({
               start:
@@ -7662,8 +7715,7 @@
           'Copy',
         run:
           () => {
-
-            copyEvent( original );
+            copyEvent( occurrence || original );
 
 
             setStatus(
@@ -7815,6 +7867,8 @@
         original.type || '',
       notes:
         original.notes || '',
+      color:
+        normalizeHex( original.color ),
       durationMinutes:
         Math.max(
           15,
@@ -7900,9 +7954,10 @@
       type:
         copied.type,
       notes:
-        copied.notes
+        copied.notes,
+      color:
+        copied.color
     });
-
   }
 
 
@@ -7916,6 +7971,7 @@
   function siteDialog({
     title,
     message,
+    content,
     choices,
     cancelLabel,
     mode,
@@ -7953,18 +8009,20 @@
 
 
       if ( message ) {
-
         const body =
           document.createElement( 'p' );
-
         body.className =
           'choice-message';
-
         body.textContent =
           message;
-
         card.appendChild( body );
-
+      }
+      /*
+        A caller may put its own controls above the choices - the
+        colour swatches, say.
+      */
+      if ( content ) {
+        card.appendChild( content );
       }
 
 
@@ -8341,22 +8399,14 @@
           }
         ]
       });
-
-
     if ( !choice ) {
-
       return false;
-
     }
-
-
     if ( choice === 'one' ) {
-
       await deleteOneOccurrence(
         original,
         clicked
       );
-
     } else if ( choice === 'following' ) {
 
       await deleteFollowing(
@@ -8760,12 +8810,54 @@
 
     const original =
       series.original;
-
-
     const occurrence =
       series.occurrence;
-
-
+    if (
+      onlyColorChanged(
+        original,
+        occurrence,
+        formEvent
+      )
+    ) {
+      const reach =
+        await siteDialog({
+          title:
+            'Colour recurring event',
+          mode:
+            'radio',
+          defaultValue:
+            'one',
+          choices:
+            seriesScopeChoices(
+              original,
+              occurrence,
+              {
+                one: 'This event only',
+                following: 'This and following events',
+                weekday: 'All %ss',
+                all: 'All events in the series'
+              }
+            )
+        });
+      if ( !reach ) {
+        return false;
+      }
+      try {
+        return await requestColor(
+          original.masterId ||
+            original.id,
+          formEvent.color,
+          reach,
+          occurrence
+        );
+      } catch (error) {
+        $('eventError')
+          .textContent =
+            error.message ||
+            'The change failed.';
+        return false;
+      }
+    }
     const scope =
       await siteDialog({
         title:
@@ -8900,25 +8992,22 @@
             'POST',
           body:
             JSON.stringify({
-
               type:
                 formEvent.type,
-
               title:
                 formEvent.title,
-
               notes:
                 formEvent.notes,
-
               start:
                 formEvent.start,
-
               end:
                 formEvent.end,
-
               recurrence:
-                null
-
+                null,
+              color:
+                'color' in formEvent
+                  ? formEvent.color
+                  : ( normalizeHex( occurrence.color ) || null )
             })
         }
       );
@@ -9037,25 +9126,22 @@
             'POST',
           body:
             JSON.stringify({
-
               type:
                 formEvent.type,
-
               title:
                 formEvent.title,
-
               notes:
                 formEvent.notes,
-
               start:
                 formEvent.start,
-
               end:
                 formEvent.end,
-
               recurrence:
-                formEvent.recurrence
-
+                formEvent.recurrence,
+              color:
+                'color' in formEvent
+                  ? formEvent.color
+                  : ( normalizeHex( occurrence.color ) || null )
             })
         }
       );
@@ -9167,28 +9253,25 @@
           'POST',
         body:
           JSON.stringify({
-
             id:
               original.masterId ||
               original.id,
-
             type:
               formEvent.type,
-
             title:
               formEvent.title,
-
             notes:
               formEvent.notes,
-
             start:
               newStart,
-
             end:
               newEnd,
-
-            recurrence
-
+            recurrence,
+            ...(
+              'color' in formEvent
+                ? { color: formEvent.color }
+                : {}
+            )
           })
       }
     );
@@ -9634,6 +9717,9 @@
                 notes:
                   original.notes,
 
+                color:
+                  normalizeHex( occurrence.color ) || null,
+
                 start:
                   newStart,
 
@@ -9912,6 +9998,9 @@
 
                 notes:
                   original.notes,
+
+                color:
+                  normalizeHex( occurrence.color ) || null,
 
                 start:
                   newStart,
@@ -12851,6 +12940,586 @@
 
 
   /* =========================================================
+     BLOCK COLOURS (ADMIN)
+  ========================================================= */
+
+  /*
+    Visitors see red for a blocked session and green for availability,
+    and nothing else. The admin can paint a block any colour: a basic
+    palette, or any hex colour from the browser's own picker. A colour
+    on a repeating series is a rule layered on it - this event only,
+    all Mondays, this and following, or everything - so recolouring
+    never splits a series. The server resolves each block's colour;
+    the client only has to draw it.
+  */
+
+  const COLOR_PALETTE = [
+    { name: 'Red',    hex: '#b42318' },
+    { name: 'Orange', hex: '#c2410c' },
+    { name: 'Yellow', hex: '#a16207' },
+    { name: 'Green',  hex: '#2f7d4a' },
+    { name: 'Teal',   hex: '#0f766e' },
+    { name: 'Blue',   hex: '#1d4ed8' },
+    { name: 'Purple', hex: '#6d28d9' },
+    { name: 'Pink',   hex: '#be185d' },
+    { name: 'Brown',  hex: '#7c4a1e' },
+    { name: 'Gray',   hex: '#4b5563' }
+  ];
+
+  const WEEKDAY_NAMES = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday',
+    'Thursday', 'Friday', 'Saturday'
+  ];
+
+  function defaultColorFor(
+    type
+  ) {
+    return type === 'AVAILABLE'
+      ? '#2f7d4a'
+      : '#b42318';
+  }
+
+  function normalizeHex(
+    value
+  ) {
+    const hex =
+      String( value || '' ).trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/.test( hex )
+      ? hex
+      : null;
+  }
+
+  function hexToRgb(
+    hex
+  ) {
+    return [
+      parseInt( hex.slice( 1, 3 ), 16 ),
+      parseInt( hex.slice( 3, 5 ), 16 ),
+      parseInt( hex.slice( 5, 7 ), 16 )
+    ];
+  }
+
+  function rgbToHex(
+    rgb
+  ) {
+    return '#' +
+      rgb
+        .map(
+          (part) =>
+            Math.max( 0, Math.min( 255, Math.round( part ) ) )
+              .toString( 16 )
+              .padStart( 2, '0' )
+        )
+        .join( '' );
+  }
+
+  function mixWithWhite(
+    rgb,
+    amount
+  ) {
+    return rgb.map(
+      (part) =>
+        part + ( 255 - part ) * amount
+    );
+  }
+
+  /*
+    Text must stay readable on the tint, so a light pick (a bright
+    yellow, say) is darkened for the text and border while the tint
+    keeps its hue.
+  */
+  function readableInk(
+    rgb
+  ) {
+    const [ r, g, b ] = rgb;
+    const luminance =
+      ( 0.2126 * r + 0.7152 * g + 0.0722 * b ) / 255;
+    if ( luminance <= 0.45 ) {
+      return rgb;
+    }
+    const factor =
+      0.45 / luminance;
+    return rgb.map(
+      (part) =>
+        part * factor
+    );
+  }
+
+  /*
+    The three shades a card is drawn with, in the same relationship
+    the default red and green have: dark ink, a pale tint behind it,
+    a mid-tone border.
+  */
+  function cardShades(
+    hex
+  ) {
+    const rgb =
+      hexToRgb( hex );
+    const ink =
+      readableInk( rgb );
+    return {
+      ink:
+        rgbToHex( ink ),
+      tint:
+        rgbToHex( mixWithWhite( rgb, 0.86 ) ),
+      border:
+        rgbToHex( mixWithWhite( ink, 0.55 ) )
+    };
+  }
+
+  /*
+    Paint one element with an event's colour. Only the admin sees
+    colours; the public page keeps its two.
+  */
+  function applyEventColor(
+    element,
+    event
+  ) {
+    const hex =
+      state.isAdmin
+        ? normalizeHex( event && event.color )
+        : null;
+    if ( !hex ) {
+      element.classList.remove( 'tinted' );
+      element.style.removeProperty( '--card-ink' );
+      element.style.removeProperty( '--card-tint' );
+      element.style.removeProperty( '--card-border' );
+      return;
+    }
+    const shades =
+      cardShades( hex );
+    element.classList.add( 'tinted' );
+    element.style.setProperty( '--card-ink', shades.ink );
+    element.style.setProperty( '--card-tint', shades.tint );
+    element.style.setProperty( '--card-border', shades.border );
+  }
+
+  function colorName(
+    hex
+  ) {
+    const match =
+      COLOR_PALETTE.find(
+        (entry) =>
+          entry.hex === hex
+      );
+    return match
+      ? match.name
+      : hex.toUpperCase();
+  }
+
+  /*
+    The swatch row: Default, the palette, and Custom, which opens the
+    browser's own colour picker (wheel, sliders, hex field - whatever
+    it offers). `selected` is a hex or null for the default; onPick
+    receives the same.
+  */
+  function renderColorSwatches(
+    container,
+    {
+      selected,
+      defaultColor,
+      onPick
+    }
+  ) {
+    container.innerHTML = '';
+    container.classList.add( 'color-row' );
+    const pick =
+      (hex) => {
+        onPick( hex );
+        renderColorSwatches(
+          container,
+          {
+            selected: hex,
+            defaultColor,
+            onPick
+          }
+        );
+      };
+    const makeSwatch =
+      (hex, label, isSelected) => {
+        const button =
+          document.createElement( 'button' );
+        button.type = 'button';
+        button.className =
+          'color-swatch' +
+          ( isSelected ? ' selected' : '' );
+        button.title = label;
+        button.setAttribute( 'aria-label', label );
+        button.setAttribute( 'aria-pressed', isSelected ? 'true' : 'false' );
+        button.style.setProperty( '--swatch', hex );
+        return button;
+      };
+    const defaultSwatch =
+      makeSwatch(
+        defaultColor,
+        'Default',
+        selected === null
+      );
+    defaultSwatch.classList.add( 'is-default' );
+    defaultSwatch.dataset.color = '';
+    defaultSwatch.addEventListener( 'click', () => pick( null ) );
+    container.appendChild( defaultSwatch );
+    COLOR_PALETTE.forEach(
+      (entry) => {
+        const swatch =
+          makeSwatch(
+            entry.hex,
+            entry.name,
+            selected === entry.hex
+          );
+        swatch.dataset.color = entry.hex;
+        swatch.addEventListener( 'click', () => pick( entry.hex ) );
+        container.appendChild( swatch );
+      }
+    );
+    /*
+      Custom: a native colour input dressed as a swatch. When the
+      selection is a colour outside the palette this swatch shows it.
+    */
+    const inPalette =
+      COLOR_PALETTE.some(
+        (entry) =>
+          entry.hex === selected
+      );
+    const customSelected =
+      Boolean( selected ) && !inPalette;
+    const custom =
+      document.createElement( 'label' );
+    custom.className =
+      'color-swatch color-custom' +
+      ( customSelected ? ' selected has-color' : '' );
+    custom.title =
+      customSelected
+        ? 'Custom ' + selected.toUpperCase()
+        : 'Custom colour…';
+    if ( customSelected ) {
+      custom.style.setProperty( '--swatch', selected );
+    }
+    const input =
+      document.createElement( 'input' );
+    input.type = 'color';
+    input.className = 'color-custom-input';
+    input.setAttribute( 'aria-label', 'Custom colour' );
+    input.value =
+      customSelected
+        ? selected
+        : ( selected || defaultColor );
+    /*
+      "input" fires on every drag of the picker; a full re-render on
+      each would tear the picker down. Record the colour as it moves
+      and redraw once the picker closes.
+    */
+    input.addEventListener( 'input', () => {
+      const hex =
+        normalizeHex( input.value );
+      if ( hex ) {
+        onPick( hex );
+        custom.classList.add( 'selected', 'has-color' );
+        custom.style.setProperty( '--swatch', hex );
+        container
+          .querySelectorAll( '.color-swatch:not(.color-custom)' )
+          .forEach(
+            (swatch) => {
+              swatch.classList.remove( 'selected' );
+              swatch.setAttribute( 'aria-pressed', 'false' );
+            }
+          );
+      }
+    });
+    input.addEventListener( 'change', () => {
+      const hex =
+        normalizeHex( input.value );
+      if ( hex ) {
+        pick( hex );
+      }
+    });
+    const plus =
+      document.createElement( 'span' );
+    plus.className = 'color-custom-mark';
+    plus.textContent = '+';
+    custom.append( input, plus );
+    container.appendChild( custom );
+    const caption =
+      document.createElement( 'span' );
+    caption.className = 'color-caption';
+    caption.textContent =
+      selected
+        ? colorName( selected )
+        : 'Default';
+    container.appendChild( caption );
+  }
+
+  /*
+    The scopes a recolour (or a deletion) can reach on a series. "All
+    Mondays" is offered only when the series meets on more than one
+    weekday - on a one-day series it is the whole series.
+  */
+  function seriesScopeChoices(
+    original,
+    occurrence,
+    verbs
+  ) {
+    const choices = [
+      {
+        label: verbs.one,
+        value: 'one'
+      },
+      {
+        label: verbs.following,
+        value: 'following'
+      }
+    ];
+    const weekdays =
+      ( original.recurrence && original.recurrence.weekdays ) || [];
+    if ( weekdays.length > 1 && occurrence ) {
+      const weekday =
+        WEEKDAY_NAMES[
+          new Date(
+            occurrence.start.slice( 0, 10 ) + 'T12:00'
+          ).getDay()
+        ];
+      choices.push({
+        label:
+          verbs.weekday.replace( '%s', weekday ),
+        value: 'weekday'
+      });
+    }
+    choices.push({
+      label: verbs.all,
+      value: 'all'
+    });
+    return choices;
+  }
+
+  /*
+    The Colour… dialog from a block's menu: swatches, and for a series
+    the reach. Choosing the swatch is not the commitment; Apply is.
+  */
+  async function openColorDialog(
+    original,
+    occurrence
+  ) {
+    const clicked =
+      occurrence || original;
+    const id =
+      original.masterId ||
+      original.id;
+    let chosen =
+      normalizeHex( clicked.color ) || null;
+    const swatches =
+      document.createElement( 'div' );
+    renderColorSwatches(
+      swatches,
+      {
+        selected: chosen,
+        defaultColor:
+          defaultColorFor( original.type ),
+        onPick:
+          (hex) => {
+            chosen = hex;
+          }
+      }
+    );
+    const recurring =
+      Boolean( original.recurrence );
+    const scope =
+      await siteDialog({
+        title:
+          'Colour',
+        message:
+          ( original.title || 'This event' ) +
+          ( recurring
+            ? ' — ' + occurrenceLabel( clicked )
+            : '' ),
+        content:
+          swatches,
+        mode:
+          'radio',
+        defaultValue:
+          recurring
+            ? 'one'
+            : 'all',
+        choices:
+          recurring
+            ? seriesScopeChoices(
+                original,
+                clicked,
+                {
+                  one: 'This event only',
+                  following: 'This and following events',
+                  weekday: 'All %ss',
+                  all: 'All events in the series'
+                }
+              )
+            : [],
+        okLabel:
+          'Apply'
+      });
+    if ( !scope ) {
+      return false;
+    }
+    await applyColor(
+      id,
+      chosen,
+      scope,
+      clicked
+    );
+    return true;
+  }
+
+  async function applyColor(
+    id,
+    color,
+    scope,
+    occurrence
+  ) {
+    try {
+      const message =
+        await requestColor(
+          id,
+          color,
+          scope,
+          occurrence
+        );
+      await loadWeek();
+      setStatus(
+        message
+      );
+    } catch (error) {
+      setStatus( error.message );
+    }
+  }
+
+  async function requestColor(
+    id,
+    color,
+    scope,
+    occurrence
+  ) {
+    beginAction(
+      scope === 'all' || !occurrence
+        ? 'recolour'
+        : 'recolour ' + (
+            scope === 'one'
+              ? "this week's session"
+              : scope === 'weekday'
+                ? 'all ' + WEEKDAY_NAMES[ new Date( occurrence.start.slice( 0, 10 ) + 'T12:00' ).getDay() ] + 's'
+                : 'this and following sessions'
+          )
+    );
+    await api(
+      '/events/' +
+        encodeURIComponent( id ) +
+        '/color',
+      {
+        method:
+          'POST',
+        body:
+          JSON.stringify({
+            color,
+            scope,
+            date:
+              occurrence
+                ? occurrence.start.slice( 0, 10 )
+                : undefined
+          })
+      }
+    );
+    return color
+      ? 'Coloured ' + colorName( color ) + '.'
+      : 'Back to the default colour.';
+  }
+
+  /*
+    Did the editor change anything but the swatch? If not, a series is
+    recoloured through its rules rather than edited - so "this event
+    only" paints one block instead of detaching it.
+  */
+  function onlyColorChanged(
+    original,
+    occurrence,
+    formEvent
+  ) {
+    const same =
+      (a, b) =>
+        String( a || '' ) === String( b || '' );
+    const shape =
+      (recurrence) =>
+        JSON.stringify({
+          interval:
+            ( recurrence && recurrence.interval ) || 1,
+          weekdays:
+            [ ...( ( recurrence && recurrence.weekdays ) || [] ) ].sort(),
+          endType:
+            ( recurrence && recurrence.endType ) || 'NEVER',
+          until:
+            ( recurrence && recurrence.until ) || null,
+          count:
+            ( recurrence && recurrence.count ) || null
+        });
+    return (
+      'color' in formEvent &&
+      formEvent.type === original.type &&
+      same( formEvent.title, original.title ) &&
+      same( formEvent.notes, original.notes ) &&
+      formEvent.start === occurrence.start &&
+      formEvent.end === occurrence.end &&
+      shape( formEvent.recurrence ) === shape( original.recurrence )
+    );
+  }
+
+  /*
+    The editor's colour row. The colour the editor opened with is
+    remembered so a save can tell an untouched colour (say nothing;
+    the server keeps what it has) from a deliberate change.
+  */
+  function setEditorColor(
+    color,
+    type
+  ) {
+    state.editorColor =
+      normalizeHex( color ) || null;
+    state.editorColorLoaded =
+      state.editorColor;
+    renderEditorColorRow(
+      type
+    );
+  }
+
+  function renderEditorColorRow(
+    type
+  ) {
+    const row =
+      $('eventColorRow');
+    if ( !row ) {
+      return;
+    }
+    renderColorSwatches(
+      row,
+      {
+        selected:
+          state.editorColor,
+        defaultColor:
+          defaultColorFor(
+            type ||
+            $('eventType').value
+          ),
+        onPick:
+          (hex) => {
+            state.editorColor = hex;
+          }
+      }
+    );
+  }
+
+  function editorColorTouched() {
+    return (
+      ( state.editorColor || null ) !==
+      ( state.editorColorLoaded || null )
+    );
+  }
+
+  /* =========================================================
      REMEMBERED DEVICE
   ========================================================= */
 
@@ -13713,8 +14382,10 @@
           event.type
         ) ||
         '';
-
-
+    setEditorColor(
+      event && event.color,
+      ( event && event.type ) || ''
+    );
     setDateTimeValue(
       'eventStart',
       originalStart
@@ -14322,26 +14993,33 @@
 
 
     const event = {
-
       id:
         $('eventId')
           .value,
-
       type,
-
       start,
-
       end,
-
       title,
-
       notes:
         $('eventNotes')
           .value,
-
       recurrence
-
     };
+    /*
+      Colour is sent only when it was chosen here: an untouched
+      swatch says nothing, and the server keeps what the block (or
+      its series, rules included) already had.
+    */
+    if (
+      editorColorTouched() ||
+      (
+        !event.id &&
+        state.editorColor
+      )
+    ) {
+      event.color =
+        state.editorColor;
+    }
 
 
     /*

@@ -8,7 +8,8 @@ import { extname, join, normalize } from 'node:path';
 // the way production does (run `node tests/install-shim.mjs` once first).
 import {
   expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey,
-  buildPublicSchedule, findBlockedConflicts, normalizeSchedule
+  buildPublicSchedule, findBlockedConflicts, normalizeSchedule,
+  applyColorScope
 } from '../netlify/functions/api.mjs';
 import {
   recordBeforeWrite, applyUndo, applyRedo, summarizeHistory, emptyHistory,
@@ -128,13 +129,36 @@ createServer(async (req, res) => {
       // a body that names an existing id replaces that event wholesale.
       const id = body.id || ('e' + (nextId++));
       const ev = { ...body, id };
+      if (typeof ev.color === 'string') ev.color = ev.color.toLowerCase();
       const at = events.findIndex(e => e.id === id);
+      // colour left unsaid keeps what was stored, as production does
+      if (at >= 0) {
+        const stored = events[at];
+        if (!('color' in body) && stored.color) ev.color = stored.color;
+        if (ev.recurrence && stored.recurrence && stored.recurrence.colorRules && !('colorRules' in ev.recurrence)
+          && (!('color' in body) || (body.color || null) === (stored.color || null))) {
+          ev.recurrence = { ...ev.recurrence, colorRules: stored.recurrence.colorRules };
+        }
+      }
+      if (!ev.color) delete ev.color;
       const next = events.slice();
       if (at >= 0) { next[at] = ev; } else { next.push(ev); }
       // the same honesty pass production runs: collapse whittled series,
       // fold matching standalones into a series that was just saved
       commit(req, events, normalizeSchedule(next, { absorbInto: ev.recurrence ? id : null }));
       return json(res, 200, { event: ev, id, sync: syncResult() });
+    }
+    if (route.startsWith('/events/') && route.endsWith('/color') && req.method === 'POST') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      const id = decodeURIComponent(route.slice('/events/'.length, -'/color'.length));
+      const at = events.findIndex(e => e.id === id);
+      if (at < 0) return json(res, 404, { error: 'That event no longer exists.' });
+      const next = events.slice();
+      try {
+        next[at] = applyColorScope(events[at], { color: body.color ? String(body.color).toLowerCase() : null, scope: body.scope || 'all', date: body.date });
+      } catch (e) { return json(res, 400, { error: e.message }); }
+      commit(req, events, normalizeSchedule(next));
+      return json(res, 200, { ok: true, sync: syncResult() });
     }
     if (route.startsWith('/events/') && req.method === 'PUT') {
       const id = decodeURIComponent(route.slice(8));

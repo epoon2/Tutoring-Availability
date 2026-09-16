@@ -77,7 +77,7 @@ async def main():
         await page.wait_for_timeout(300)
         items = await page.evaluate(
             "[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
-        check("day view keeps the full menu", items == ["Edit", "Duplicate", "Copy", "Delete…"], str(items))
+        check("day view keeps the full menu", items == ["Edit", "Colour…", "Duplicate", "Copy", "Delete…"], str(items))
         await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
 
         # ---- day screenshot

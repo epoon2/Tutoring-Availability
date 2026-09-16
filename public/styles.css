@@ -2507,3 +2507,147 @@ body:not(.view-week) .view-toggle {
 body:not(.view-week).list-view .calendar {
   display: grid !important;
 }
+
+
+/* -----------------------------
+   BLOCK COLOURS (ADMIN)
+----------------------------- */
+
+/*
+  A tinted card carries its own three shades, set inline from the
+  block's colour. Visitors never get the class: their cards keep the
+  red and green above.
+*/
+.event-card.tinted,
+.agenda-item.tinted {
+  background: var(--card-tint);
+  color: var(--card-ink);
+  border-color: var(--card-border);
+}
+
+.color-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--swatch);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
+.color-swatch:hover {
+  transform: scale(1.08);
+}
+
+.color-swatch.selected {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px #ffffff inset;
+}
+
+.color-swatch.selected::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/*
+  Default: the type's own colour, marked with a slash so it reads as
+  "none of the above".
+*/
+.color-swatch.is-default::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: #ffffff;
+  transform: rotate(45deg);
+  opacity: 0.85;
+}
+
+.color-swatch.is-default.selected::before {
+  display: none;
+}
+
+/*
+  Custom: the browser's own colour picker behind a rainbow swatch.
+  Once a colour outside the palette is picked, the swatch shows it.
+*/
+.color-custom {
+  display: inline-block;
+  background: conic-gradient(#f43f5e, #f59e0b, #facc15, #22c55e, #06b6d4, #3b82f6, #a855f7, #f43f5e);
+  overflow: hidden;
+}
+
+.color-custom.has-color {
+  background: var(--swatch);
+}
+
+.color-custom-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.color-custom-mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.color-custom.has-color .color-custom-mark {
+  display: none;
+}
+
+.color-caption {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.choice-modal .color-row {
+  margin: 4px 0 14px;
+}
+
+/*
+  The week summary marks each student with the colour their sessions
+  are drawn in.
+*/
+.week-summary-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 7px;
+  vertical-align: 1px;
+  background: var(--dot, var(--blocked));
+  border-radius: 50%;
+}

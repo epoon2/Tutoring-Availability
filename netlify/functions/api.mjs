@@ -499,12 +499,43 @@ export default async (req) => {
 
       const nextEvent = {
         ...incoming,
-
         id,
-
         updatedAt:
           now
       };
+
+
+      /*
+        Colour is the one thing a re-save may leave unsaid. A body
+        without "color" keeps the stored colour; a series re-saved
+        without "colorRules" keeps its rules - unless the colour
+        itself was changed outright, which repaints the whole series
+        and makes the old exceptions meaningless.
+      */
+      if ( index >= 0 ) {
+        const stored =
+          events[ index ];
+        if ( !( "color" in incoming ) && stored.color ) {
+          nextEvent.color =
+            stored.color;
+        }
+        if (
+          nextEvent.recurrence &&
+          stored.recurrence &&
+          stored.recurrence.colorRules &&
+          !( "colorRules" in nextEvent.recurrence ) &&
+          ( !( "color" in incoming ) || ( incoming.color || null ) === ( stored.color || null ) )
+        ) {
+          nextEvent.recurrence.colorRules =
+            stored.recurrence.colorRules;
+        }
+      }
+      if ( !nextEvent.color ) {
+        delete nextEvent.color;
+      }
+      if ( nextEvent.recurrence && nextEvent.recurrence.colorRules && !nextEvent.recurrence.colorRules.length ) {
+        delete nextEvent.recurrence.colorRules;
+      }
 
 
       const before =
@@ -903,6 +934,125 @@ export default async (req) => {
     }
 
 
+    /*
+      RECOLOUR AN EVENT OR PART OF A SERIES
+      POST /events/:id/color  { color, scope, date }
+        color  "#rrggbb", or null for the default
+        scope  "one" | "following" | "weekday" | "all"
+        date   the clicked block's date (all scopes but "all")
+      A series is never split for a colour: the reach becomes a rule
+      on the recurrence and every block keeps its identity.
+    */
+    if (
+      req.method === "POST" &&
+      route.startsWith(
+        "/events/"
+      ) &&
+      route.endsWith(
+        "/color"
+      )
+    ) {
+      requireAdmin(
+        req
+      );
+      const id =
+        decodeURIComponent(
+          route.slice(
+            "/events/".length,
+            -"/color".length
+          )
+        );
+      const body =
+        await req.json();
+      const color =
+        normalizeColor(
+          body?.color === undefined
+            ? null
+            : body.color
+        );
+      const scope =
+        String( body?.scope || "all" );
+      const events =
+        await readEvents();
+      const index =
+        events.findIndex(
+          (item) =>
+            item.id === id
+        );
+      if ( index < 0 ) {
+        return json(
+          {
+            error:
+              "That event no longer exists."
+          },
+          404
+        );
+      }
+      const event =
+        events[ index ];
+      if ( event.recurrence && scope !== "all" ) {
+        validateDate(
+          body?.date
+        );
+        const dayStart =
+          localDateTimeToMinuteKey(
+            body.date + "T00:00"
+          );
+        const lands =
+          expandWeeklyEvent(
+            { ...event, recurrence: { ...event.recurrence, exdates: [] } },
+            dayStart,
+            dayStart + 1440
+          ).length > 0;
+        if ( !lands ) {
+          return json(
+            {
+              error:
+                "That series has no session on that date."
+            },
+            400
+          );
+        }
+      }
+      const next =
+        events.map(
+          (item, position) =>
+            position === index
+              ? {
+                  ...applyColorScope(
+                    item,
+                    {
+                      color,
+                      scope,
+                      date:
+                        body?.date
+                    }
+                  ),
+                  updatedAt:
+                    new Date().toISOString()
+                }
+              : item
+        );
+      const normalized =
+        normalizeSchedule(
+          next
+        );
+      await commitEvents(
+        req,
+        events,
+        normalized
+      );
+      const sync =
+        await mirrorDifference(
+          events,
+          normalized
+        );
+      return json({
+        ok:
+          true,
+        sync
+      });
+    }
     /*
       DELETE EVENT / SERIES
     */
@@ -2227,6 +2377,12 @@ function validateEvent(
     );
 
 
+  const color =
+    normalizeColor(
+      event.color
+    );
+
+
   return {
     id:
       event.id
@@ -2236,6 +2392,17 @@ function validateEvent(
         : "",
 
     type,
+
+    /*
+      Left out of the body entirely, the colour is "whatever it was";
+      the update below keeps the stored one. Null clears it.
+    */
+    ...(
+      color === undefined
+        ? {}
+        : { color }
+    ),
+
 
     title:
       title.slice(
@@ -2406,8 +2573,7 @@ function collapseSingles(
 
 
     if ( occurrences.length === 1 ) {
-
-      out.push({
+      const single = {
         ...event,
         start:
           occurrences[ 0 ].start,
@@ -2415,10 +2581,18 @@ function collapseSingles(
           occurrences[ 0 ].end,
         recurrence:
           null
-      });
-
+      };
+      const color =
+        resolveOccurrenceColor(
+          event,
+          occurrences[ 0 ].start.slice( 0, 10 )
+        );
+      if ( color ) single.color = color;
+      else delete single.color;
+      out.push(
+        single
+      );
       continue;
-
     }
 
 
@@ -2854,14 +3028,40 @@ function absorbStandalones(
 
   series.start =
     newStart;
-
   series.end =
     newEnd;
-
   recurrence.exdates =
     [ ...exdates ].sort();
-
-
+  /*
+    A block that joins the series keeps the colour it had: where that
+    differs from what the series would show on its date, a one-date
+    rule records it.
+  */
+  let colorRules =
+    [ ...( recurrence.colorRules || [] ) ];
+  for (
+    const event of matches
+  ) {
+    const date =
+      event.start.slice( 0, 10 );
+    if ( !absorbed.has( date ) ) {
+      continue;
+    }
+    const want =
+      event.color || null;
+    const have =
+      resolveOccurrenceColor(
+        { ...series, recurrence: { ...recurrence, colorRules } },
+        date
+      );
+    if ( want !== have ) {
+      colorRules =
+        colorRules.filter( (rule) => rule.date !== date );
+      colorRules.push({ date, color: want });
+    }
+  }
+  if ( colorRules.length ) recurrence.colorRules = colorRules;
+  else delete recurrence.colorRules;
   return list.filter(
     (event) =>
       event === series ||
@@ -2929,6 +3129,203 @@ function allOccurrencesOrFirst(
 
 }
 
+
+/*
+  BLOCK COLOURS
+
+  A block is red when it is blocked and green when it is availability,
+  and that is all a visitor ever sees. The admin can paint over the
+  default: an event carries an optional colour, a "#rrggbb" string,
+  and a series carries colour RULES on its recurrence so that one
+  Monday, every Monday, or everything from a date onward can differ
+  from the rest without the series being split into pieces.
+
+  Rules are applied in order and the last one that matches wins, so
+  the most recent decision is the one on screen. A rule's colour may
+  be null, meaning "back to the default for this kind of block".
+
+    { date: "YYYY-MM-DD", color }   this event only
+    { weekday: 0-6,       color }   all Mondays
+    { from: "YYYY-MM-DD", color }   this and following
+*/
+
+const HEX_COLOR =
+  /^#[0-9a-f]{6}$/;
+
+/*
+  Absent (undefined) means "not mentioned" - an update keeps what it
+  had. Null or an empty string means "no colour": back to the default.
+  Anything else must be a six-digit hex colour.
+*/
+function normalizeColor(
+  value
+) {
+  if ( value === undefined ) {
+    return undefined;
+  }
+  if ( value === null || value === "" ) {
+    return null;
+  }
+  const color =
+    String( value ).trim().toLowerCase();
+  if ( !HEX_COLOR.test( color ) ) {
+    bad( "Invalid colour. Use a hex colour like #1d4ed8." );
+  }
+  return color;
+}
+
+function weekdayOfDate(
+  date
+) {
+  return new Date(
+    localDateTimeToMinuteKey( date + "T00:00" ) * 60000
+  ).getUTCDay();
+}
+
+function validateColorRules(
+  rules,
+  weekdays
+) {
+  if ( rules === undefined ) {
+    return undefined;
+  }
+  if ( !Array.isArray( rules ) ) {
+    bad( "Invalid colour rules." );
+  }
+  if ( rules.length > 400 ) {
+    bad( "Too many colour rules on one series." );
+  }
+  const out = [];
+  for ( const rule of rules ) {
+    if ( !rule || typeof rule !== "object" ) {
+      bad( "Invalid colour rule." );
+    }
+    const color =
+      normalizeColor( rule.color );
+    const kinds =
+      [ "date", "weekday", "from" ]
+        .filter( (key) => rule[ key ] !== undefined && rule[ key ] !== null );
+    if ( kinds.length !== 1 || color === undefined ) {
+      bad( "A colour rule names one date, one weekday or a start date, and a colour." );
+    }
+    if ( rule.date !== undefined && rule.date !== null ) {
+      validateDate( rule.date );
+      out.push({ date: rule.date, color });
+    } else if ( rule.weekday !== undefined && rule.weekday !== null ) {
+      const weekday = Number( rule.weekday );
+      if ( !Number.isInteger( weekday ) || weekday < 0 || weekday > 6 ) {
+        bad( "Invalid weekday in a colour rule." );
+      }
+      /*
+        A rule for a weekday the series no longer lands on is dead
+        weight; drop it quietly.
+      */
+      if ( weekdays.includes( weekday ) ) {
+        out.push({ weekday, color });
+      }
+    } else {
+      validateDate( rule.from );
+      out.push({ from: rule.from, color });
+    }
+  }
+  return out;
+}
+
+/*
+  The colour one occurrence of an event shows: the event's own colour,
+  overridden by whichever of its rules match, latest last. Null means
+  the default for its type.
+*/
+function resolveOccurrenceColor(
+  event,
+  date
+) {
+  let color =
+    event.color || null;
+  const rules =
+    ( event.recurrence && event.recurrence.colorRules ) || [];
+  if ( !rules.length ) {
+    return color;
+  }
+  const weekday =
+    weekdayOfDate( date );
+  for ( const rule of rules ) {
+    if ( rule.date !== undefined ) {
+      if ( rule.date === date ) color = rule.color;
+    } else if ( rule.weekday !== undefined ) {
+      if ( rule.weekday === weekday ) color = rule.color;
+    } else if ( rule.from !== undefined ) {
+      if ( date >= rule.from ) color = rule.color;
+    }
+  }
+  return color;
+}
+
+/*
+  Paint a series (or one event) at one of four reaches. Each reach
+  first clears the rules it supersedes, so "all Mondays" really does
+  recolour every Monday, including one that was singled out before,
+  and the rule list never grows with decisions nobody can see.
+  Returns the event as it should now be stored.
+*/
+function applyColorScope(
+  event,
+  { color, scope, date }
+) {
+  if ( !event.recurrence || scope === "all" ) {
+    const next = { ...event };
+    if ( color ) next.color = color; else delete next.color;
+    if ( next.recurrence && next.recurrence.colorRules ) {
+      next.recurrence = { ...next.recurrence };
+      delete next.recurrence.colorRules;
+    }
+    return next;
+  }
+  validateDate( date );
+  const recurrence =
+    { ...event.recurrence };
+  let rules =
+    [ ...( recurrence.colorRules || [] ) ];
+  if ( scope === "one" ) {
+    rules = rules.filter( (rule) => rule.date !== date );
+    rules.push({ date, color });
+  } else if ( scope === "following" ) {
+    if ( date <= event.start.slice( 0, 10 ) ) {
+      return applyColorScope( event, { color, scope: "all" } );
+    }
+    rules = rules.filter(
+      (rule) =>
+        !( rule.date !== undefined && rule.date >= date ) &&
+        !( rule.from !== undefined && rule.from >= date )
+    );
+    rules.push({ from: date, color });
+  } else if ( scope === "weekday" ) {
+    const weekday =
+      weekdayOfDate( date );
+    if ( !recurrence.weekdays.includes( weekday ) ) {
+      bad( "That series has no sessions on that weekday." );
+    }
+    if ( recurrence.weekdays.length === 1 ) {
+      return applyColorScope( event, { color, scope: "all" } );
+    }
+    rules = rules.filter(
+      (rule) =>
+        rule.weekday !== weekday &&
+        !( rule.date !== undefined && weekdayOfDate( rule.date ) === weekday )
+    );
+    rules.push({ weekday, color });
+  } else {
+    bad( "Unknown colour scope." );
+  }
+  /*
+    A rule that restores exactly what the block would show without it
+    is noise - unless an earlier rule would otherwise still apply.
+    Keep it simple: keep every rule; only an empty list is dropped.
+  */
+  if ( rules.length ) recurrence.colorRules = rules;
+  else delete recurrence.colorRules;
+  return { ...event, recurrence };
+}
 
 /*
   RECURRENCE VALIDATION
@@ -3071,6 +3468,20 @@ function validateRecurrence(
 
   if ( exdates.length ) {
     result.exdates = exdates;
+  }
+
+
+  /*
+    Colour rules ride on the recurrence too. Left out, they are kept
+    from the stored series; an explicit list (even empty) replaces it.
+  */
+  const colorRules =
+    validateColorRules(
+      recurrence.colorRules,
+      weekdays
+    );
+  if ( colorRules !== undefined ) {
+    result.colorRules = colorRules;
   }
 
 
@@ -3651,7 +4062,23 @@ function expandWeeklyEvent(
           occurrenceStart:
             minuteKeyToLocalDateTime(
               occurrenceStart
-            )
+            ),
+
+          /*
+            What this block shows, rules applied; the series' own
+            colour is kept beside it for the editor.
+          */
+          color:
+            resolveOccurrenceColor(
+              event,
+              minuteKeyToLocalDateTime(
+                occurrenceStart
+              ).slice( 0, 10 )
+            ) || undefined,
+
+          seriesColor:
+            event.color ||
+            null
         });
 
       }
@@ -4814,7 +5241,9 @@ export {
   localDateTimeToMinuteKey,
   buildPublicSchedule,
   findBlockedConflicts,
-  normalizeSchedule
+  normalizeSchedule,
+  resolveOccurrenceColor,
+  applyColorScope
 };
 
 
