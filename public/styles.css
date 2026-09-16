@@ -2541,8 +2541,8 @@ body:not(.view-week).list-view .calendar {
 .color-swatch {
   position: relative;
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   background: var(--swatch);
   border: 2px solid transparent;
@@ -2563,8 +2563,8 @@ body:not(.view-week).list-view .calendar {
 .color-swatch.selected::after {
   content: "";
   position: absolute;
-  left: 7px;
-  top: 3px;
+  left: 8px;
+  top: 4px;
   width: 5px;
   height: 10px;
   border: solid #ffffff;
@@ -2624,11 +2624,19 @@ body:not(.view-week).list-view .calendar {
 }
 
 /*
-  The dialog that carries the swatches is wider than the ones that
-  only ask a question, so the whole row fits on one line.
+  The dialog that carries the swatches takes its width from the row
+  itself - never narrower than the plain question dialogs, never wider
+  than the swatches need - so there is no empty space beside them.
 */
 .choice-modal.wide-choice {
-  width: min(600px, 100%);
+  width: auto;
+  min-width: min(420px, 100%);
+  max-width: min(680px, 100%);
+}
+
+.choice-modal.wide-choice .color-swatches {
+  width: max-content;
+  max-width: 100%;
 }
 
 .choice-modal .color-row {
