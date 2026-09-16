@@ -92,6 +92,13 @@ const id = r.data.id;
 let week = await weekOf('2026-09-13', '2026-09-19');
 ok('every block of the week carries the resolved color, lower-cased, with the series color beside it',
   week.length === 2 && week.every(e => e.color === '#1d4ed8' && e.seriesColor === '#1d4ed8'), JSON.stringify(week.map(e => [e.color, e.seriesColor])));
+r = await req('POST', '/events', { type: 'BLOCKED', title: 'Plain', start: '2026-09-08T16:00', end: '2026-09-08T17:00', color: '#b42318', recurrence: null });
+week = await weekOf('2026-09-06', '2026-09-12');
+ok('painting a blocked block the default red stores no colour', r.status === 200 && !week.find(e => e.title === 'Plain').color);
+r = await req('POST', `/events/${id}/color`, { color: '#B42318', scope: 'all' });
+week = await weekOf('2026-09-13', '2026-09-19');
+ok('and so does the colour route', r.status === 200 && week.every(e => (e.masterId || e.id) !== id || (!e.color && e.seriesColor === null)), JSON.stringify(colorsOn(week, id)));
+r = await req('POST', `/events/${id}/color`, { color: '#1d4ed8', scope: 'all' });
 r = await req('POST', '/events', { type: 'BLOCKED', title: 'Bad', start: '2026-09-08T16:00', end: '2026-09-08T17:00', color: 'red', recurrence: null });
 ok('a color that is not hex is refused', r.status === 400);
 r = await req('POST', `/events/${id}/color`, { color: '#6d28d9', scope: 'weekday', date: '2026-09-16' });

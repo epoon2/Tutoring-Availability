@@ -13125,6 +13125,9 @@
     container.classList.add( 'color-row' );
     const pick =
       (hex) => {
+        if ( hex === defaultColor ) {
+          hex = null;
+        }
         onPick( hex );
         renderColorSwatches(
           container,
@@ -13149,10 +13152,21 @@
         button.style.setProperty( '--swatch', hex );
         return button;
       };
+    /*
+      The default is the type's own colour, so it is offered once,
+      under its name: "Default (Red)" on a blocked block, "Default
+      (Green)" on availability. The palette entry it duplicates is
+      left out, and picking it counts as picking the default.
+    */
+    if ( selected === defaultColor ) {
+      selected = null;
+    }
+    const defaultLabel =
+      'Default (' + colorName( defaultColor ) + ')';
     const defaultSwatch =
       makeSwatch(
         defaultColor,
-        'Default',
+        defaultLabel,
         selected === null
       );
     defaultSwatch.classList.add( 'is-default' );
@@ -13161,6 +13175,9 @@
     container.appendChild( defaultSwatch );
     COLOR_PALETTE.forEach(
       (entry) => {
+        if ( entry.hex === defaultColor ) {
+          return;
+        }
         const swatch =
           makeSwatch(
             entry.hex,
@@ -13245,7 +13262,7 @@
     caption.textContent =
       selected
         ? colorName( selected )
-        : 'Default';
+        : defaultLabel;
     container.appendChild( caption );
   }
 

@@ -2565,25 +2565,6 @@ body:not(.view-week).list-view .calendar {
   transform: rotate(45deg);
 }
 
-/*
-  Default: the type's own colour, marked with a slash so it reads as
-  "none of the above".
-*/
-.color-swatch.is-default::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 4px;
-  bottom: 4px;
-  width: 2px;
-  background: #ffffff;
-  transform: rotate(45deg);
-  opacity: 0.85;
-}
-
-.color-swatch.is-default.selected::before {
-  display: none;
-}
 
 /*
   Custom: the browser's own colour picker behind a rainbow swatch.

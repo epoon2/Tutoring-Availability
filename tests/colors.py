@@ -87,9 +87,14 @@ async def main():
         box = await col.bounding_box()
         await page.mouse.click(box["x"] + box["width"] / 2, box["y"] + 200); await page.wait_for_timeout(400)
         swatches = await page.evaluate("[...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => s.title)")
-        check("the editor offers Default, ten basic colors and Custom",
-              swatches[0] == "Default" and len(swatches) == 12 and swatches[-1] == "Custom color…", str(swatches))
-        check("Default is selected on a new block", await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Default")
+        check("the editor offers the named default, the nine other basic colors and Custom",
+              swatches[0] == "Default (Red)" and len(swatches) == 11 and "Red" not in swatches[1:] and swatches[-1] == "Custom color…", str(swatches))
+        check("Default is selected on a new block", await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Default (Red)")
+        await page.select_option("#eventType", "AVAILABLE"); await page.wait_for_timeout(100)
+        swatches = await page.evaluate("[...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => s.title)")
+        check("availability names its default Green and offers Red instead",
+              swatches[0] == "Default (Green)" and "Green" not in swatches[1:] and "Red" in swatches, str(swatches))
+        check("and the caption says so", await page.text_content("#eventColorRow .color-caption") == "Default (Green)")
         check("the custom swatch is a real color input",
               await page.evaluate("document.querySelector('#eventColorRow input[type=color]') !== null"))
         await page.select_option("#eventType", "BLOCKED"); await page.wait_for_timeout(100)

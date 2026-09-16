@@ -990,6 +990,10 @@ export default async (req) => {
       }
       const event =
         events[ index ];
+      const painted =
+        color === defaultColorFor( event.type )
+          ? null
+          : color;
       if ( event.recurrence && scope !== "all" ) {
         validateDate(
           body?.date
@@ -1022,7 +1026,8 @@ export default async (req) => {
                   ...applyColorScope(
                     item,
                     {
-                      color,
+                      color:
+                        painted,
                       scope,
                       date:
                         body?.date
@@ -2451,14 +2456,18 @@ function validateEvent(
   const recurrence =
     validateRecurrence(
       event.recurrence,
-      start
+      start,
+      type
     );
 
 
-  const color =
+  let color =
     normalizeColor(
       event.color
     );
+  if ( color === defaultColorFor( type ) ) {
+    color = null;
+  }
 
 
   return {
@@ -3231,6 +3240,22 @@ const HEX_COLOR =
   /^#[0-9a-f]{6}$/;
 
 /*
+  The colour a block has when it has none: the red and green every
+  visitor sees. Painting a block that exact colour is painting it
+  nothing, and is stored that way.
+*/
+const DEFAULT_COLORS = {
+  BLOCKED: "#b42318",
+  AVAILABLE: "#2f7d4a"
+};
+
+function defaultColorFor(
+  type
+) {
+  return DEFAULT_COLORS[ type ] || DEFAULT_COLORS.BLOCKED;
+}
+
+/*
   Absent (undefined) means "not mentioned" - an update keeps what it
   had. Null or an empty string means "no color": back to the default.
   Anything else must be a six-digit hex color.
@@ -3262,7 +3287,8 @@ function weekdayOfDate(
 
 function validateColorRules(
   rules,
-  weekdays
+  weekdays,
+  type
 ) {
   if ( rules === undefined ) {
     return undefined;
@@ -3278,8 +3304,11 @@ function validateColorRules(
     if ( !rule || typeof rule !== "object" ) {
       bad( "Invalid color rule." );
     }
-    const color =
+    let color =
       normalizeColor( rule.color );
+    if ( color === defaultColorFor( type ) ) {
+      color = null;
+    }
     const kinds =
       [ "date", "weekday", "from" ]
         .filter( (key) => rule[ key ] !== undefined && rule[ key ] !== null );
@@ -3460,7 +3489,8 @@ function dropWeekday(
 
 function validateRecurrence(
   recurrence,
-  start
+  start,
+  type
 ) {
 
   if (
@@ -3605,7 +3635,8 @@ function validateRecurrence(
   const colorRules =
     validateColorRules(
       recurrence.colorRules,
-      weekdays
+      weekdays,
+      type
     );
   if ( colorRules !== undefined ) {
     result.colorRules = colorRules;
