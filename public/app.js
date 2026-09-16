@@ -165,6 +165,8 @@
 
     bindButtons();
 
+    resumeRememberedDevice();
+
     loadWeek();
 
 
@@ -555,7 +557,37 @@
     $('adminBtn')
       .addEventListener(
         'click',
-        openAdminLogin
+        () => {
+
+          const token =
+            rememberedDeviceToken();
+
+
+          if ( token ) {
+
+            state.adminToken =
+              token;
+
+            state.isAdmin =
+              true;
+
+            loadWeek();
+
+            return;
+
+          }
+
+
+          openAdminLogin();
+
+        }
+      );
+
+
+    $('signOutBtn')
+      .addEventListener(
+        'click',
+        signOut
       );
 
 
@@ -990,6 +1022,16 @@
       headers.set(
         'x-admin-password',
         state.adminPassword
+      );
+
+    } else if (
+      state.isAdmin &&
+      state.adminToken
+    ) {
+
+      headers.set(
+        'x-admin-token',
+        state.adminToken
       );
 
     }
@@ -2874,6 +2916,18 @@
       };
 
 
+      if (
+        state.isAdmin &&
+        data.mode !== 'admin' &&
+        state.adminToken &&
+        !state.adminPassword
+      ) {
+
+        forgetDevice();
+
+      }
+
+
       state.isAdmin =
         data.mode ===
         'admin';
@@ -3032,6 +3086,17 @@
       .toggle(
         'hidden',
         !state.isAdmin
+      );
+
+
+    $('signOutBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !(
+          state.isAdmin &&
+          state.adminToken
+        )
       );
 
 
@@ -12670,13 +12735,47 @@
         true;
 
 
-      await api(
-        '/login',
-        {
-          method:
-            'POST'
-        }
-      );
+      const remember =
+        $('rememberMeInput')
+          .checked;
+
+
+      const result =
+        await api(
+          '/login',
+          {
+            method:
+              'POST',
+
+            body:
+              JSON.stringify({
+                remember
+              })
+          }
+        );
+
+
+      /*
+        The device keeps a token, never the password. Sending the
+        token from here on (and not the password) is what lets a
+        reload come back signed in.
+      */
+
+      if (
+        remember &&
+        result.token
+      ) {
+
+        rememberDevice(
+          result.token,
+          result.expiresAt
+        );
+
+      } else {
+
+        forgetDevice();
+
+      }
 
 
       closeModal(
@@ -12712,6 +12811,12 @@
 
 
 
+  /*
+    Public view steps out of admin mode for this page but keeps the
+    device signed in, so Admin comes straight back without asking.
+    Sign out forgets the device.
+  */
+
   function exitAdmin() {
 
     closeBlockedSessions();
@@ -12725,7 +12830,161 @@
       '';
 
 
-    loadWeek();
+    return loadWeek();
+
+  }
+
+
+  async function signOut() {
+
+    forgetDevice();
+
+
+    await exitAdmin();
+
+
+    setStatus(
+      'Signed out on this device.'
+    );
+
+  }
+
+
+  /* =========================================================
+     REMEMBERED DEVICE
+  ========================================================= */
+
+  const DEVICE_TOKEN_KEY =
+    'adminDeviceToken';
+
+
+  function rememberDevice(
+    token,
+    expiresAt
+  ) {
+
+    state.adminToken =
+      token;
+
+
+    state.adminPassword =
+      '';
+
+
+    try {
+
+      localStorage.setItem(
+        DEVICE_TOKEN_KEY,
+        JSON.stringify({
+          token,
+          expiresAt
+        })
+      );
+
+    } catch {
+
+      /* private mode or storage off: signed in for this page only */
+
+    }
+
+  }
+
+
+  function forgetDevice() {
+
+    state.adminToken =
+      null;
+
+
+    try {
+
+      localStorage.removeItem(
+        DEVICE_TOKEN_KEY
+      );
+
+    } catch {
+
+      /* nothing stored */
+
+    }
+
+  }
+
+
+  function rememberedDeviceToken() {
+
+    try {
+
+      const raw =
+        localStorage.getItem(
+          DEVICE_TOKEN_KEY
+        );
+
+
+      if ( !raw ) {
+
+        return null;
+
+      }
+
+
+      const saved =
+        JSON.parse(
+          raw
+        );
+
+
+      if (
+        !saved.token ||
+        (
+          saved.expiresAt &&
+          new Date( saved.expiresAt ).getTime() < Date.now()
+        )
+      ) {
+
+        forgetDevice();
+
+        return null;
+
+      }
+
+
+      return saved.token;
+
+    } catch {
+
+      return null;
+
+    }
+
+  }
+
+
+  /*
+    On load, a remembered device starts in admin mode; the first
+    reload answers "public" if the token has died (password changed,
+    or expired), and the page simply falls back to the public view.
+  */
+
+  function resumeRememberedDevice() {
+
+    const token =
+      rememberedDeviceToken();
+
+
+    if ( !token ) {
+
+      return;
+
+    }
+
+
+    state.adminToken =
+      token;
+
+
+    state.isAdmin =
+      true;
 
   }
 

@@ -224,6 +224,14 @@
           Public view
         </button>
 
+        <button
+          id="signOutBtn"
+          class="text-btn hidden"
+          title="Forget this device - the password will be asked for again"
+        >
+          Sign out
+        </button>
+
       </div>
 
     </section>
@@ -1102,6 +1110,22 @@
           autocomplete="current-password"
           placeholder="Admin password"
         >
+
+      </label>
+
+
+      <label class="checkbox-row">
+
+        <input
+          id="rememberMeInput"
+          type="checkbox"
+          checked
+        >
+
+        <span>
+          Keep me signed in on this device
+          <small>for 90 days, or until the admin password changes</small>
+        </span>
 
       </label>
 

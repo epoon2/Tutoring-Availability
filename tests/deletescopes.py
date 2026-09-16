@@ -91,8 +91,8 @@ async def main():
                 start: fri + 'T15:00', end: fri + 'T16:00' });
         }""")
         await page.reload(wait_until="networkidle")
-        await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
-        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(800)
+        # the device was remembered at login, so the reload comes back in admin mode
+        await page.wait_for_timeout(800)
 
         check("this week renders Tue, Thu and the one-off", await cards(page) == 3,
               f"cards={await cards(page)}")

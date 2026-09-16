@@ -345,9 +345,48 @@ export default async (req) => {
       );
 
 
+      /*
+        "Keep me signed in": a token the device can hold instead of
+        the password. It is the password's HMAC over an expiry, so it
+        proves nothing on its own, cannot be turned back into the
+        password, and dies for every device the moment the password
+        changes on Netlify.
+      */
+
+      let body =
+        {};
+
+      try {
+        body =
+          await req.json();
+      } catch {
+        body =
+          {};
+      }
+
+
+      const remember =
+        body?.remember === true;
+
+
       return json({
         ok:
-          true
+          true,
+
+        ...(
+          remember
+            ? {
+                token:
+                  issueAdminToken(),
+
+                expiresAt:
+                  new Date(
+                    Date.now() +
+                    ADMIN_TOKEN_DAYS * 86400000
+                  ).toISOString()
+              }
+            : {}
+        )
       });
 
     }
@@ -1905,6 +1944,110 @@ function requireAdmin(
 }
 
 
+const ADMIN_TOKEN_DAYS =
+  90;
+
+
+function issueAdminToken() {
+
+  const expires =
+    Date.now() +
+    ADMIN_TOKEN_DAYS * 86400000;
+
+
+  return `${expires}.${
+    adminTokenSignature(
+      expires
+    )
+  }`;
+
+}
+
+
+function adminTokenSignature(
+  expires
+) {
+
+  return crypto
+    .createHmac(
+      "sha256",
+      process.env.ADMIN_PASSWORD ||
+      ""
+    )
+    .update(
+      `admin-session:${expires}`
+    )
+    .digest(
+      "base64url"
+    );
+
+}
+
+
+function hasValidAdminToken(
+  token
+) {
+
+  const match =
+    /^(\d{10,16})\.([A-Za-z0-9_-]{20,})$/
+      .exec(
+        token ||
+        ""
+      );
+
+
+  if (
+    !match ||
+    !process.env.ADMIN_PASSWORD
+  ) {
+
+    return false;
+
+  }
+
+
+  const expires =
+    Number(
+      match[ 1 ]
+    );
+
+
+  if (
+    !Number.isFinite( expires ) ||
+    expires < Date.now()
+  ) {
+
+    return false;
+
+  }
+
+
+  const expected =
+    Buffer.from(
+      adminTokenSignature(
+        expires
+      )
+    );
+
+
+  const supplied =
+    Buffer.from(
+      match[ 2 ]
+    );
+
+
+  return (
+    expected.length ===
+      supplied.length &&
+    crypto.timingSafeEqual(
+      expected,
+      supplied
+    )
+  );
+
+}
+
+
 function hasValidAdminPassword(
   req
 ) {
@@ -1919,6 +2062,20 @@ function hasValidAdminPassword(
       "x-admin-password"
     ) ||
     "";
+
+
+  if (
+    !supplied &&
+    hasValidAdminToken(
+      req.headers.get(
+        "x-admin-token"
+      )
+    )
+  ) {
+
+    return true;
+
+  }
 
 
   if (
@@ -4635,15 +4792,15 @@ function json(body, status = 200, extraHeaders = {}) {
 */
 
 function publicCacheHeaders(req, admin) {
-  if (admin || req.headers.get("x-admin-password")) {
-    return {};                       // admin, or anyone carrying the header: never cache
+  if (admin || req.headers.get("x-admin-password") || req.headers.get("x-admin-token")) {
+    return {};                       // admin, or anyone carrying a credential header: never cache
   }
   return {
     "Cache-Control": "public, max-age=0, must-revalidate",
     "Netlify-CDN-Cache-Control":
       "public, s-maxage=3600, durable",
     "Netlify-Cache-Tag": EVENTS_CACHE_TAG,
-    "Vary": "x-admin-password"
+    "Vary": "x-admin-password, x-admin-token"
   };
 }
 

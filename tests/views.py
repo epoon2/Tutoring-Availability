@@ -40,8 +40,8 @@ async def main():
             return tue;
         }""")
         await page.reload(wait_until="networkidle")
-        await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
-        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(800)
+        # the device was remembered at login, so the reload comes back in admin mode
+        await page.wait_for_timeout(800)
 
         # ---- default week view
         label = await page.text_content("#saveWeekBtn")

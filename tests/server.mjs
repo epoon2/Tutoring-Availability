@@ -23,6 +23,10 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 let events = [];
 let nextId = 1;
 
+// Admin is any password (the stub does not check it), or the token /login hands a remembered device.
+const TEST_TOKEN = '9999999999999.testtoken-signature-for-the-stub';
+const isAdmin = (req) => !!req.headers['x-admin-password'] || req.headers['x-admin-token'] === TEST_TOKEN;
+
 // The same undo bookkeeping production does, with the same module.
 let history = emptyHistory();
 const commit = (req, previous, next) => {
@@ -66,10 +70,15 @@ createServer(async (req, res) => {
       try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch {}
     }
     if (route === '/config') return json(res, 200, { config });
-    if (route === '/login') return json(res, 200, { ok: true, mode: 'admin' });
+    if (route === '/login') {
+      // the password, or the remembered-device token production would hand out
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      return json(res, 200, { ok: true, mode: 'admin',
+        ...(body.remember === true ? { token: TEST_TOKEN, expiresAt: new Date(Date.now() + 90 * 86400000).toISOString() } : {}) });
+    }
     if (route === '/requests') return json(res, 200, { requests: [] });
     if (route.startsWith('/events') && req.method === 'GET') {
-      const admin = req.headers['x-admin-password'] ? 'admin' : 'public';
+      const admin = isAdmin(req) ? 'admin' : 'public';
       const params = url.searchParams;
       let served = events;
       if (params.get('start') && params.get('end')) {
@@ -138,7 +147,7 @@ createServer(async (req, res) => {
       return json(res, 200, { ok: true, sync: syncResult() });
     }
     if ((route === '/undo' || route === '/redo') && req.method === 'POST') {
-      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
       // one step, or every step down to "until" - the same loop production runs
       let result = null, steps = 0;
       for (let i = 0; i < 200; i++) {
@@ -154,11 +163,11 @@ createServer(async (req, res) => {
         history: summarizeHistory(history), sync: syncResult() });
     }
     if (route === '/history' && req.method === 'GET') {
-      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
       return json(res, 200, listHistory(history, events));
     }
     if (route === '/history/restoreversion' && req.method === 'POST') {
-      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
       const entry = history.undo.find(e => e.id === String(body.entryId || ''));
       if (!entry) return json(res, 404, { error: 'That version is no longer in the history.' });
       if (JSON.stringify(events) === JSON.stringify(entry.events)) return json(res, 200, { ok: true, unchanged: true, sync: syncResult() });
@@ -166,7 +175,7 @@ createServer(async (req, res) => {
       return json(res, 200, { ok: true, restored: { id: entry.id, at: entry.at }, sync: syncResult() });
     }
     if (route === '/history/restore' && req.method === 'POST') {
-      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
       const restored = findRemovedEvent(history, String(body.entryId || ''), String(body.eventId || ''));
       if (!restored) return json(res, 404, { error: 'That step has no such event to restore.' });
       if (events.some(e => e.id === restored.id)) return json(res, 409, { error: 'That event is already on the schedule.' });
@@ -175,7 +184,7 @@ createServer(async (req, res) => {
       return json(res, 200, { ok: true, event: ev, sync: syncResult() });
     }
     if (route === '/google/resync' && req.method === 'POST') {
-      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
       if (!FAKE_GOOGLE) return json(res, 200, { google: 'off' });
       return json(res, 200, { google: 'ok', pushed: events.filter(e => e.type === 'BLOCKED').length, removed: 0 });
     }

@@ -86,8 +86,8 @@ async def main():
                                   endType: 'NEVER' } }) });
         }""", dates["lastTue"])
         await page.reload(wait_until="networkidle")
-        await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
-        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(800)
+        # the device was remembered at login, so the reload comes back in admin mode
+        await page.wait_for_timeout(800)
 
         # ---- The ghost obeys the grab offset: a block grabbed by its
         # middle shows the landing where the BLOCK sits, not where the

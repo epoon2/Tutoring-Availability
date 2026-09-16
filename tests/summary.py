@@ -47,8 +47,8 @@ async def main():
                     body: JSON.stringify(ev)});
             }""", ev)
         await page.reload(wait_until="networkidle")
-        await page.click("#adminBtn"); await page.fill("#adminPasswordInput","t")
-        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(800)
+        # the device was remembered at login, so the reload comes back in admin mode
+        await page.wait_for_timeout(800)
 
         check("summary panel visible in admin mode",
               await page.evaluate("!document.getElementById('weekSummary').classList.contains('hidden')"))
