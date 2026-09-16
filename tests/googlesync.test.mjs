@@ -5,7 +5,7 @@
 import { createServer } from 'node:http';
 import crypto from 'node:crypto';
 import {
-  buildGoogleEvent, googleEventId, firstOccurrence, rruleUntil, zonedLocalToUtc,
+  buildGoogleEvent, googleEventId, firstOccurrence, rruleUntil, zonedLocalToUtc, googleColorId,
   googleSyncSettings, resetTokenCache
 } from '../netlify/functions/googlesync.mjs';
 
@@ -37,6 +37,18 @@ eq('a one-off is a plain Tutoring event in Los Angeles time', g1, {
   extendedProperties: { private: { tutoringId: 'one', tutoringSource: 'tutoring-availability' } }
 });
 ok('no name or notes reach Google', !JSON.stringify(g1).includes('Maya') && !JSON.stringify(g1).includes('secret'));
+ok('an unpainted block sets no colorId', !('colorId' in g1));
+
+// ---- colours: the nearest of Google's eleven
+eq('the portal palette lands on sensible Google colours',
+  ['#b42318', '#c2410c', '#a16207', '#2f7d4a', '#0f766e', '#1d4ed8', '#6d28d9', '#4b5563'].map(googleColorId),
+  ['11', '6', '5', '10', '10', '9', '3', '8']);
+eq('a custom light yellow is Banana, a grey is Graphite, nothing is nothing',
+  [googleColorId('#ffcc00'), googleColorId('#888888'), googleColorId(undefined), googleColorId('red')], ['5', '8', null, null]);
+eq('a painted block carries its colorId', buildGoogleEvent({ ...oneOff, color: '#1d4ed8' }).colorId, '9');
+ok('colour rules on a series stay in the portal - only the series colour travels',
+  buildGoogleEvent({ id: 'r', type: 'BLOCKED', title: 't', start: '2026-09-08T16:00', end: '2026-09-08T17:00', color: '#6d28d9',
+    recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4], endType: 'NEVER', colorRules: [{ weekday: 4, color: '#1d4ed8' }] } }).colorId === '3');
 
 // Tue/Thu series anchored on a Tuesday, every week, no end
 const series = { id: 'series', type: 'BLOCKED', title: 'Maya - Algebra II',

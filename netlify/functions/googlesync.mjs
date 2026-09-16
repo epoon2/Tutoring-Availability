@@ -84,6 +84,16 @@ export function buildGoogleEvent(event) {
     }
   };
 
+  /*
+    A block painted in the portal shows up in the nearest of Google's
+    eleven event colours. Only the event's own colour travels: the
+    rules that recolour single dates or weekdays of a series stay in
+    the portal, since Google has no per-instance colour on a series.
+    An unpainted block keeps the calendar's own colour.
+  */
+  const colorId = googleColorId(event.color);
+  if (colorId) body.colorId = colorId;
+
   const recurrence = event.recurrence;
   if (recurrence && recurrence.frequency === "WEEKLY") {
     /*
@@ -115,6 +125,58 @@ export function buildGoogleEvent(event) {
   }
 
   return body;
+}
+
+
+/*
+  Google Calendar's event colour palette (colorId -> the colour it
+  paints), matched by nearest RGB distance.
+*/
+
+const GOOGLE_EVENT_COLORS = [
+  ["1", "#7986cb"],  // Lavender
+  ["2", "#33b679"],  // Sage
+  ["3", "#8e24aa"],  // Grape
+  ["4", "#e67c73"],  // Flamingo
+  ["5", "#f6bf26"],  // Banana
+  ["6", "#f4511e"],  // Tangerine
+  ["7", "#039be5"],  // Peacock
+  ["8", "#616161"],  // Graphite
+  ["9", "#3f51b5"],  // Blueberry
+  ["10", "#0b8043"], // Basil
+  ["11", "#d50000"]  // Tomato
+];
+
+export function googleColorId(hex) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || "")) return null;
+  const target = hsl(hex);
+  // a grey has no hue worth matching
+  if (target.s < 0.2) return "8";
+  let best = null, bestDistance = Infinity;
+  for (const [id, sample] of GOOGLE_EVENT_COLORS) {
+    if (id === "8") continue;
+    const candidate = hsl(sample);
+    const hue = Math.abs(target.h - candidate.h);
+    // hue first (in degrees, around the wheel), then how light it is
+    const distance = Math.min(hue, 360 - hue) + 60 * Math.abs(target.l - candidate.l);
+    if (distance < bestDistance) { bestDistance = distance; best = id; }
+  }
+  return best;
+}
+
+function hsl(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
+  const l = (max + min) / 2;
+  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6;
+    else if (max === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    h = (h * 60 + 360) % 360;
+  }
+  return { h, s, l };
 }
 
 
