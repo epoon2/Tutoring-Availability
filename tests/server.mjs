@@ -8,7 +8,7 @@ import { extname, join, normalize } from 'node:path';
 // the way production does (run `node tests/install-shim.mjs` once first).
 import {
   expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey,
-  buildPublicSchedule, findBlockedConflicts
+  buildPublicSchedule, findBlockedConflicts, normalizeSchedule
 } from '../netlify/functions/api.mjs';
 import {
   recordBeforeWrite, applyUndo, applyRedo, summarizeHistory, emptyHistory,
@@ -98,7 +98,7 @@ createServer(async (req, res) => {
       if (!lands) return json(res, 400, { error: 'That series has no session on that date.' });
       const before = events.map(e => e === event ? { ...e, recurrence: { ...e.recurrence } } : e);
       event.recurrence.exdates = [...new Set([...(event.recurrence.exdates || []), date])].sort();
-      commit(req, before, events);
+      commit(req, before, normalizeSchedule(events));
       return json(res, 200, { ok: true, sync: syncResult() });
     }
     if (route === '/events' && req.method === 'POST') {
@@ -122,7 +122,9 @@ createServer(async (req, res) => {
       const at = events.findIndex(e => e.id === id);
       const next = events.slice();
       if (at >= 0) { next[at] = ev; } else { next.push(ev); }
-      commit(req, events, next);
+      // the same honesty pass production runs: collapse whittled series,
+      // fold matching standalones into a series that was just saved
+      commit(req, events, normalizeSchedule(next, { absorbInto: ev.recurrence ? id : null }));
       return json(res, 200, { event: ev, id, sync: syncResult() });
     }
     if (route.startsWith('/events/') && req.method === 'PUT') {

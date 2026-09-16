@@ -18,7 +18,6 @@ import {
 import {
   googleSyncConfigured,
   mirrorSavedEvent,
-  mirrorDeletedEvent,
   mirrorDifference,
   resyncAll
 } from "./googlesync.mjs";
@@ -493,21 +492,36 @@ export default async (req) => {
       }
 
 
+      const normalized =
+        normalizeSchedule(
+          events,
+          {
+            absorbInto:
+              nextEvent.recurrence
+                ? id
+                : null
+          }
+        );
+
+
       await commitEvents(
         req,
         before,
-        events
+        normalized
       );
 
 
       /*
         The schedule is saved; the Google mirror follows and reports
         how it went rather than deciding whether the save succeeded.
+        Everything that differs is mirrored, not only the event that
+        was posted - the pass above may have folded others into it.
       */
 
       const sync =
-        await mirrorSavedEvent(
-          nextEvent
+        await mirrorDifference(
+          before,
+          normalized
         );
 
 
@@ -821,16 +835,23 @@ export default async (req) => {
           .sort();
 
 
+      const normalized =
+        normalizeSchedule(
+          events
+        );
+
+
       await commitEvents(
         req,
         before,
-        events
+        normalized
       );
 
 
       const sync =
-        await mirrorSavedEvent(
-          event
+        await mirrorDifference(
+          before,
+          normalized
         );
 
 
@@ -895,16 +916,23 @@ export default async (req) => {
       }
 
 
+      const normalized =
+        normalizeSchedule(
+          next
+        );
+
+
       await commitEvents(
         req,
         events,
-        next
+        normalized
       );
 
 
       const sync =
-        await mirrorDeletedEvent(
-          id
+        await mirrorDifference(
+          events,
+          normalized
         );
 
 
@@ -1961,6 +1989,672 @@ function validateEvent(
 
     recurrence
   };
+
+}
+
+
+/*
+  KEEPING THE SCHEDULE HONEST ABOUT WHAT REPEATS
+
+  Two things can make the stored shape disagree with what the admin
+  sees. A series can be whittled down - "this and following" from the
+  second week, "this event only" on the first - until one block is
+  left, which is a standalone session in every way that matters and
+  should be edited and deleted as one. And a standalone block can sit
+  exactly where a series lands - same day of the week, same time,
+  same length, same title, same notes - after the admin adds the
+  series around it; that block belongs to the series.
+
+  This pass runs after every save. It absorbs matching standalones
+  into a series (only when the save was a series, so the detached
+  copies that scoped edits deliberately create are left alone), then
+  collapses any finite series with one block left into a plain event,
+  and drops one with none. The result is what the admin meant.
+*/
+
+function normalizeSchedule(
+  events,
+  { absorbInto = null } = {}
+) {
+
+  let list =
+    events.map(
+      (event) => ({
+        ...event,
+        recurrence:
+          event.recurrence
+            ? {
+                ...event.recurrence,
+                weekdays:
+                  [ ...( event.recurrence.weekdays || [] ) ],
+                exdates:
+                  [ ...( event.recurrence.exdates || [] ) ]
+              }
+            : null
+      })
+    );
+
+
+  if ( absorbInto ) {
+
+    const series =
+      list.find(
+        (event) =>
+          event.id === absorbInto &&
+          event.recurrence &&
+          event.recurrence.frequency === "WEEKLY"
+      );
+
+
+    if ( series ) {
+
+      list =
+        absorbStandalones(
+          list,
+          series
+        );
+
+    }
+
+  }
+
+
+  return collapseSingles(
+    list
+  );
+
+}
+
+
+/*
+  Every occurrence of a series that has an end. A series that never
+  ends is left alone here - it cannot be down to one block.
+*/
+
+const FAR_FUTURE_KEY =
+  localDateTimeToMinuteKey(
+    "2200-01-01T00:00"
+  );
+
+
+function allOccurrences(
+  event
+) {
+
+  return expandWeeklyEvent(
+    event,
+    0,
+    FAR_FUTURE_KEY
+  );
+
+}
+
+
+function collapseSingles(
+  list
+) {
+
+  const out =
+    [];
+
+
+  for (
+    const event of list
+  ) {
+
+    const recurrence =
+      event.recurrence;
+
+
+    if (
+      !recurrence ||
+      recurrence.frequency !== "WEEKLY" ||
+      recurrence.endType === "NEVER"
+    ) {
+
+      out.push(
+        event
+      );
+
+      continue;
+
+    }
+
+
+    const occurrences =
+      allOccurrences(
+        event
+      );
+
+
+    if ( occurrences.length === 0 ) {
+
+      continue;
+
+    }
+
+
+    if ( occurrences.length === 1 ) {
+
+      out.push({
+        ...event,
+        start:
+          occurrences[ 0 ].start,
+        end:
+          occurrences[ 0 ].end,
+        recurrence:
+          null
+      });
+
+      continue;
+
+    }
+
+
+    out.push(
+      event
+    );
+
+  }
+
+
+  return out;
+
+}
+
+
+/*
+  A standalone matches a series when it is the same kind of block on
+  one of the series' weekdays: same type, title and notes, same start
+  time of day, same length. The date decides what happens:
+
+    on a skipped week          the skip is lifted, the block dropped
+    on a week the series lands the block is a duplicate and dropped
+    before the first week      the series starts there instead, with
+                               the weeks in between skipped unless a
+                               matching block fills them too
+    after the last week        the series runs to there instead, the
+                               weeks in between skipped likewise
+
+  The cadence must agree: a block two weeks ahead of an every-third-
+  week series is not on the series.
+*/
+
+function absorbStandalones(
+  list,
+  series
+) {
+
+  const recurrence =
+    series.recurrence;
+
+
+  const interval =
+    recurrence.interval ||
+    1;
+
+
+  const seriesStartKey =
+    localDateTimeToMinuteKey(
+      series.start
+    );
+
+
+  const duration =
+    localDateTimeToMinuteKey(
+      series.end
+    ) -
+    seriesStartKey;
+
+
+  const timeOfDay =
+    seriesStartKey -
+    localDateTimeToMinuteKey(
+      series.start.slice( 0, 10 ) + "T00:00"
+    );
+
+
+  const sameText =
+    (a, b) =>
+      String( a || "" ).trim().toLowerCase() ===
+      String( b || "" ).trim().toLowerCase();
+
+
+  const matches =
+    list.filter(
+      (event) => {
+
+        if (
+          event === series ||
+          event.recurrence ||
+          event.type !== series.type ||
+          !sameText( event.title, series.title ) ||
+          !sameText( event.notes, series.notes )
+        ) {
+
+          return false;
+
+        }
+
+
+        const startKey =
+          localDateTimeToMinuteKey(
+            event.start
+          );
+
+
+        const dayKey =
+          localDateTimeToMinuteKey(
+            event.start.slice( 0, 10 ) + "T00:00"
+          );
+
+
+        if (
+          startKey === null ||
+          dayKey === null ||
+          startKey - dayKey !== timeOfDay ||
+          localDateTimeToMinuteKey( event.end ) - startKey !== duration
+        ) {
+
+          return false;
+
+        }
+
+
+        const weekday =
+          new Date(
+            dayKey * 60000
+          ).getUTCDay();
+
+
+        if (
+          !recurrence.weekdays.includes(
+            weekday
+          )
+        ) {
+
+          return false;
+
+        }
+
+
+        /*
+          Same phase as the series: a whole number of intervals
+          between its week and the series' anchor week.
+        */
+
+        const anchorWeek =
+          weekOf(
+            series.start.slice( 0, 10 )
+          );
+
+
+        const blockWeek =
+          weekOf(
+            event.start.slice( 0, 10 )
+          );
+
+
+        const weeksApart =
+          Math.round(
+            ( blockWeek - anchorWeek ) /
+            ( 7 * 1440 )
+          );
+
+
+        return (
+          ( ( weeksApart % interval ) + interval ) % interval
+        ) === 0;
+
+      }
+    );
+
+
+  if ( !matches.length ) {
+
+    return list;
+
+  }
+
+
+  const absorbed =
+    new Set();
+
+
+  const exdates =
+    new Set(
+      recurrence.exdates ||
+      []
+    );
+
+
+  /*
+    Work outward: the earliest match may move the start back, the
+    latest may push the end out. Everything in between is handled by
+    the same rule - a slot is either filled by a matching block or
+    skipped.
+  */
+
+  const dates =
+    matches
+      .map(
+        (event) =>
+          event.start.slice( 0, 10 )
+      )
+      .sort();
+
+
+  let firstOccurrence =
+    allOccurrencesOrFirst(
+      series
+    );
+
+
+  let newStart =
+    series.start;
+
+
+  let newEnd =
+    series.end;
+
+
+  for (
+    const date of dates
+  ) {
+
+    const dayKey =
+      localDateTimeToMinuteKey(
+        date + "T00:00"
+      );
+
+
+    if ( exdates.has( date ) ) {
+
+      exdates.delete(
+        date
+      );
+
+      absorbed.add(
+        date
+      );
+
+      continue;
+
+    }
+
+
+    const landsHere =
+      expandWeeklyEvent(
+        { ...series, start: newStart, end: newEnd,
+          recurrence: { ...recurrence, exdates: [] } },
+        dayKey,
+        dayKey + 1440
+      ).length > 0;
+
+
+    if ( landsHere ) {
+
+      absorbed.add(
+        date
+      );
+
+      continue;
+
+    }
+
+
+    if (
+      dayKey < localDateTimeToMinuteKey( newStart )
+    ) {
+
+      /*
+        Earlier than the series: it now starts here. Slots between
+        here and the old first block are skipped unless another
+        matching block fills them.
+      */
+
+      const slotsBetween =
+        expandWeeklyEvent(
+          { ...series, start: date + "T" + series.start.slice( 11 ), end: minuteKeyToLocalDateTime( dayKey + timeOfDay + duration ),
+            recurrence: { ...recurrence, endType: "NEVER", exdates: [] } },
+          dayKey + timeOfDay + duration,
+          localDateTimeToMinuteKey( firstOccurrence ) - 1
+        )
+          .map(
+            (occurrence) =>
+              occurrence.start.slice( 0, 10 )
+          );
+
+
+      for (
+        const slot of slotsBetween
+      ) {
+
+        if ( dates.includes( slot ) ) {
+
+          absorbed.add(
+            slot
+          );
+
+        } else {
+
+          exdates.add(
+            slot
+          );
+
+        }
+
+      }
+
+
+      newStart =
+        date + "T" + series.start.slice( 11 );
+
+
+      newEnd =
+        minuteKeyToLocalDateTime(
+          dayKey + timeOfDay + duration
+        );
+
+
+      firstOccurrence =
+        newStart;
+
+
+      absorbed.add(
+        date
+      );
+
+      continue;
+
+    }
+
+
+    /*
+      Later than the series' last block: it runs to here instead.
+    */
+
+    if ( recurrence.endType === "NEVER" ) {
+
+      continue;
+
+    }
+
+
+    const lastOccurrence =
+      allOccurrences(
+        { ...series, start: newStart, end: newEnd, recurrence: { ...recurrence, exdates: [] } }
+      )
+        .pop();
+
+
+    if ( !lastOccurrence ) {
+
+      continue;
+
+    }
+
+
+    const slotsBetween =
+      expandWeeklyEvent(
+        { ...series, start: newStart, end: newEnd,
+          recurrence: { ...recurrence, endType: "NEVER", exdates: [] } },
+        localDateTimeToMinuteKey( lastOccurrence.end ),
+        dayKey + timeOfDay
+      )
+        .map(
+          (occurrence) =>
+            occurrence.start.slice( 0, 10 )
+        );
+
+
+    for (
+      const slot of slotsBetween
+    ) {
+
+      if ( dates.includes( slot ) ) {
+
+        absorbed.add(
+          slot
+        );
+
+      } else {
+
+        exdates.add(
+          slot
+        );
+
+      }
+
+    }
+
+
+    if ( recurrence.endType === "ON" ) {
+
+      recurrence.until =
+        date;
+
+    } else if ( recurrence.endType === "COUNT" ) {
+
+      recurrence.count =
+        ( recurrence.count || 0 ) + slotsBetween.length + 1;
+
+    }
+
+
+    absorbed.add(
+      date
+    );
+
+  }
+
+
+  if ( !absorbed.size ) {
+
+    return list;
+
+  }
+
+
+  /*
+    Moving the start earlier on a counted series adds slots at the
+    front; the count grows by as many so the far end stays put.
+  */
+
+  if (
+    recurrence.endType === "COUNT" &&
+    newStart !== series.start
+  ) {
+
+    const movedSlots =
+      expandWeeklyEvent(
+        { ...series, start: newStart, end: newEnd,
+          recurrence: { ...recurrence, endType: "NEVER", exdates: [] } },
+        localDateTimeToMinuteKey( newStart ),
+        localDateTimeToMinuteKey( series.start ) - 1
+      ).length;
+
+
+    recurrence.count =
+      ( recurrence.count || 0 ) + movedSlots;
+
+  }
+
+
+  series.start =
+    newStart;
+
+  series.end =
+    newEnd;
+
+  recurrence.exdates =
+    [ ...exdates ].sort();
+
+
+  return list.filter(
+    (event) =>
+      event === series ||
+      event.recurrence ||
+      !(
+        matches.includes( event ) &&
+        absorbed.has( event.start.slice( 0, 10 ) )
+      )
+  );
+
+}
+
+
+function weekOf(
+  date
+) {
+
+  const dayKey =
+    localDateTimeToMinuteKey(
+      date + "T00:00"
+    );
+
+
+  const weekday =
+    new Date(
+      dayKey * 60000
+    ).getUTCDay();
+
+
+  return dayKey - weekday * 1440;
+
+}
+
+
+/*
+  Where a series really begins: the first listed weekday on or after
+  its start date, which lies within the first interval of weeks.
+*/
+
+function allOccurrencesOrFirst(
+  series
+) {
+
+  const startKey =
+    localDateTimeToMinuteKey(
+      series.start
+    );
+
+
+  const span =
+    ( series.recurrence.interval || 1 ) * 7 * 1440 * 2;
+
+
+  const first =
+    expandWeeklyEvent(
+      { ...series, recurrence: { ...series.recurrence, exdates: [], endType: "NEVER" } },
+      startKey - 1,
+      startKey + span
+    )[ 0 ];
+
+
+  return first
+    ? first.start
+    : series.start;
 
 }
 
@@ -3848,7 +4542,8 @@ export {
   expandWeeklyEvent,
   localDateTimeToMinuteKey,
   buildPublicSchedule,
-  findBlockedConflicts
+  findBlockedConflicts,
+  normalizeSchedule
 };
 
 

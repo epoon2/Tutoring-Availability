@@ -8170,6 +8170,7 @@
         title:
           'Delete recurring event',
         message:
+          'This session is part of a repeating series.\n' +
           ( original.title || 'This event' ) +
           ' — ' +
           occurrenceLabel( clicked ),

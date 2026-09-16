@@ -2252,6 +2252,9 @@ button.agenda-item:hover {
   color: var(--muted);
   line-height: 1.45;
   overflow-wrap: anywhere;
+
+  /* a message may carry a second line */
+  white-space: pre-line;
 }
 
 .choice-list {
