@@ -99,7 +99,7 @@ async def main():
         items = await page.evaluate(
             "[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
         check("series menu says plain Edit now",
-              items == ["Edit", "Colour…", "Duplicate", "Copy", "Delete…"], str(items))
+              items == ["Edit", "Customize", "Duplicate", "Copy", "Delete…"], str(items))
         # Close the menu and reach the editor the short way instead: a
         # left-click on the session itself, which must carry the same
         # occurrence the right-click menu would have.

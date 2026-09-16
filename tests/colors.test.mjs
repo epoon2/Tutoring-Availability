@@ -1,4 +1,4 @@
-// Block colours: a hex colour on an event, colour rules layered on a
+// Block colors: a hex color on an event, color rules layered on a
 // series (one date, one weekday, from a date on) so nothing is split,
 // "delete all Mondays" on a multi-day series, and the public schedule
 // staying red and green throughout.
@@ -26,9 +26,9 @@ const colorsOn = (events, id) => Object.fromEntries(events.filter(e => (e.master
 // ---- pure rules
 const series = { id: 's', type: 'BLOCKED', title: 'Maya', notes: '', start: '2026-09-07T16:00', end: '2026-09-07T17:00',
   recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [1, 3], endType: 'NEVER' } };
-ok('no colour resolves to null (the type default)', resolveOccurrenceColor(series, '2026-09-07') === null);
+ok('no color resolves to null (the type default)', resolveOccurrenceColor(series, '2026-09-07') === null);
 let painted = applyColorScope(series, { color: '#1d4ed8', scope: 'all' });
-ok('"all" sets the series colour and leaves no rules', painted.color === '#1d4ed8' && !painted.recurrence.colorRules);
+ok('"all" sets the series color and leaves no rules', painted.color === '#1d4ed8' && !painted.recurrence.colorRules);
 painted = applyColorScope(painted, { color: '#6d28d9', scope: 'weekday', date: '2026-09-09' });
 ok('"all Wednesdays" is one weekday rule', painted.recurrence.colorRules.length === 1 && painted.recurrence.colorRules[0].weekday === 3);
 ok('Wednesdays are purple, Mondays still blue', resolveOccurrenceColor(painted, '2026-09-09') === '#6d28d9'
@@ -53,12 +53,12 @@ painted = applyColorScope(single, { color: '#1d4ed8', scope: 'weekday', date: '2
 ok('"all Mondays" on a Mondays-only series is the whole series', painted.color === '#1d4ed8' && !painted.recurrence.colorRules);
 const lone = { ...series, recurrence: null };
 painted = applyColorScope(lone, { color: '#1d4ed8', scope: 'one', date: '2026-09-07' });
-ok('a standalone takes the colour whatever the scope', painted.color === '#1d4ed8' && painted.recurrence === null);
+ok('a standalone takes the color whatever the scope', painted.color === '#1d4ed8' && painted.recurrence === null);
 
 // ---- dropping a weekday
 let dropped = dropWeekday({ ...series, recurrence: { ...series.recurrence, exdates: ['2026-09-14', '2026-09-16'],
   colorRules: [{ weekday: 1, color: '#1d4ed8' }, { date: '2026-09-21', color: '#6d28d9' }, { from: '2026-10-01', color: '#0f766e' }] } }, 1);
-ok('the weekday leaves the series with its skips and colour rules', dropped.recurrence.weekdays.join() === '3'
+ok('the weekday leaves the series with its skips and color rules', dropped.recurrence.weekdays.join() === '3'
   && dropped.recurrence.exdates.join() === '2026-09-16' && dropped.recurrence.colorRules.length === 1 && dropped.recurrence.colorRules[0].from);
 dropped = dropWeekday({ ...series, recurrence: { ...series.recurrence, endType: 'COUNT', count: 6 } }, 1);
 // six blocks: 9/7 9/9 9/14 9/16 9/21 9/23 - the last is Wed 9/23
@@ -71,31 +71,31 @@ threw = null;
 try { dropWeekday(series, 5); } catch (e) { threw = e; }
 ok('a weekday the series does not meet on is refused', threw);
 
-// ---- normalising keeps colours
+// ---- normalising keeps colors
 let out = normalizeSchedule([{ ...series, color: '#1d4ed8', recurrence: { ...series.recurrence, endType: 'ON', until: '2026-09-09',
   exdates: ['2026-09-07'], colorRules: [{ weekday: 3, color: '#6d28d9' }] } }]);
-ok('a series collapsing to one block gives it that block\'s resolved colour', out[0].recurrence === null && out[0].color === '#6d28d9');
+ok('a series collapsing to one block gives it that block\'s resolved color', out[0].recurrence === null && out[0].color === '#6d28d9');
 const base = { ...series, color: '#1d4ed8', recurrence: { ...series.recurrence, endType: 'ON', until: '2026-09-30' } };
 out = normalizeSchedule([base, { id: 'x', type: 'BLOCKED', title: 'Maya', notes: '', start: '2026-09-16T16:00', end: '2026-09-16T17:00',
   color: '#0f766e', recurrence: null }], { absorbInto: 's' });
-ok('a standalone with its own colour joins a series as a one-date rule', out.length === 1
+ok('a standalone with its own color joins a series as a one-date rule', out.length === 1
   && resolveOccurrenceColor(out[0], '2026-09-16') === '#0f766e' && resolveOccurrenceColor(out[0], '2026-09-23') === '#1d4ed8', JSON.stringify(out));
 out = normalizeSchedule([base, { id: 'y', type: 'BLOCKED', title: 'Maya', notes: '', start: '2026-09-16T16:00', end: '2026-09-16T17:00',
   color: '#1d4ed8', recurrence: null }], { absorbInto: 's' });
-ok('one whose colour already matches leaves no rule behind', out.length === 1 && !out[0].recurrence.colorRules);
+ok('one whose color already matches leaves no rule behind', out.length === 1 && !out[0].recurrence.colorRules);
 
 // ---- through the API
 let r = await req('POST', '/events', { type: 'BLOCKED', title: 'Maya', start: '2026-09-07T16:00', end: '2026-09-07T17:00', color: '#1D4ED8',
   recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [1, 3], endType: 'NEVER' } });
-ok('a save accepts a hex colour', r.status === 200, JSON.stringify(r.data));
+ok('a save accepts a hex color', r.status === 200, JSON.stringify(r.data));
 const id = r.data.id;
 let week = await weekOf('2026-09-13', '2026-09-19');
-ok('every block of the week carries the resolved colour, lower-cased, with the series colour beside it',
+ok('every block of the week carries the resolved color, lower-cased, with the series color beside it',
   week.length === 2 && week.every(e => e.color === '#1d4ed8' && e.seriesColor === '#1d4ed8'), JSON.stringify(week.map(e => [e.color, e.seriesColor])));
 r = await req('POST', '/events', { type: 'BLOCKED', title: 'Bad', start: '2026-09-08T16:00', end: '2026-09-08T17:00', color: 'red', recurrence: null });
-ok('a colour that is not hex is refused', r.status === 400);
+ok('a color that is not hex is refused', r.status === 400);
 r = await req('POST', `/events/${id}/color`, { color: '#6d28d9', scope: 'weekday', date: '2026-09-16' });
-ok('the colour route paints all Wednesdays', r.status === 200 && r.data.ok, JSON.stringify(r.data));
+ok('the color route paints all Wednesdays', r.status === 200 && r.data.ok, JSON.stringify(r.data));
 week = await weekOf('2026-09-13', '2026-09-19');
 ok('and the week shows blue Monday, purple Wednesday', JSON.stringify(colorsOn(week, id)) === JSON.stringify({ '2026-09-14': '#1d4ed8', '2026-09-16': '#6d28d9' }), JSON.stringify(colorsOn(week, id)));
 r = await req('POST', `/events/${id}/color`, { color: '#0f766e', scope: 'one', date: '2026-09-15' });
@@ -103,12 +103,12 @@ ok('a date the series misses is refused', r.status === 400);
 r = await req('POST', '/events', { id, type: 'BLOCKED', title: 'Maya', notes: '', start: '2026-09-07T16:00', end: '2026-09-07T17:30',
   recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [1, 3], endType: 'NEVER' } });
 week = await weekOf('2026-09-13', '2026-09-19');
-ok('a re-save that says nothing about colour keeps the colour and the rules',
+ok('a re-save that says nothing about color keeps the color and the rules',
   JSON.stringify(colorsOn(week, id)) === JSON.stringify({ '2026-09-14': '#1d4ed8', '2026-09-16': '#6d28d9' }) && week[0].end.endsWith('17:30'), JSON.stringify(colorsOn(week, id)));
 r = await req('POST', '/events', { id, type: 'BLOCKED', title: 'Maya', notes: '', start: '2026-09-07T16:00', end: '2026-09-07T17:30', color: '#be185d',
   recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [1, 3], endType: 'NEVER' } });
 week = await weekOf('2026-09-13', '2026-09-19');
-ok('a re-save with a new colour repaints the whole series and drops the rules',
+ok('a re-save with a new color repaints the whole series and drops the rules',
   JSON.stringify(colorsOn(week, id)) === JSON.stringify({ '2026-09-14': '#be185d', '2026-09-16': '#be185d' }), JSON.stringify(colorsOn(week, id)));
 r = await req('POST', '/events', { id, type: 'BLOCKED', title: 'Maya', notes: '', start: '2026-09-07T16:00', end: '2026-09-07T17:30', color: null,
   recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [1, 3], endType: 'NEVER' } });
@@ -116,7 +116,7 @@ week = await weekOf('2026-09-13', '2026-09-19');
 ok('null clears it back to the default', week.every(e => !e.color && e.seriesColor === null));
 
 const pub = (await req('GET', '/events?start=2026-09-13&end=2026-09-19', null, false)).data;
-ok('the public schedule carries no colour at all', pub.mode === 'public' && !JSON.stringify(pub.events).includes('color'));
+ok('the public schedule carries no color at all', pub.mode === 'public' && !JSON.stringify(pub.events).includes('color'));
 
 r = await req('POST', `/events/${id}/weekday`, { weekday: 1 });
 ok('the weekday route drops all Mondays', r.status === 200 && r.data.ok, JSON.stringify(r.data));

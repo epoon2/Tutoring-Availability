@@ -506,9 +506,9 @@ export default async (req) => {
 
 
       /*
-        Colour is the one thing a re-save may leave unsaid. A body
-        without "color" keeps the stored colour; a series re-saved
-        without "colorRules" keeps its rules - unless the colour
+        Color is the one thing a re-save may leave unsaid. A body
+        without "color" keeps the stored color; a series re-saved
+        without "colorRules" keeps its rules - unless the color
         itself was changed outright, which repaints the whole series
         and makes the old exceptions meaningless.
       */
@@ -940,7 +940,7 @@ export default async (req) => {
         color  "#rrggbb", or null for the default
         scope  "one" | "following" | "weekday" | "all"
         date   the clicked block's date (all scopes but "all")
-      A series is never split for a colour: the reach becomes a rule
+      A series is never split for a color: the reach becomes a rule
       on the recurrence and every block keeps its identity.
     */
     if (
@@ -2472,7 +2472,7 @@ function validateEvent(
     type,
 
     /*
-      Left out of the body entirely, the colour is "whatever it was";
+      Left out of the body entirely, the color is "whatever it was";
       the update below keeps the stored one. Null clears it.
     */
     ...(
@@ -3111,7 +3111,7 @@ function absorbStandalones(
   recurrence.exdates =
     [ ...exdates ].sort();
   /*
-    A block that joins the series keeps the colour it had: where that
+    A block that joins the series keeps the color it had: where that
     differs from what the series would show on its date, a one-date
     rule records it.
   */
@@ -3213,13 +3213,13 @@ function allOccurrencesOrFirst(
 
   A block is red when it is blocked and green when it is availability,
   and that is all a visitor ever sees. The admin can paint over the
-  default: an event carries an optional colour, a "#rrggbb" string,
-  and a series carries colour RULES on its recurrence so that one
+  default: an event carries an optional color, a "#rrggbb" string,
+  and a series carries color RULES on its recurrence so that one
   Monday, every Monday, or everything from a date onward can differ
   from the rest without the series being split into pieces.
 
   Rules are applied in order and the last one that matches wins, so
-  the most recent decision is the one on screen. A rule's colour may
+  the most recent decision is the one on screen. A rule's color may
   be null, meaning "back to the default for this kind of block".
 
     { date: "YYYY-MM-DD", color }   this event only
@@ -3232,8 +3232,8 @@ const HEX_COLOR =
 
 /*
   Absent (undefined) means "not mentioned" - an update keeps what it
-  had. Null or an empty string means "no colour": back to the default.
-  Anything else must be a six-digit hex colour.
+  had. Null or an empty string means "no color": back to the default.
+  Anything else must be a six-digit hex color.
 */
 function normalizeColor(
   value
@@ -3247,7 +3247,7 @@ function normalizeColor(
   const color =
     String( value ).trim().toLowerCase();
   if ( !HEX_COLOR.test( color ) ) {
-    bad( "Invalid colour. Use a hex colour like #1d4ed8." );
+    bad( "Invalid color. Use a hex color like #1d4ed8." );
   }
   return color;
 }
@@ -3268,15 +3268,15 @@ function validateColorRules(
     return undefined;
   }
   if ( !Array.isArray( rules ) ) {
-    bad( "Invalid colour rules." );
+    bad( "Invalid color rules." );
   }
   if ( rules.length > 400 ) {
-    bad( "Too many colour rules on one series." );
+    bad( "Too many color rules on one series." );
   }
   const out = [];
   for ( const rule of rules ) {
     if ( !rule || typeof rule !== "object" ) {
-      bad( "Invalid colour rule." );
+      bad( "Invalid color rule." );
     }
     const color =
       normalizeColor( rule.color );
@@ -3284,7 +3284,7 @@ function validateColorRules(
       [ "date", "weekday", "from" ]
         .filter( (key) => rule[ key ] !== undefined && rule[ key ] !== null );
     if ( kinds.length !== 1 || color === undefined ) {
-      bad( "A colour rule names one date, one weekday or a start date, and a colour." );
+      bad( "A color rule names one date, one weekday or a start date, and a color." );
     }
     if ( rule.date !== undefined && rule.date !== null ) {
       validateDate( rule.date );
@@ -3292,7 +3292,7 @@ function validateColorRules(
     } else if ( rule.weekday !== undefined && rule.weekday !== null ) {
       const weekday = Number( rule.weekday );
       if ( !Number.isInteger( weekday ) || weekday < 0 || weekday > 6 ) {
-        bad( "Invalid weekday in a colour rule." );
+        bad( "Invalid weekday in a color rule." );
       }
       /*
         A rule for a weekday the series no longer lands on is dead
@@ -3310,7 +3310,7 @@ function validateColorRules(
 }
 
 /*
-  The colour one occurrence of an event shows: the event's own colour,
+  The color one occurrence of an event shows: the event's own color,
   overridden by whichever of its rules match, latest last. Null means
   the default for its type.
 */
@@ -3342,7 +3342,7 @@ function resolveOccurrenceColor(
 /*
   Paint a series (or one event) at one of four reaches. Each reach
   first clears the rules it supersedes, so "all Mondays" really does
-  recolour every Monday, including one that was singled out before,
+  recolor every Monday, including one that was singled out before,
   and the rule list never grows with decisions nobody can see.
   Returns the event as it should now be stored.
 */
@@ -3393,7 +3393,7 @@ function applyColorScope(
     );
     rules.push({ weekday, color });
   } else {
-    bad( "Unknown colour scope." );
+    bad( "Unknown color scope." );
   }
   /*
     A rule that restores exactly what the block would show without it
@@ -3409,7 +3409,7 @@ function applyColorScope(
   Take one weekday out of a multi-day series - "delete all Mondays".
   A counted series is first pinned to the date it currently ends on,
   so losing a weekday cannot stretch it further into the future to
-  make up the numbers. Skips and colour rules on that weekday go with
+  make up the numbers. Skips and color rules on that weekday go with
   it. Returns the event as it should now be stored.
 */
 function dropWeekday(
@@ -3599,7 +3599,7 @@ function validateRecurrence(
 
 
   /*
-    Colour rules ride on the recurrence too. Left out, they are kept
+    Color rules ride on the recurrence too. Left out, they are kept
     from the stored series; an explicit list (even empty) replaces it.
   */
   const colorRules =
@@ -4193,7 +4193,7 @@ function expandWeeklyEvent(
 
           /*
             What this block shows, rules applied; the series' own
-            colour is kept beside it for the editor.
+            color is kept beside it for the editor.
           */
           color:
             resolveOccurrenceColor(

@@ -6,7 +6,7 @@
       'week',
 
     /*
-      The editor's colour swatch: what is picked now, and what the
+      The editor's color swatch: what is picked now, and what the
       editor opened with, so a save knows whether it was touched.
     */
     editorColor:
@@ -939,7 +939,7 @@
         }
       );
     /*
-      The Default swatch shows the colour the type would get.
+      The Default swatch shows the color the type would get.
     */
     $('eventType')
       .addEventListener(
@@ -3718,8 +3718,8 @@
               endMin
             });
             /*
-              The colour most of this student's time is drawn in
-              marks their row; the default red counts as a colour.
+              The color most of this student's time is drawn in
+              marks their row; the default red counts as a color.
             */
             const hex =
               normalizeHex( event.color ) ||
@@ -7684,7 +7684,7 @@
       },
       {
         label:
-          'Colour…',
+          'Customize',
         run:
           () => {
             openColorDialog(
@@ -8019,7 +8019,7 @@
       }
       /*
         A caller may put its own controls above the choices - the
-        colour swatches, say.
+        color swatches, say.
       */
       if ( content ) {
         card.appendChild( content );
@@ -8822,7 +8822,7 @@
       const reach =
         await siteDialog({
           title:
-            'Colour recurring event',
+            'Customize recurring event',
           mode:
             'radio',
           defaultValue:
@@ -12945,11 +12945,11 @@
 
   /*
     Visitors see red for a blocked session and green for availability,
-    and nothing else. The admin can paint a block any colour: a basic
-    palette, or any hex colour from the browser's own picker. A colour
+    and nothing else. The admin can paint a block any color: a basic
+    palette, or any hex color from the browser's own picker. A color
     on a repeating series is a rule layered on it - this event only,
-    all Mondays, this and following, or everything - so recolouring
-    never splits a series. The server resolves each block's colour;
+    all Mondays, this and following, or everything - so recoloring
+    never splits a series. The server resolves each block's color;
     the client only has to draw it.
   */
 
@@ -13068,8 +13068,8 @@
   }
 
   /*
-    Paint one element with an event's colour. Only the admin sees
-    colours; the public page keeps its two.
+    Paint one element with an event's color. Only the admin sees
+    colors; the public page keeps its two.
   */
   function applyEventColor(
     element,
@@ -13109,7 +13109,7 @@
 
   /*
     The swatch row: Default, the palette, and Custom, which opens the
-    browser's own colour picker (wheel, sliders, hex field - whatever
+    browser's own color picker (wheel, sliders, hex field - whatever
     it offers). `selected` is a hex or null for the default; onPick
     receives the same.
   */
@@ -13173,8 +13173,8 @@
       }
     );
     /*
-      Custom: a native colour input dressed as a swatch. When the
-      selection is a colour outside the palette this swatch shows it.
+      Custom: a native color input dressed as a swatch. When the
+      selection is a color outside the palette this swatch shows it.
     */
     const inPalette =
       COLOR_PALETTE.some(
@@ -13191,7 +13191,7 @@
     custom.title =
       customSelected
         ? 'Custom ' + selected.toUpperCase()
-        : 'Custom colour…';
+        : 'Custom color…';
     if ( customSelected ) {
       custom.style.setProperty( '--swatch', selected );
     }
@@ -13199,14 +13199,14 @@
       document.createElement( 'input' );
     input.type = 'color';
     input.className = 'color-custom-input';
-    input.setAttribute( 'aria-label', 'Custom colour' );
+    input.setAttribute( 'aria-label', 'Custom color' );
     input.value =
       customSelected
         ? selected
         : ( selected || defaultColor );
     /*
       "input" fires on every drag of the picker; a full re-render on
-      each would tear the picker down. Record the colour as it moves
+      each would tear the picker down. Record the color as it moves
       and redraw once the picker closes.
     */
     input.addEventListener( 'input', () => {
@@ -13250,7 +13250,7 @@
   }
 
   /*
-    The scopes a recolour (or a deletion) can reach on a series. "All
+    The scopes a recolor (or a deletion) can reach on a series. "All
     Mondays" is offered only when the series meets on more than one
     weekday - on a one-day series it is the whole series.
   */
@@ -13292,7 +13292,7 @@
   }
 
   /*
-    The Colour… dialog from a block's menu: swatches, and for a series
+    The Customize dialog from a block's menu: swatches, and for a series
     the reach. Choosing the swatch is not the commitment; Apply is.
   */
   async function openColorDialog(
@@ -13325,7 +13325,7 @@
     const scope =
       await siteDialog({
         title:
-          'Colour',
+          'Customize',
         message:
           ( original.title || 'This event' ) +
           ( recurring
@@ -13398,8 +13398,8 @@
   ) {
     beginAction(
       scope === 'all' || !occurrence
-        ? 'recolour'
-        : 'recolour ' + (
+        ? 'recolor'
+        : 'recolor ' + (
             scope === 'one'
               ? "this week's session"
               : scope === 'weekday'
@@ -13426,13 +13426,13 @@
       }
     );
     return color
-      ? 'Coloured ' + colorName( color ) + '.'
-      : 'Back to the default colour.';
+      ? 'Color set to ' + colorName( color ) + '.'
+      : 'Back to the default color.';
   }
 
   /*
     Did the editor change anything but the swatch? If not, a series is
-    recoloured through its rules rather than edited - so "this event
+    recolored through its rules rather than edited - so "this event
     only" paints one block instead of detaching it.
   */
   function onlyColorChanged(
@@ -13502,8 +13502,8 @@
   }
 
   /*
-    The editor's colour row. The colour the editor opened with is
-    remembered so a save can tell an untouched colour (say nothing;
+    The editor's color row. The color the editor opened with is
+    remembered so a save can tell an untouched color (say nothing;
     the server keeps what it has) from a deliberate change.
   */
   function setEditorColor(
@@ -15039,7 +15039,7 @@
       recurrence
     };
     /*
-      Colour is sent only when it was chosen here: an untouched
+      Color is sent only when it was chosen here: an untouched
       swatch says nothing, and the server keeps what the block (or
       its series, rules included) already had.
     */

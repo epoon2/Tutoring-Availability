@@ -153,8 +153,8 @@ async def main():
             await page.locator(".event-card").first.click(button="right")
             await page.wait_for_timeout(300)
             items = await page.evaluate("[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
-            check("card menu has Edit/Colour…/Duplicate/Copy/Delete",
-                  items[:5] == ["Edit","Colour…","Duplicate","Copy","Delete"], str(items))
+            check("card menu has Edit/Customize/Duplicate/Copy/Delete",
+                  items[:5] == ["Edit","Customize","Duplicate","Copy","Delete"], str(items))
 
             # Copy
             await page.evaluate("""() => [...document.querySelectorAll('.context-menu-item')]
@@ -257,7 +257,7 @@ async def main():
             items3 = await page.evaluate("[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")
             check("an availability block's menu offers New session here and Paste",
                   "New session here" in items3 and any(i.startswith("Paste") for i in items3)
-                  and items3[:4] == ["Edit", "Colour…", "Duplicate", "Copy"], str(items3))
+                  and items3[:4] == ["Edit", "Customize", "Duplicate", "Copy"], str(items3))
             await page.evaluate("""() => [...document.querySelectorAll('.context-menu-item')]
                 .find(i => i.textContent.trim().startsWith('Paste')).click()""")
             await page.wait_for_timeout(400)

@@ -86,10 +86,10 @@ export function buildGoogleEvent(event) {
 
   /*
     A block painted in the portal shows up in the nearest of Google's
-    eleven event colours. Only the event's own colour travels: the
-    rules that recolour single dates or weekdays of a series stay in
-    the portal, since Google has no per-instance colour on a series.
-    An unpainted block keeps the calendar's own colour.
+    eleven event colors. Only the event's own color travels: the
+    rules that recolor single dates or weekdays of a series stay in
+    the portal, since Google has no per-instance color on a series.
+    An unpainted block keeps the calendar's own color.
   */
   const colorId = googleColorId(event.color);
   if (colorId) body.colorId = colorId;
@@ -129,7 +129,7 @@ export function buildGoogleEvent(event) {
 
 
 /*
-  Google Calendar's event colour palette (colorId -> the colour it
+  Google Calendar's event color palette (colorId -> the color it
   paints), matched by nearest RGB distance.
 */
 
