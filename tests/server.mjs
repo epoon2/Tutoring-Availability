@@ -157,6 +157,14 @@ createServer(async (req, res) => {
       if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
       return json(res, 200, listHistory(history, events));
     }
+    if (route === '/history/restoreversion' && req.method === 'POST') {
+      if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
+      const entry = history.undo.find(e => e.id === String(body.entryId || ''));
+      if (!entry) return json(res, 404, { error: 'That version is no longer in the history.' });
+      if (JSON.stringify(events) === JSON.stringify(entry.events)) return json(res, 200, { ok: true, unchanged: true, sync: syncResult() });
+      commit(req, events, entry.events);
+      return json(res, 200, { ok: true, restored: { id: entry.id, at: entry.at }, sync: syncResult() });
+    }
     if (route === '/history/restore' && req.method === 'POST') {
       if (!req.headers['x-admin-password']) return json(res, 401, { error: 'Incorrect admin password.' });
       const restored = findRemovedEvent(history, String(body.entryId || ''), String(body.eventId || ''));

@@ -1026,7 +1026,8 @@
 
     if (
       path.startsWith( '/events' ) ||
-      path === '/history/restore'
+      path === '/history/restore' ||
+      path === '/history/restoreversion'
     ) {
 
       if ( method === 'GET' ) {
@@ -1604,6 +1605,20 @@
   }
 
 
+  /*
+    Versions, newest first, the way a spreadsheet's history reads:
+    the top row is the schedule as it is now; each row below is the
+    schedule as it stood at an earlier save, stamped with when that
+    save happened and what it changed. "Restore this version" makes
+    that schedule current again as a new change on top - nothing is
+    unwound, and the restore is itself in the list afterwards.
+
+    The server hands over the undo stack: each step with the schedule
+    as it was BEFORE it and the change it made. A version is the state
+    after a step, which is the next step's before-state, or the
+    current schedule at the top.
+  */
+
   function renderHistory(
     data
   ) {
@@ -1616,12 +1631,12 @@
       '';
 
 
-    const undo =
+    const steps =
       data.undo ||
       [];
 
 
-    if ( !undo.length ) {
+    if ( !steps.length ) {
 
       const empty =
         document.createElement(
@@ -1634,96 +1649,94 @@
 
 
       empty.textContent =
-        'No changes recorded yet. Every save, move, skip and delete from here on will be listed.';
+        'Only the current version so far. Every save from here on adds one.';
 
 
       list.appendChild(
         empty
       );
 
+
+      return;
+
     }
 
 
-    undo.forEach(
-      (entry, index) => {
+    /*
+      Row 0: the current schedule, produced by the newest step.
+      Row j (1 ..): the schedule before step j-1, produced by step j.
+      Last row: the schedule before the oldest recorded step.
+    */
+
+    steps.forEach(
+      (step, index) => {
 
         list.appendChild(
-          renderHistoryStep(
-            entry,
-            {
-              side:
-                'undo',
+          renderVersion({
+            current:
+              index === 0,
 
-              first:
-                index === 0
-            }
-          )
+            producedBy:
+              step,
+
+            restoreId:
+              index === 0
+                ? null
+                : steps[ index - 1 ].id
+          })
         );
 
       }
     );
 
 
-    const redo =
-      data.redo ||
-      [];
+    const oldest =
+      steps[ steps.length - 1 ];
 
 
-    $('historyRedoSection')
-      .classList
-      .toggle(
-        'hidden',
-        !redo.length
-      );
+    list.appendChild(
+      renderVersion({
+        current:
+          false,
 
+        producedBy:
+          null,
 
-    const redoList =
-      $('historyRedoList');
-
-
-    redoList.innerHTML =
-      '';
-
-
-    redo.forEach(
-      (entry, index) => {
-
-        redoList.appendChild(
-          renderHistoryStep(
-            entry,
-            {
-              side:
-                'redo',
-
-              first:
-                index === 0
-            }
-          )
-        );
-
-      }
+        restoreId:
+          oldest.id
+      })
     );
 
   }
 
 
-  function renderHistoryStep(
-    entry,
-    { side, first }
-  ) {
+  function renderVersion({
+    current,
+    producedBy,
+    restoreId
+  }) {
 
-    const step =
+    const row =
       document.createElement(
         'div'
       );
 
 
-    step.className =
-      'history-step';
+    row.className =
+      'history-step' +
+      (
+        current
+          ? ' current'
+          : ''
+      );
 
 
-    step.dataset.entryId =
-      entry.id;
+    if ( restoreId ) {
+
+      row.dataset.versionId =
+        restoreId;
+
+    }
 
 
     const head =
@@ -1736,22 +1749,6 @@
       'history-step-head';
 
 
-    const label =
-      document.createElement(
-        'div'
-      );
-
-
-    label.className =
-      'history-step-label';
-
-
-    label.textContent =
-      capitalize(
-        entry.label
-      );
-
-
     const when =
       document.createElement(
         'div'
@@ -1759,219 +1756,163 @@
 
 
     when.className =
-      'history-step-when';
+      'history-step-label';
 
 
     when.textContent =
-      describeWhen(
-        entry.at
-      );
+      current
+        ? 'Current version'
+        : producedBy
+          ? formatVersionTime(
+              producedBy.at
+            )
+          : 'Before recorded history';
 
 
-    head.append(
-      label,
-      when
-    );
-
-
-    step.appendChild(
-      head
-    );
-
-
-    const lines = [
-      ...( entry.removed || [] ).map(
-        (item) => [ 'removed', item ]
-      ),
-      ...( entry.added || [] ).map(
-        (item) => [ 'added', item ]
-      ),
-      ...( entry.changed || [] ).map(
-        (item) => [ 'changed', item ]
-      )
-    ];
-
-
-    for (
-      const [ kind, item ] of lines
-    ) {
-
-      const line =
-        document.createElement(
-          'div'
-        );
-
-
-      line.className =
-        'history-change';
-
-
-      const badge =
-        document.createElement(
-          'span'
-        );
-
-
-      badge.className =
-        'history-change-kind ' +
-        kind;
-
-
-      badge.textContent =
-        kind;
-
-
-      const what =
-        document.createElement(
-          'span'
-        );
-
-
-      what.className =
-        'history-change-what';
-
-
-      what.innerHTML =
-        describeBrief(
-          item,
-          kind
-        );
-
-
-      line.append(
-        badge,
-        what
-      );
-
-
-      step.appendChild(
-        line
-      );
-
-    }
-
-
-    const actions =
+    const label =
       document.createElement(
         'div'
       );
 
 
-    actions.className =
-      'history-step-actions';
+    label.className =
+      'history-step-when';
 
 
-    const jump =
-      document.createElement(
-        'button'
-      );
+    label.textContent =
+      producedBy
+        ? capitalize(
+            producedBy.label
+          )
+        : '';
 
 
-    jump.className =
-      'btn secondary small';
+    head.append(
+      when,
+      label
+    );
 
 
-    if ( side === 'undo' ) {
-
-      jump.textContent =
-        first
-          ? 'Undo'
-          : 'Undo to here';
+    row.appendChild(
+      head
+    );
 
 
-      jump.title =
-        first
-          ? 'Take back this step'
-          : 'Take back this step and every step after it';
+    if ( producedBy ) {
 
-    } else {
-
-      jump.textContent =
-        first
-          ? 'Redo'
-          : 'Redo to here';
-
-
-      jump.title =
-        first
-          ? 'Bring this step back'
-          : 'Bring back every undone step up to this one';
-
-    }
-
-
-    jump.addEventListener(
-      'click',
-      () =>
-        jumpHistory(
-          side,
-          entry
+      const lines = [
+        ...( producedBy.removed || [] ).map(
+          (item) => [ 'removed', item ]
+        ),
+        ...( producedBy.added || [] ).map(
+          (item) => [ 'added', item ]
+        ),
+        ...( producedBy.changed || [] ).map(
+          (item) => [ 'changed', item ]
         )
-    );
+      ];
 
-
-    actions.appendChild(
-      jump
-    );
-
-
-    /*
-      On the undo side a removed session can come back on its own.
-      (Redo entries describe what a step would re-add; Redo is the
-      verb for those.)
-    */
-
-    if ( side === 'undo' ) {
 
       for (
-        const item of entry.removed || []
+        const [ kind, item ] of lines
       ) {
 
-        /*
-          Already back on the schedule (restored, or re-added by an
-          undo): nothing to offer.
-        */
-
-        if ( item.present ) {
-
-          continue;
-
-        }
-
-        const restore =
+        const line =
           document.createElement(
-            'button'
+            'div'
           );
 
 
-        restore.className =
-          'btn secondary small';
+        line.className =
+          'history-change';
 
 
-        restore.textContent =
-          'Restore ' +
-          shortTitle(
-            item
+        const badge =
+          document.createElement(
+            'span'
           );
 
 
-        restore.title =
-          'Put just this back, as it was, leaving everything else alone';
+        badge.className =
+          'history-change-kind ' +
+          kind;
 
 
-        restore.addEventListener(
-          'click',
-          () =>
-            restoreFromHistory(
-              entry,
-              item,
-              restore
-            )
+        badge.textContent =
+          kind;
+
+
+        const what =
+          document.createElement(
+            'span'
+          );
+
+
+        what.className =
+          'history-change-what';
+
+
+        what.innerHTML =
+          describeBrief(
+            item,
+            kind
+          );
+
+
+        line.append(
+          badge,
+          what
         );
 
 
-        actions.appendChild(
-          restore
+        /*
+          A removed session that is not back yet can come back on
+          its own, without restoring the whole version.
+        */
+
+        if (
+          kind === 'removed' &&
+          !item.present
+        ) {
+
+          const restore =
+            document.createElement(
+              'button'
+            );
+
+
+          restore.className =
+            'text-btn history-inline-restore';
+
+
+          restore.textContent =
+            'Restore just this';
+
+
+          restore.title =
+            'Put this session back as it was, leaving everything else alone';
+
+
+          restore.addEventListener(
+            'click',
+            () =>
+              restoreFromHistory(
+                producedBy,
+                item,
+                restore
+              )
+          );
+
+
+          line.appendChild(
+            restore
+          );
+
+        }
+
+
+        row.appendChild(
+          line
         );
 
       }
@@ -1979,19 +1920,136 @@
     }
 
 
-    step.appendChild(
-      actions
-    );
+    if ( !current ) {
+
+      const actions =
+        document.createElement(
+          'div'
+        );
 
 
-    return step;
+      actions.className =
+        'history-step-actions';
+
+
+      const restore =
+        document.createElement(
+          'button'
+        );
+
+
+      restore.className =
+        'btn secondary small';
+
+
+      restore.textContent =
+        'Restore this version';
+
+
+      restore.title =
+        'Make the schedule exactly what it was at this point';
+
+
+      restore.addEventListener(
+        'click',
+        () =>
+          restoreVersion(
+            restoreId,
+            producedBy
+              ? formatVersionTime(
+                  producedBy.at
+                )
+              : 'before recorded history',
+            restore
+          )
+      );
+
+
+      actions.appendChild(
+        restore
+      );
+
+
+      row.appendChild(
+        actions
+      );
+
+    }
+
+
+    return row;
 
   }
 
 
-  async function jumpHistory(
-    side,
-    entry
+  function formatVersionTime(
+    iso
+  ) {
+
+    const date =
+      new Date(
+        iso
+      );
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return '';
+
+    }
+
+
+    const today =
+      new Date();
+
+
+    const sameDay =
+      date.toDateString() ===
+      today.toDateString();
+
+
+    const time =
+      date.toLocaleTimeString(
+        undefined,
+        {
+          hour:
+            'numeric',
+
+          minute:
+            '2-digit'
+        }
+      );
+
+
+    if ( sameDay ) {
+
+      return `Today, ${time}`;
+
+    }
+
+
+    return date.toLocaleDateString(
+      undefined,
+      {
+        month:
+          'short',
+
+        day:
+          'numeric'
+      }
+    ) + `, ${time}`;
+
+  }
+
+
+  async function restoreVersion(
+    entryId,
+    whenLabel,
+    button
   ) {
 
     if ( state.historyBusy ) {
@@ -2005,29 +2063,32 @@
       true;
 
 
-    endAction();
+    button.disabled =
+      true;
+
+
+    beginAction(
+      `restore the version from ${whenLabel}`
+    );
 
 
     $('historyStatus')
       .textContent =
-        side === 'undo'
-          ? 'Undoing…'
-          : 'Redoing…';
+        'Restoring…';
 
 
     try {
 
       const result =
         await api(
-          `/${side}`,
+          '/history/restoreversion',
           {
             method:
               'POST',
 
             body:
               JSON.stringify({
-                until:
-                  entry.id
+                entryId
               })
           }
         );
@@ -2041,24 +2102,22 @@
       await refreshHistory();
 
 
-      const count =
-        result.steps ||
-        1;
-
-
       setStatus(
-        `${
-          side === 'undo'
-            ? 'Undid'
-            : 'Redid'
-        } ${
-          count === 1
-            ? entry.label
-            : `${count} steps, back to "${entry.label}"`
-        }.`
+        result.unchanged
+          ? 'That version is already the current schedule.'
+          : `Restored the version from ${whenLabel}.`
       );
 
+
+      $('historyStatus')
+        .textContent =
+          '';
+
     } catch (error) {
+
+      button.disabled =
+        false;
+
 
       $('historyStatus')
         .textContent =
@@ -2825,6 +2884,24 @@
       applyHistory(
         data.history
       );
+
+
+      /*
+        The version list, if it is open, follows every reload so a
+        change made behind it shows up at the top.
+      */
+
+      if (
+        state.isAdmin &&
+        !$('historyDrawerBackdrop')
+          .classList
+          .contains( 'hidden' ) &&
+        !state.historyBusy
+      ) {
+
+        refreshHistory();
+
+      }
 
       renderAll();
 

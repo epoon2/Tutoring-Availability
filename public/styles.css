@@ -508,18 +508,16 @@ button:disabled {
   margin-top: 8px;
 }
 
-.history-redo {
-  margin-top: 18px;
+.history-step.current {
+  background: var(--accent-soft);
 }
 
-.history-redo h3 {
-  margin: 0 0 4px;
+.history-inline-restore {
+  flex-shrink: 0;
 
-  font-size: 16px;
-}
+  padding: 2px 6px;
 
-.history-redo .blocked-drawer-subtitle {
-  margin-bottom: 8px;
+  font-size: 12px;
 }
 
 .history-empty {

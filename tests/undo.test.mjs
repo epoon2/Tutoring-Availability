@@ -204,6 +204,26 @@ res = await call('POST', '/redo', { until: hist.redo[1].id });
 data = await res.json();
 ok('redo "until" brings both back', data.steps === 2 && (await admin()).history.redo === 0);
 
+// ---- restoring a whole version, spreadsheet-style: a new step on top, nothing unwound
+hist = await (await call('GET', '/history')).json();
+const beforeDelete = hist.undo.find(e => e.label === 'delete the whole series');   // its snapshot = schedule with Maya and Noah
+const stepsBefore = hist.undo.length;
+res = await call('POST', '/history/restoreversion', { entryId: beforeDelete.id }, { 'x-action-label': 'restore the version from earlier' });
+data = await res.json();
+view = await admin();
+ok('restoring a version makes that schedule current', res.status === 200 && data.restored.id === beforeDelete.id
+  && view.events.some(e => (e.masterId || e.id) === maya) && view.events.some(e => e.id === noah), JSON.stringify(data));
+hist = await (await call('GET', '/history')).json();
+ok('as one new step on top - the later steps stay in the list', hist.undo.length === stepsBefore + 1
+  && hist.undo[0].label === 'restore the version from earlier' && hist.redo.length === 0, JSON.stringify(hist.undo.map(e => e.label)));
+res = await call('POST', '/history/restoreversion', { entryId: beforeDelete.id });
+data = await res.json();
+ok('restoring the version that matches the present is a no-op', data.unchanged === true
+  && (await (await call('GET', '/history')).json()).undo.length === stepsBefore + 1);
+res = await call('POST', '/history/restoreversion', { entryId: 'nope' });
+ok('an unknown version is a 404', res.status === 404);
+ok('Google matches the restored version', store.has(googleEventId(maya)) && store.has(googleEventId(noah)));
+
 fake.close();
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\nundo: all ${ran} checks passed`);
 process.exit(fails.length ? 1 : 0);

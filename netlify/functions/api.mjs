@@ -1147,6 +1147,120 @@ export default async (req) => {
 
 
     /*
+      RESTORE A WHOLE VERSION
+
+      The schedule as it stood before a given step comes back as a new
+      change on top of everything since - the way a spreadsheet's
+      version history restores - so nothing is unwound and the restore
+      is itself undoable.
+    */
+
+    if (
+      req.method === "POST" &&
+      route === "/history/restoreversion"
+    ) {
+
+      requireAdmin(
+        req
+      );
+
+
+      const body =
+        await req.json();
+
+
+      const history =
+        await readHistory();
+
+
+      const entry =
+        (
+          history?.undo ||
+          []
+        ).find(
+          (item) =>
+            item.id === String( body?.entryId || "" )
+        );
+
+
+      if ( !entry ) {
+
+        return json(
+          {
+            error:
+              "That version is no longer in the history."
+          },
+          404
+        );
+
+      }
+
+
+      const current =
+        await readEvents();
+
+
+      const version =
+        entry.events ||
+        [];
+
+
+      if (
+        JSON.stringify( current ) ===
+        JSON.stringify( version )
+      ) {
+
+        return json({
+          ok:
+            true,
+
+          unchanged:
+            true,
+
+          sync: {
+            google:
+              "ok",
+            changed:
+              0
+          }
+        });
+
+      }
+
+
+      await commitEvents(
+        req,
+        current,
+        version
+      );
+
+
+      const sync =
+        await mirrorDifference(
+          current,
+          version
+        );
+
+
+      return json({
+        ok:
+          true,
+
+        restored:
+          {
+            id:
+              entry.id,
+            at:
+              entry.at
+          },
+
+        sync
+      });
+
+    }
+
+
+    /*
       PUT ONE REMOVED EVENT BACK
 
       Not an undo: the event a step removed is re-added as it was, on

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""The History drawer: every step listed with what it changed, "Undo to
-here" reaching back several steps in one go, and "Restore" putting one
-deleted session back on its own.
+"""The Version history drawer: the schedule at every save, newest first,
+"Restore this version" making an earlier one current again as a new
+save, and "Restore just this" putting one deleted session back.
 
     python3 tests/history.py
 """
@@ -23,7 +23,7 @@ async def steps(page):
         label: s.querySelector('.history-step-label').textContent.trim(),
         when: s.querySelector('.history-step-when').textContent.trim(),
         lines: [...s.querySelectorAll('.history-change')].map(l => l.textContent.replace(/\\s+/g, ' ').trim()),
-        buttons: [...s.querySelectorAll('.history-step-actions button')].map(b => b.textContent.trim()) }))""")
+        buttons: [...s.querySelectorAll('button')].map(b => b.textContent.trim()) }))""")
 
 async def post(page, body, label):
     return await page.evaluate("""async ([body, label]) => {
@@ -47,7 +47,7 @@ async def main():
         await page.click("#historyBtn"); await page.wait_for_timeout(500)
         shown = await page.evaluate("!document.getElementById('historyDrawerBackdrop').classList.contains('hidden')")
         empty = await page.text_content("#historyList")
-        check("History opens and says there is nothing yet", shown and "No changes recorded yet" in empty, empty[:80])
+        check("Version history opens and says only the current version exists", shown and "Only the current version" in empty, empty[:80])
         await page.click("#closeHistoryDrawerBtn"); await page.wait_for_timeout(300)
 
         # ---- three steps: a series, a one-off, and a delete of the series
@@ -77,56 +77,67 @@ async def main():
         await page.wait_for_timeout(900)
         check("the series is gone, Noah stays", await cards(page) == 1, f"cards={await cards(page)}")
 
-        # ---- the list
+        # ---- the version list: current on top, then the schedule at each earlier save
         await page.click("#historyBtn"); await page.wait_for_timeout(600)
-        st = await steps(page)
-        check("three steps, newest first", [s["label"] for s in st] == ["Delete the whole series", "Add session", "Add session"],
-              str([s["label"] for s in st]))
-        top = st[0]
-        check("the delete step lists what it removed, with its days and repeat rule",
+        rows = await steps(page)
+        check("four rows: the current version, one per save, and the state before it all",
+              [r["label"] for r in rows][:1] == ["Current version"] and len(rows) == 4
+              and rows[3]["label"] == "Before recorded history", str([r["label"] for r in rows]))
+        check("each version says what its save changed, in the corner",
+              [r["when"] for r in rows] == ["Delete the whole series", "Add session", "Add session", ""], str([r["when"] for r in rows]))
+        check("earlier versions are timestamped", all(r["label"].startswith("Today,") for r in rows[1:3]), str([r["label"] for r in rows]))
+        top = rows[0]
+        check("the current version lists the deletion that made it, with the series' days and rule",
               len(top["lines"]) == 1 and "removed" in top["lines"][0] and "Maya - Algebra II" in top["lines"][0]
               and "4 – 5 PM" in top["lines"][0] and "weekly on Tue, Thu" in top["lines"][0], str(top["lines"]))
-        check("it offers Undo and a Restore for the removed series",
-              top["buttons"] == ["Undo", "Restore Maya - Algebra II"], str(top["buttons"]))
-        check("older steps offer Undo to here", st[1]["buttons"] == ["Undo to here"] and st[2]["buttons"] == ["Undo to here"],
-              str([s["buttons"] for s in st]))
-        check("each step is timestamped", all(s["when"] in ("just now",) or "ago" in s["when"] for s in st), str([s["when"] for s in st]))
+        check("the current version cannot be restored; the others can",
+              top["buttons"] == ["Restore just this"]
+              and all(r["buttons"] == ["Restore this version"] for r in rows[1:]), str([r["buttons"] for r in rows]))
 
-        # ---- Restore only Maya
-        await page.click("#historyList .history-step:nth-child(1) button:nth-child(2)"); await page.wait_for_timeout(1000)
-        check("Restore brings the series back and leaves Noah", await cards(page) == 3, f"cards={await cards(page)}")
-        st = await steps(page)
-        check("the restore is a new step at the top, and the delete step now has no Restore",
-              st[0]["label"].startswith("Restore Maya") and st[1]["buttons"] == ["Undo to here"], str([(s["label"], s["buttons"]) for s in st[:2]]))
+        # ---- restore the version before the delete: the row right below
+        await page.click("#historyList .history-step:nth-child(2) .history-step-actions button"); await page.wait_for_timeout(1200)
+        check("restoring the earlier version brings the series back beside Noah", await cards(page) == 3, f"cards={await cards(page)}")
         status = await page.text_content("#status")
-        check("the status confirms it", "Restored Maya - Algebra II" in status, status)
+        check("the status names the version", status.startswith("Restored the version from Today,"), status)
+        rows = await steps(page)
+        check("the restore is the newest save, and nothing was unwound: the delete is still in the list",
+              rows[0]["when"].startswith("Restore the version from") and rows[1]["when"] == "Delete the whole series"
+              and len(rows) == 5, str([(r["label"], r["when"]) for r in rows]))
+        check("the current version shows the series coming back as added",
+              len(rows[0]["lines"]) == 1 and "added" in rows[0]["lines"][0] and "Maya - Algebra II" in rows[0]["lines"][0], str(rows[0]["lines"]))
+        check("the delete version no longer offers to restore just that session - it is back",
+              rows[1]["buttons"] == ["Restore this version"], str(rows[1]["buttons"]))
 
-        # ---- Undo to here on the oldest step: everything goes in one request
-        await page.click("#historyList .history-step:nth-child(4) button"); await page.wait_for_timeout(1200)
-        check("undo-to-here on the first step empties the week", await cards(page) == 0, f"cards={await cards(page)}")
+        # ---- restoring the version that matches the present is a no-op
+        await page.click("#historyList .history-step:nth-child(3) .history-step-actions button"); await page.wait_for_timeout(1200)
         status = await page.text_content("#status")
-        check("the status counts the steps", "4 steps" in status and "add session" in status, status)
-        redo_shown = await page.evaluate("!document.getElementById('historyRedoSection').classList.contains('hidden')")
-        redo_labels = await page.evaluate("[...document.querySelectorAll('#historyRedoList .history-step-label')].map(l => l.textContent.trim())")
-        check("the undone steps move to the Undone section, newest first", redo_shown
-              and redo_labels == ["Add session", "Add session", "Delete the whole series", "Restore Maya - Algebra II"], str(redo_labels))
+        check("a version identical to now says so instead of adding a step", "already the current schedule" in status, status)
+        check("nothing changed", await cards(page) == 3 and len(await steps(page)) == 5)
 
-        # ---- Redo to here on the last of them brings the lot back
-        await page.click("#historyRedoList .history-step:nth-child(4) button"); await page.wait_for_timeout(1200)
-        check("redo-to-here brings every step back", await cards(page) == 3, f"cards={await cards(page)}")
-        redo_shown = await page.evaluate("!document.getElementById('historyRedoSection').classList.contains('hidden')")
-        check("the Undone section clears", not redo_shown)
+        # ---- "Restore just this" on a removed session
+        await page.evaluate("""() => {
+            const card = [...document.querySelectorAll('.event-card')].find(c => c.textContent.includes('Noah'));
+            card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 })); }""")
+        await page.wait_for_timeout(250)
+        await page.evaluate("""() => [...document.querySelectorAll('.context-menu-item')].find(i => i.textContent.trim() === 'Delete').click()""")
+        await page.wait_for_selector(".choice-modal")
+        await page.evaluate("""() => [...document.querySelectorAll('.choice-modal button')].find(b => b.textContent.trim() === 'Delete').click()""")
+        await page.wait_for_timeout(900)
+        check("Noah deleted", await cards(page) == 2)
+        rows = await steps(page)
+        check("the current version offers to restore just Noah", rows[0]["buttons"] == ["Restore just this"] and "Noah" in rows[0]["lines"][0], str(rows[0]))
+        await page.click("#historyList .history-step:nth-child(1) .history-inline-restore"); await page.wait_for_timeout(1200)
+        check("and he is back, as a new save", await cards(page) == 3 and (await steps(page))[0]["when"] == "Restore Noah", str((await steps(page))[0]))
 
         # ---- Ctrl+Z while the drawer is open keeps the list current
-        await page.keyboard.press("Escape")  # nothing to close; keys still go to the page
         await page.keyboard.press("Control+z"); await page.wait_for_timeout(1000)
-        st = await steps(page)
-        check("a keyboard undo with the drawer open refreshes the list", st[0]["label"] == "Delete the whole series"
-              and await cards(page) == 1, str([s["label"] for s in st[:2]]))
+        rows = await steps(page)
+        check("a keyboard undo with the drawer open refreshes the list", rows[0]["when"] == "Delete session" and await cards(page) == 2,
+              str([r["when"] for r in rows[:2]]))
 
         await page.click("#closeHistoryDrawerBtn"); await page.wait_for_timeout(300)
         await page.click("#exitAdminBtn"); await page.wait_for_timeout(400)
-        check("leaving admin hides the History button",
+        check("leaving admin hides the Version history button",
               await page.evaluate("document.getElementById('historyBtn').classList.contains('hidden')"))
 
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
