@@ -13108,6 +13108,33 @@
     element.style.setProperty( '--card-border', shades.border );
   }
 
+  /*
+    Forget a preset: locally at once, so the row redraws without it,
+    and on the server, so it is gone on every device.
+  */
+  function forgetCustomColor(
+    hex
+  ) {
+    state.customColors =
+      ( state.customColors || [] )
+        .filter(
+          (entry) =>
+            entry !== hex
+        );
+    api(
+      '/customcolors/' +
+        encodeURIComponent( hex ),
+      {
+        method:
+          'DELETE'
+      }
+    ).catch(
+      (error) => {
+        setStatus( error.message );
+      }
+    );
+  }
+
   function colorName(
     hex
   ) {
@@ -13214,10 +13241,10 @@
       }
     );
     /*
-      Saved custom colours come next, most recent first, so a colour
-      picked once on one block is a preset on the next. A selection
-      that is neither palette nor preset (just picked, not yet saved)
-      is shown as a preset too, at the front.
+      Saved custom colours come next, in the order they were first
+      used, so a colour picked once on one block is a preset on the
+      next. A selection that is neither palette nor preset (just
+      picked, not yet saved) is shown as a preset too, at the end.
     */
     const inPalette =
       COLOR_PALETTE.some(
@@ -13232,7 +13259,7 @@
             !COLOR_PALETTE.some( (entry) => entry.hex === hex )
         );
     if ( selected && !inPalette && !presets.includes( selected ) ) {
-      presets.unshift( selected );
+      presets.push( selected );
     }
     presets.forEach(
       (hex) => {
@@ -13245,6 +13272,32 @@
         swatch.classList.add( 'is-preset' );
         swatch.dataset.color = hex;
         swatch.addEventListener( 'click', () => pick( hex ) );
+        /*
+          A preset can be forgotten from here: a small x on its
+          corner. Blocks already painted with it keep their colour;
+          it just stops being offered. If it was the selection, the
+          selection falls back to the default.
+        */
+        const remove =
+          document.createElement( 'span' );
+        remove.className =
+          'color-preset-remove';
+        remove.textContent = '×';
+        remove.title =
+          'Remove this preset';
+        remove.setAttribute( 'role', 'button' );
+        remove.setAttribute( 'aria-label', 'Remove preset ' + hex.toUpperCase() );
+        remove.addEventListener( 'click', (clickEvent) => {
+          clickEvent.stopPropagation();
+          clickEvent.preventDefault();
+          forgetCustomColor( hex );
+          pick(
+            selected === hex
+              ? null
+              : selected
+          );
+        });
+        swatch.appendChild( remove );
         row.appendChild( swatch );
       }
     );
@@ -14479,8 +14532,15 @@
           event.type
         ) ||
         '';
+    /*
+      The colour of the block that was opened - the clicked
+      occurrence when there is one, since a series can wear a
+      different colour on different days.
+    */
     setEditorColor(
-      event && event.color,
+      occurrence
+        ? occurrence.color
+        : ( event && event.color ),
       ( event && event.type ) || ''
     );
     setDateTimeValue(

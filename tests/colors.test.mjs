@@ -128,13 +128,18 @@ ok('palette and default colours never become presets', Array.isArray(presets) &&
 await req('POST', '/events', { type: 'BLOCKED', title: 'Custom', start: '2026-09-10T10:00', end: '2026-09-10T11:00', color: '#FF8800', recurrence: null });
 await req('POST', `/events/${id}/color`, { color: '#38bdf8', scope: 'one', date: '2026-09-16' });
 presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
-ok('a custom colour from a save or the colour route is a preset, most recent first', JSON.stringify(presets) === JSON.stringify(['#38bdf8', '#ff8800']), JSON.stringify(presets));
+ok('a custom color from a save or the color route is a preset, in the order first used', JSON.stringify(presets) === JSON.stringify(['#ff8800', '#38bdf8']), JSON.stringify(presets));
 await req('POST', `/events/${id}/color`, { color: '#ff8800', scope: 'one', date: '2026-09-14' });
 presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
-ok('using one again moves it to the front without repeating it', JSON.stringify(presets) === JSON.stringify(['#ff8800', '#38bdf8']), JSON.stringify(presets));
-for (let i = 0; i < 9; i++) await req('POST', `/events/${id}/color`, { color: '#1000' + String(10 + i), scope: 'all' });
+ok('using one again neither repeats nor moves it', JSON.stringify(presets) === JSON.stringify(['#ff8800', '#38bdf8']), JSON.stringify(presets));
+for (let i = 0; i < 17; i++) await req('POST', `/events/${id}/color`, { color: '#1000' + String(10 + i), scope: 'all' });
 presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
-ok('the list keeps the eight most recent', presets.length === 8 && presets[0] === '#100018', JSON.stringify(presets));
+ok('the list keeps the sixteen most recent, oldest dropping off the left', presets.length === 16 && presets[15] === '#100026' && presets[0] === '#100011', JSON.stringify(presets));
+r = await req('DELETE', '/customcolors/%23100026');
+presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
+ok('a preset can be forgotten', r.status === 200 && presets.length === 15 && !presets.includes('#100026'), JSON.stringify(presets));
+r = await req('DELETE', '/customcolors/%23100017', null, false);
+ok('but not by the public', r.status === 401);
 await req('POST', `/events/${id}/color`, { color: '#1d4ed8', scope: 'all' });
 
 const pub = (await req('GET', '/events?start=2026-09-13&end=2026-09-19', null, false)).data;

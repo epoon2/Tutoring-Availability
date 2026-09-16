@@ -2531,11 +2531,10 @@ body:not(.view-week).list-view .calendar {
 
 .color-swatches {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 10px 6px;
   padding: 2px 2px 6px;
-  overflow-x: auto;
 }
 
 .color-swatch {
@@ -2616,6 +2615,32 @@ body:not(.view-week).list-view .calendar {
   display: none;
 }
 
+/*
+  The x on a preset's corner that forgets it.
+*/
+.color-preset-remove {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.color-preset-remove:hover {
+  color: var(--blocked);
+  border-color: var(--blocked);
+}
+
+
 .color-caption {
   display: block;
   margin-top: 2px;
@@ -2624,14 +2649,13 @@ body:not(.view-week).list-view .calendar {
 }
 
 /*
-  The dialog that carries the swatches takes its width from the row
-  itself - never narrower than the plain question dialogs, never wider
-  than the swatches need - so there is no empty space beside them.
+  The dialog that carries the swatches is exactly as wide as its
+  content - the row, or the longest line in it - and no wider. Past a
+  comfortable width the swatches wrap onto a second row instead.
 */
 .choice-modal.wide-choice {
   width: auto;
-  min-width: min(420px, 100%);
-  max-width: min(680px, 100%);
+  max-width: min(520px, 100%);
 }
 
 .choice-modal.wide-choice .color-swatches {

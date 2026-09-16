@@ -24,12 +24,13 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 let events = [];
 let nextId = 1;
 
-// Custom colour presets, most recent first, as production keeps them.
+// Custom colour presets, oldest first, as production keeps them.
 const PALETTE = new Set(['#b42318', '#c2410c', '#a16207', '#2f7d4a', '#0f766e', '#1d4ed8', '#6d28d9', '#be185d', '#7c4a1e', '#4b5563']);
 let customColors = [];
 const rememberColor = (hex) => {
   if (!hex || PALETTE.has(hex)) return;
-  customColors = [hex, ...customColors.filter(h => h !== hex)].slice(0, 8);
+  if (customColors.includes(hex)) return;
+  customColors = [...customColors, hex].slice(-16);
 };
 
 // Admin is any password (the stub does not check it), or the token /login hands a remembered device.
@@ -189,6 +190,12 @@ createServer(async (req, res) => {
       const id = decodeURIComponent(route.slice(8));
       events = events.map(e => e.id === id ? { ...e, ...body, id } : e);
       return json(res, 200, { event: events.find(e => e.id === id) });
+    }
+    if (route.startsWith('/customcolors/') && req.method === 'DELETE') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      const hex = decodeURIComponent(route.slice('/customcolors/'.length)).toLowerCase();
+      customColors = customColors.filter(h => h !== hex);
+      return json(res, 200, { ok: true, customColors });
     }
     if (route.startsWith('/events/') && req.method === 'DELETE') {
       const id = decodeURIComponent(route.slice(8));

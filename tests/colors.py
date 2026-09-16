@@ -164,8 +164,9 @@ async def main():
         # ---- the custom color is now a preset, here and on another block
         await click_weekday(page, 3)
         swatches = await page.evaluate("[...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => s.title)")
-        check("the custom color used on Monday is a preset when editing Wednesday",
+        check("the custom color used on Monday is a preset when editing Wednesday, before the +",
               "#FF8800" in swatches and swatches.index("#FF8800") == len(swatches) - 2, str(swatches))
+        check("and Wednesday's editor shows Wednesday's own color", await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Purple")
         check("every swatch sits on one row",
               await page.evaluate("""() => { const tops = new Set([...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => Math.round(s.getBoundingClientRect().top))); return tops.size === 1; }"""))
         await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
@@ -176,6 +177,11 @@ async def main():
         check("and it survives a reload, in the Customize dialog too (served by the server)", "#FF8800" in swatches, str(swatches))
         check("the dialog's row is one line as well",
               await page.evaluate("""() => { const tops = new Set([...document.querySelectorAll('.choice-modal .color-swatch')].map(s => Math.round(s.getBoundingClientRect().top))); return tops.size === 1; }"""))
+        check("the dialog is no wider than its content",
+              await page.evaluate("""() => { const card = document.querySelector('.choice-modal').getBoundingClientRect();
+                  const widest = Math.max(...[...document.querySelectorAll('.choice-modal > *')].map(el => el.getBoundingClientRect().width));
+                  return card.width - widest < 60; }"""))
+        check("each preset carries a remove x", await page.evaluate("document.querySelector('.choice-modal .color-swatch.is-preset .color-preset-remove') !== null"))
         await pick_swatch(page, ".choice-modal", "#FF8800")
         await choose_scope(page, "This event only", ok="Apply")
         colors = await card_colors(page)
@@ -184,6 +190,53 @@ async def main():
         await click_menu(page, "Customize")
         await pick_swatch(page, ".choice-modal", "Purple")
         await choose_scope(page, "All Wednesdays", ok="Apply")
+
+        # ---- removing a preset forgets it everywhere, and keeps the blocks that wear it
+        await rclick_weekday(page, 1)
+        await click_menu(page, "Customize")
+        await page.evaluate("document.querySelector('.choice-modal .color-swatch[title=\"#FF8800\"] .color-preset-remove').click()")
+        await page.wait_for_timeout(300)
+        swatches = await page.evaluate("[...document.querySelectorAll('.choice-modal .color-swatch')].map(s => s.title)")
+        check("the x removes the preset from the row at once", "#FF8800" not in swatches, str(swatches))
+        check("and, as it was the selection, Default is selected", await page.evaluate("document.querySelector('.choice-modal .color-swatch.selected').title") == "Default (Red)")
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
+        colors = await card_colors(page)
+        check("cancelling leaves Monday's orange in place", colors.get("1") not in ("", "#1d4ed8"), str(colors))
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
+        await click_weekday(page, 3)
+        swatches = await page.evaluate("[...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => s.title)")
+        check("the server forgot it too", "#FF8800" not in swatches, str(swatches))
+        check("and the editor shows the clicked Wednesday's own purple, not Monday's",
+              await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Purple")
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+
+        # ---- many presets wrap onto more rows rather than widening the dialog forever
+        await page.evaluate("""async () => { for (const hx of ['#14b8a6','#f472b6','#a3e635','#818cf8','#7c2d12','#0ea5e9','#e11d48','#65a30d','#9333ea','#facc15']) {
+            await fetch('/api/events/' + %s + '/color', { method: 'POST', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'}, body: JSON.stringify({ color: hx, scope: 'all' }) }); } }""" % repr(series_id))
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
+        await rclick_weekday(page, 3)
+        await click_menu(page, "Customize")
+        rows = await page.evaluate("new Set([...document.querySelectorAll('.choice-modal .color-swatch')].map(s => Math.round(s.getBoundingClientRect().top))).size")
+        width = await page.evaluate("document.querySelector('.choice-modal').getBoundingClientRect().width")
+        check("with many presets the swatches wrap onto more rows and the dialog stays a sane width", rows >= 2 and width <= 520, f"rows={rows} width={width}")
+        order = await page.evaluate("[...document.querySelectorAll('.choice-modal .color-swatch.is-preset')].map(s => s.title)")
+        check("presets keep the order they were first used, newest on the right", order[-1] == "#FACC15" and order[0] == "#14B8A6", str(order))
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+        # put the series back the way it was: blue, Wednesdays purple, this Monday orange, no extra presets
+        await page.evaluate("""async (id) => {
+            const hdr = { 'Content-Type': 'application/json', 'x-admin-password': 't' };
+            for (const hx of ['#14b8a6','#f472b6','#a3e635','#818cf8','#7c2d12','#0ea5e9','#e11d48','#65a30d','#9333ea','#facc15']) {
+                await fetch('/api/customcolors/' + encodeURIComponent(hx), { method: 'DELETE', headers: hdr }); }
+            const cols = [...document.querySelectorAll('.day-column')].map(c => c.dataset.date);
+            const mon = cols.find(d => new Date(d + 'T12:00').getDay() === 1);
+            const wed = cols.find(d => new Date(d + 'T12:00').getDay() === 3);
+            const paint = (body) => fetch('/api/events/' + id + '/color', { method: 'POST', headers: hdr, body: JSON.stringify(body) });
+            await paint({ color: '#1d4ed8', scope: 'all' });
+            await paint({ color: '#6d28d9', scope: 'weekday', date: wed });
+            await paint({ color: '#ff8800', scope: 'one', date: mon });
+            await fetch('/api/customcolors/%23ff8800', { method: 'DELETE', headers: hdr });
+        }""", series_id)
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
 
         # ---- an edit that changes more than color still goes through Edit recurring event
         await click_weekday(page, 3)

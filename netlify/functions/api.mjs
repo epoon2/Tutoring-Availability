@@ -54,15 +54,15 @@ const REQUESTS_KEY =
 
 
 /*
-  Custom colours the admin has used, most recent first, so a colour
-  picked once is a preset next time - the way a document keeps its
-  own custom colours.
+  Custom colours the admin has used, oldest first, so a colour picked
+  once is a preset next time - the way a document keeps its own
+  custom colours.
 */
 const SETTINGS_KEY =
   "settings-v1";
 
 const MAX_CUSTOM_COLORS =
-  8;
+  16;
 
 const HISTORY_KEY =
   "history-v1";
@@ -1155,6 +1155,49 @@ export default async (req) => {
       });
     }
     /*
+      FORGET A CUSTOM COLOUR PRESET
+      DELETE /customcolors/<hex>
+      The colour stays on any block that has it; it just stops being
+      offered as a preset.
+    */
+    if (
+      req.method === "DELETE" &&
+      route.startsWith(
+        "/customcolors/"
+      )
+    ) {
+      requireAdmin(
+        req
+      );
+      const color =
+        normalizeColor(
+          decodeURIComponent(
+            route.slice(
+              "/customcolors/".length
+            )
+          )
+        );
+      const settings =
+        await readSettings();
+      const remaining =
+        customColorsOf( settings )
+          .filter(
+            (hex) =>
+              hex !== color
+          );
+      await writeSettings({
+        ...settings,
+        customColors:
+          remaining
+      });
+      return json({
+        ok:
+          true,
+        customColors:
+          remaining
+      });
+    }
+    /*
       DELETE EVENT / SERIES
     */
 
@@ -2009,9 +2052,10 @@ async function writeSettings(
 
 
 /*
-  A colour outside the basic palette (and not a type's default) goes
-  to the front of the custom presets; the list stays short and
-  without repeats.
+  A colour outside the basic palette (and not a type's default) joins
+  the custom presets, at the end - they keep the order they were
+  first used in, and using one again does not move it. The list stays
+  short: the oldest drops off past sixteen.
 */
 async function rememberCustomColor(
   color
@@ -2029,12 +2073,12 @@ async function rememberCustomColor(
     Array.isArray( settings.customColors )
       ? settings.customColors
       : [];
-  if ( current[ 0 ] === color ) {
+  if ( current.includes( color ) ) {
     return;
   }
   const next =
-    [ color, ...current.filter( (hex) => hex !== color ) ]
-      .slice( 0, MAX_CUSTOM_COLORS );
+    [ ...current, color ]
+      .slice( -MAX_CUSTOM_COLORS );
   await writeSettings({
     ...settings,
     customColors:
