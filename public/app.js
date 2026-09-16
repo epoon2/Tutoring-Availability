@@ -8378,32 +8378,32 @@
           'radio',
         defaultValue:
           'one',
-        choices: [
-          {
-            label:
-              'This event only',
-            value:
-              'one'
-          },
-          {
-            label:
-              'This and following events',
-            value:
-              'following'
-          },
-          {
-            label:
-              'All events, past and future',
-            value:
-              'all'
-          }
-        ]
+        /*
+          A series that meets on several days also offers "All
+          Mondays": the other days keep their sessions.
+        */
+        choices:
+          seriesScopeChoices(
+            original,
+            clicked,
+            {
+              one: 'This event only',
+              following: 'This and following events',
+              weekday: 'All %ss',
+              all: 'All events, past and future'
+            }
+          )
       });
     if ( !choice ) {
       return false;
     }
     if ( choice === 'one' ) {
       await deleteOneOccurrence(
+        original,
+        clicked
+      );
+    } else if ( choice === 'weekday' ) {
+      await deleteWeekdayFromSeries(
         original,
         clicked
       );
@@ -13466,6 +13466,39 @@
       formEvent.end === occurrence.end &&
       shape( formEvent.recurrence ) === shape( original.recurrence )
     );
+  }
+
+  /*
+    "Delete all Mondays": the series keeps its other days.
+  */
+  async function deleteWeekdayFromSeries(
+    original,
+    occurrence
+  ) {
+    const weekday =
+      new Date(
+        occurrence.start.slice( 0, 10 ) + 'T12:00'
+      ).getDay();
+    beginAction( 'delete all ' + WEEKDAY_NAMES[ weekday ] + 's' );
+    try {
+      await api(
+        '/events/' +
+          encodeURIComponent( original.masterId || original.id ) +
+          '/weekday',
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify({ weekday })
+        }
+      );
+      await loadWeek();
+      setStatus(
+        'Every ' + WEEKDAY_NAMES[ weekday ] + ' removed. The other days keep this session.'
+      );
+    } catch (error) {
+      setStatus( error.message );
+    }
   }
 
   /*

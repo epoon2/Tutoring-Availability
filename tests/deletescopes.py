@@ -123,7 +123,8 @@ async def main():
         radios = await page.locator(".choice-modal input[type=radio]").count()
         buttons = await page.evaluate(
             "[...document.querySelectorAll('.choice-modal button')].map(b => b.textContent.trim())")
-        check("three radio scopes with Cancel and OK", radios == 3
+        # a Tue/Thu series also offers "All Thursdays"
+        check("four radio scopes with Cancel and OK", radios == 4
               and buttons == ["Cancel", "OK"], f"radios={radios} buttons={buttons}")
         await choose_scope(page, "This event only")
         wds = await card_weekdays(page)

@@ -1,10 +1,11 @@
 // Block colours: a hex colour on an event, colour rules layered on a
 // series (one date, one weekday, from a date on) so nothing is split,
-// and the public schedule staying red and green throughout.
+// "delete all Mondays" on a multi-day series, and the public schedule
+// staying red and green throughout.
 // Run: node tests/install-shim.mjs && node tests/colors.test.mjs
 process.env.ADMIN_PASSWORD = 't';
 const api = await import('../netlify/functions/api.mjs');
-const { default: handler, resolveOccurrenceColor, applyColorScope, normalizeSchedule } = api;
+const { default: handler, resolveOccurrenceColor, applyColorScope, dropWeekday, normalizeSchedule } = api;
 
 let ran = 0;
 const fails = [];
@@ -54,6 +55,22 @@ const lone = { ...series, recurrence: null };
 painted = applyColorScope(lone, { color: '#1d4ed8', scope: 'one', date: '2026-09-07' });
 ok('a standalone takes the colour whatever the scope', painted.color === '#1d4ed8' && painted.recurrence === null);
 
+// ---- dropping a weekday
+let dropped = dropWeekday({ ...series, recurrence: { ...series.recurrence, exdates: ['2026-09-14', '2026-09-16'],
+  colorRules: [{ weekday: 1, color: '#1d4ed8' }, { date: '2026-09-21', color: '#6d28d9' }, { from: '2026-10-01', color: '#0f766e' }] } }, 1);
+ok('the weekday leaves the series with its skips and colour rules', dropped.recurrence.weekdays.join() === '3'
+  && dropped.recurrence.exdates.join() === '2026-09-16' && dropped.recurrence.colorRules.length === 1 && dropped.recurrence.colorRules[0].from);
+dropped = dropWeekday({ ...series, recurrence: { ...series.recurrence, endType: 'COUNT', count: 6 } }, 1);
+// six blocks: 9/7 9/9 9/14 9/16 9/21 9/23 - the last is Wed 9/23
+ok('a counted series is pinned to its current last date first', dropped.recurrence.endType === 'ON' && dropped.recurrence.until === '2026-09-23'
+  && dropped.recurrence.count === undefined, JSON.stringify(dropped.recurrence));
+let threw = null;
+try { dropWeekday(single, 1); } catch (e) { threw = e; }
+ok('the only weekday cannot be dropped', threw && /only day/.test(threw.message));
+threw = null;
+try { dropWeekday(series, 5); } catch (e) { threw = e; }
+ok('a weekday the series does not meet on is refused', threw);
+
 // ---- normalising keeps colours
 let out = normalizeSchedule([{ ...series, color: '#1d4ed8', recurrence: { ...series.recurrence, endType: 'ON', until: '2026-09-09',
   exdates: ['2026-09-07'], colorRules: [{ weekday: 3, color: '#6d28d9' }] } }]);
@@ -101,8 +118,14 @@ ok('null clears it back to the default', week.every(e => !e.color && e.seriesCol
 const pub = (await req('GET', '/events?start=2026-09-13&end=2026-09-19', null, false)).data;
 ok('the public schedule carries no colour at all', pub.mode === 'public' && !JSON.stringify(pub.events).includes('color'));
 
+r = await req('POST', `/events/${id}/weekday`, { weekday: 1 });
+ok('the weekday route drops all Mondays', r.status === 200 && r.data.ok, JSON.stringify(r.data));
+week = await weekOf('2026-09-13', '2026-09-19');
+ok('leaving only the Wednesdays', week.length === 1 && week[0].start.startsWith('2026-09-16'));
+r = await req('POST', `/events/${id}/weekday`, { weekday: 3 });
+ok('the last weekday is refused with a pointer to deleting the series', r.status === 400 && /delete the series/.test(r.data.error), JSON.stringify(r.data));
 r = await req('POST', `/events/${id}/color`, { color: '#1d4ed8', scope: 'all' }, false);
-ok('the route is not open to the public', r.status === 401);
+ok('neither route is open to the public', r.status === 401);
 
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\ncolors: all ${ran} checks passed`);
 process.exit(fails.length ? 1 : 0);

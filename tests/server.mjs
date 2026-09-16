@@ -9,7 +9,7 @@ import { extname, join, normalize } from 'node:path';
 import {
   expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey,
   buildPublicSchedule, findBlockedConflicts, normalizeSchedule,
-  applyColorScope
+  applyColorScope, dropWeekday
 } from '../netlify/functions/api.mjs';
 import {
   recordBeforeWrite, applyUndo, applyRedo, summarizeHistory, emptyHistory,
@@ -156,6 +156,18 @@ createServer(async (req, res) => {
       const next = events.slice();
       try {
         next[at] = applyColorScope(events[at], { color: body.color ? String(body.color).toLowerCase() : null, scope: body.scope || 'all', date: body.date });
+      } catch (e) { return json(res, 400, { error: e.message }); }
+      commit(req, events, normalizeSchedule(next));
+      return json(res, 200, { ok: true, sync: syncResult() });
+    }
+    if (route.startsWith('/events/') && route.endsWith('/weekday') && req.method === 'POST') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      const id = decodeURIComponent(route.slice('/events/'.length, -'/weekday'.length));
+      const at = events.findIndex(e => e.id === id);
+      if (at < 0) return json(res, 404, { error: 'That event no longer exists.' });
+      const next = events.slice();
+      try {
+        next[at] = dropWeekday(events[at], Number(body.weekday));
       } catch (e) { return json(res, 400, { error: e.message }); }
       commit(req, events, normalizeSchedule(next));
       return json(res, 200, { ok: true, sync: syncResult() });

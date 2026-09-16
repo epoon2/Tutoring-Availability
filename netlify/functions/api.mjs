@@ -1054,6 +1054,84 @@ export default async (req) => {
       });
     }
     /*
+      REMOVE ONE WEEKDAY FROM A SERIES
+      POST /events/:id/weekday  { weekday: 0-6 }   (0 = Sunday)
+      "Delete all Mondays": the series keeps its other days.
+    */
+    if (
+      req.method === "POST" &&
+      route.startsWith(
+        "/events/"
+      ) &&
+      route.endsWith(
+        "/weekday"
+      )
+    ) {
+      requireAdmin(
+        req
+      );
+      const id =
+        decodeURIComponent(
+          route.slice(
+            "/events/".length,
+            -"/weekday".length
+          )
+        );
+      const body =
+        await req.json();
+      const weekday =
+        Number( body?.weekday );
+      const events =
+        await readEvents();
+      const index =
+        events.findIndex(
+          (item) =>
+            item.id === id
+        );
+      if ( index < 0 ) {
+        return json(
+          {
+            error:
+              "That event no longer exists."
+          },
+          404
+        );
+      }
+      const next =
+        events.map(
+          (item, position) =>
+            position === index
+              ? {
+                  ...dropWeekday(
+                    item,
+                    weekday
+                  ),
+                  updatedAt:
+                    new Date().toISOString()
+                }
+              : item
+        );
+      const normalized =
+        normalizeSchedule(
+          next
+        );
+      await commitEvents(
+        req,
+        events,
+        normalized
+      );
+      const sync =
+        await mirrorDifference(
+          events,
+          normalized
+        );
+      return json({
+        ok:
+          true,
+        sync
+      });
+    }
+    /*
       DELETE EVENT / SERIES
     */
 
@@ -3328,6 +3406,55 @@ function applyColorScope(
 }
 
 /*
+  Take one weekday out of a multi-day series - "delete all Mondays".
+  A counted series is first pinned to the date it currently ends on,
+  so losing a weekday cannot stretch it further into the future to
+  make up the numbers. Skips and colour rules on that weekday go with
+  it. Returns the event as it should now be stored.
+*/
+function dropWeekday(
+  event,
+  weekday
+) {
+  const recurrence =
+    event.recurrence;
+  if ( !recurrence ) {
+    bad( "Only a repeating event has weekdays to remove." );
+  }
+  if ( !Number.isInteger( weekday ) || !recurrence.weekdays.includes( weekday ) ) {
+    bad( "That series has no sessions on that weekday." );
+  }
+  if ( recurrence.weekdays.length === 1 ) {
+    bad( "That is the only day this series meets - delete the series instead." );
+  }
+  const next =
+    { ...recurrence, weekdays: recurrence.weekdays.filter( (day) => day !== weekday ) };
+  if ( recurrence.endType === "COUNT" ) {
+    const last =
+      allOccurrences( { ...event, recurrence: { ...recurrence, exdates: [] } } ).pop();
+    next.endType = "ON";
+    next.until = ( last || event ).start.slice( 0, 10 );
+    delete next.count;
+  }
+  if ( recurrence.exdates ) {
+    next.exdates =
+      recurrence.exdates.filter( (date) => weekdayOfDate( date ) !== weekday );
+    if ( !next.exdates.length ) delete next.exdates;
+  }
+  if ( recurrence.colorRules ) {
+    next.colorRules =
+      recurrence.colorRules.filter(
+        (rule) =>
+          rule.weekday !== weekday &&
+          !( rule.date !== undefined && weekdayOfDate( rule.date ) === weekday )
+      );
+    if ( !next.colorRules.length ) delete next.colorRules;
+  }
+  return { ...event, recurrence: next };
+}
+
+
+/*
   RECURRENCE VALIDATION
 */
 
@@ -5243,7 +5370,8 @@ export {
   findBlockedConflicts,
   normalizeSchedule,
   resolveOccurrenceColor,
-  applyColorScope
+  applyColorScope,
+  dropWeekday
 };
 
 

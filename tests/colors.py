@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Block colours in a real browser: the editor's swatch row with a custom
 hex picker, the Colour… menu with its four reaches on a two-day series
-(nothing split), colours travelling
+(nothing split), "All Mondays" on the delete dialog, colours travelling
 with copy and paste, the summary's dots, and a public page that stays
 red and green.
 
@@ -190,10 +190,30 @@ async def main():
         check("and the public API never mentions colour", "color" not in body)
         await page.click("#adminBtn"); await page.wait_for_timeout(700)
 
-        # ---- undo takes the pasted copy back
+        # ---- delete All Mondays
+        await rclick_weekday(page, 1)
+        await click_menu(page, "Delete…")
+        labels = await scope_labels(page)
+        check("the delete dialog offers All Mondays on a two-day series",
+              labels == ["This event only", "This and following events", "All Mondays", "All events, past and future"], str(labels))
+        await choose_scope(page, "All Mondays")
+        colors = await card_colors(page)
+        check("Mondays are gone, Wednesday and the Friday copy remain", "1" not in colors and colors.get("3") == "#6d28d9" and colors.get("5") == "#6d28d9", str(colors))
+        series = await masters(page)
+        main_series = next(e for e in series if (e.get("masterId") or e["id"]) == series_id)
+        check("the series now meets on Wednesdays only", main_series["recurrence"]["weekdays"] == [3], str(main_series["recurrence"]))
+        status = await page.text_content("#status")
+        check("and says so", "Every Monday removed" in status, status)
+        await rclick_weekday(page, 3)
+        await click_menu(page, "Delete…")
+        labels = await scope_labels(page)
+        check("a one-day series is back to three reaches", len(labels) == 3, str(labels))
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+
+        # ---- undo puts the Mondays (and their colours) back
         await page.click("#undoBtn"); await page.wait_for_timeout(900)
         colors = await card_colors(page)
-        check("undo removes the pasted copy", "5" not in colors, str(colors))
+        check("undo restores the Mondays with their colours", colors.get("1") not in (None, "", "#1d4ed8"), str(colors))
 
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
         check("no page errors", not real, str(real[:3]))
