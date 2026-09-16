@@ -2526,16 +2526,23 @@ body:not(.view-week).list-view .calendar {
 }
 
 .color-row {
+  display: block;
+}
+
+.color-swatches {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 2px 2px 6px;
+  overflow-x: auto;
 }
 
 .color-swatch {
   position: relative;
-  width: 28px;
-  height: 28px;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
   padding: 0;
   background: var(--swatch);
   border: 2px solid transparent;
@@ -2556,8 +2563,8 @@ body:not(.view-week).list-view .calendar {
 .color-swatch.selected::after {
   content: "";
   position: absolute;
-  left: 9px;
-  top: 5px;
+  left: 7px;
+  top: 3px;
   width: 5px;
   height: 10px;
   border: solid #ffffff;
@@ -2598,7 +2605,7 @@ body:not(.view-week).list-view .calendar {
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
@@ -2610,9 +2617,18 @@ body:not(.view-week).list-view .calendar {
 }
 
 .color-caption {
-  margin-left: 4px;
+  display: block;
+  margin-top: 2px;
   color: var(--muted);
   font-size: 13px;
+}
+
+/*
+  The dialog that carries the swatches is wider than the ones that
+  only ask a question, so the whole row fits on one line.
+*/
+.choice-modal.wide-choice {
+  width: min(600px, 100%);
 }
 
 .choice-modal .color-row {

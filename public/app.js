@@ -14,6 +14,13 @@
     editorColorLoaded:
       null,
 
+    /*
+      Custom colours used before, most recent first, served with
+      every admin load so they are presets on any device.
+    */
+    customColors:
+      [],
+
     weekStart:
       startOfWeek(
         new Date()
@@ -2951,10 +2958,15 @@
 
 
       applyMode();
-
       applyHistory(
         data.history
       );
+      if ( Array.isArray( data.customColors ) ) {
+        state.customColors =
+          data.customColors
+            .map( normalizeHex )
+            .filter( Boolean );
+      }
 
 
       /*
@@ -7972,6 +7984,7 @@
     title,
     message,
     content,
+    wide,
     choices,
     cancelLabel,
     mode,
@@ -7992,7 +8005,8 @@
         document.createElement( 'div' );
 
       card.className =
-        'modal-card small-modal choice-modal';
+        'modal-card small-modal choice-modal' +
+        ( wide ? ' wide-choice' : '' );
 
       card.setAttribute( 'role', 'alertdialog' );
 
@@ -13123,6 +13137,16 @@
   ) {
     container.innerHTML = '';
     container.classList.add( 'color-row' );
+    /*
+      Every swatch sits on one line - default, palette, presets, "+"
+      - that scrolls sideways if it ever has to; the name of the
+      selection sits under it.
+    */
+    const row =
+      document.createElement( 'div' );
+    row.className =
+      'color-swatches';
+    container.appendChild( row );
     const pick =
       (hex) => {
         if ( hex === defaultColor ) {
@@ -13172,7 +13196,7 @@
     defaultSwatch.classList.add( 'is-default' );
     defaultSwatch.dataset.color = '';
     defaultSwatch.addEventListener( 'click', () => pick( null ) );
-    container.appendChild( defaultSwatch );
+    row.appendChild( defaultSwatch );
     COLOR_PALETTE.forEach(
       (entry) => {
         if ( entry.hex === defaultColor ) {
@@ -13186,45 +13210,66 @@
           );
         swatch.dataset.color = entry.hex;
         swatch.addEventListener( 'click', () => pick( entry.hex ) );
-        container.appendChild( swatch );
+        row.appendChild( swatch );
       }
     );
     /*
-      Custom: a native color input dressed as a swatch. When the
-      selection is a color outside the palette this swatch shows it.
+      Saved custom colours come next, most recent first, so a colour
+      picked once on one block is a preset on the next. A selection
+      that is neither palette nor preset (just picked, not yet saved)
+      is shown as a preset too, at the front.
     */
     const inPalette =
       COLOR_PALETTE.some(
         (entry) =>
           entry.hex === selected
       );
-    const customSelected =
-      Boolean( selected ) && !inPalette;
+    const presets =
+      ( state.customColors || [] )
+        .filter(
+          (hex) =>
+            hex !== defaultColor &&
+            !COLOR_PALETTE.some( (entry) => entry.hex === hex )
+        );
+    if ( selected && !inPalette && !presets.includes( selected ) ) {
+      presets.unshift( selected );
+    }
+    presets.forEach(
+      (hex) => {
+        const swatch =
+          makeSwatch(
+            hex,
+            hex.toUpperCase(),
+            selected === hex
+          );
+        swatch.classList.add( 'is-preset' );
+        swatch.dataset.color = hex;
+        swatch.addEventListener( 'click', () => pick( hex ) );
+        row.appendChild( swatch );
+      }
+    );
+    /*
+      Custom: a native colour input dressed as a "+" swatch that
+      opens the browser's own picker.
+    */
     const custom =
       document.createElement( 'label' );
     custom.className =
-      'color-swatch color-custom' +
-      ( customSelected ? ' selected has-color' : '' );
+      'color-swatch color-custom';
     custom.title =
-      customSelected
-        ? 'Custom ' + selected.toUpperCase()
-        : 'Custom color…';
-    if ( customSelected ) {
-      custom.style.setProperty( '--swatch', selected );
-    }
+      'Custom color…';
     const input =
       document.createElement( 'input' );
     input.type = 'color';
     input.className = 'color-custom-input';
     input.setAttribute( 'aria-label', 'Custom color' );
     input.value =
-      customSelected
-        ? selected
-        : ( selected || defaultColor );
+      selected || defaultColor;
     /*
       "input" fires on every drag of the picker; a full re-render on
-      each would tear the picker down. Record the color as it moves
-      and redraw once the picker closes.
+      each would tear the picker down. Record the colour as it moves,
+      show it on the "+" swatch meanwhile, and redraw once the picker
+      closes - at which point it stands as a preset.
     */
     input.addEventListener( 'input', () => {
       const hex =
@@ -13255,7 +13300,7 @@
     plus.className = 'color-custom-mark';
     plus.textContent = '+';
     custom.append( input, plus );
-    container.appendChild( custom );
+    row.appendChild( custom );
     const caption =
       document.createElement( 'span' );
     caption.className = 'color-caption';
@@ -13350,6 +13395,8 @@
             : '' ),
         content:
           swatches,
+        wide:
+          true,
         mode:
           'radio',
         defaultValue:

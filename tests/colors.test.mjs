@@ -122,8 +122,23 @@ r = await req('POST', '/events', { id, type: 'BLOCKED', title: 'Maya', notes: ''
 week = await weekOf('2026-09-13', '2026-09-19');
 ok('null clears it back to the default', week.every(e => !e.color && e.seriesColor === null));
 
+// ---- custom presets follow the admin
+let presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
+ok('palette and default colours never become presets', Array.isArray(presets) && presets.length === 0, JSON.stringify(presets));
+await req('POST', '/events', { type: 'BLOCKED', title: 'Custom', start: '2026-09-10T10:00', end: '2026-09-10T11:00', color: '#FF8800', recurrence: null });
+await req('POST', `/events/${id}/color`, { color: '#38bdf8', scope: 'one', date: '2026-09-16' });
+presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
+ok('a custom colour from a save or the colour route is a preset, most recent first', JSON.stringify(presets) === JSON.stringify(['#38bdf8', '#ff8800']), JSON.stringify(presets));
+await req('POST', `/events/${id}/color`, { color: '#ff8800', scope: 'one', date: '2026-09-14' });
+presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
+ok('using one again moves it to the front without repeating it', JSON.stringify(presets) === JSON.stringify(['#ff8800', '#38bdf8']), JSON.stringify(presets));
+for (let i = 0; i < 9; i++) await req('POST', `/events/${id}/color`, { color: '#1000' + String(10 + i), scope: 'all' });
+presets = (await req('GET', '/events?start=2026-09-13&end=2026-09-19')).data.customColors;
+ok('the list keeps the eight most recent', presets.length === 8 && presets[0] === '#100018', JSON.stringify(presets));
+await req('POST', `/events/${id}/color`, { color: '#1d4ed8', scope: 'all' });
+
 const pub = (await req('GET', '/events?start=2026-09-13&end=2026-09-19', null, false)).data;
-ok('the public schedule carries no color at all', pub.mode === 'public' && !JSON.stringify(pub.events).includes('color'));
+ok('the public schedule carries no color at all, presets included', pub.mode === 'public' && !JSON.stringify(pub).includes('olor'));
 
 r = await req('POST', `/events/${id}/weekday`, { weekday: 1 });
 ok('the weekday route drops all Mondays', r.status === 200 && r.data.ok, JSON.stringify(r.data));

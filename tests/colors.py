@@ -140,8 +140,9 @@ async def main():
         check("the editor opens with the block's color", await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "Blue")
         await set_custom(page, "#eventColorRow", "#ff8800")
         check("a custom color shows its hex", await page.text_content("#eventColorRow .color-caption") == "#FF8800")
-        check("and the custom swatch takes the color",
-              await page.evaluate("document.querySelector('#eventColorRow .color-custom').classList.contains('selected')"))
+        check("and it appears as a selected preset swatch beside the +",
+              await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').title") == "#FF8800"
+              and await page.evaluate("document.querySelector('#eventColorRow .color-swatch.selected').classList.contains('is-preset')"))
         await page.click("#saveEventBtn")
         heading = await page.text_content(".choice-modal h2")
         check("a color-only save asks about color, not editing", heading == "Customize recurring event", heading)
@@ -159,6 +160,30 @@ async def main():
         colors = await card_colors(page)
         check("next Monday keeps the series blue", colors.get("1") == "#1d4ed8", str(colors))
         await page.click("#prevWeekBtn"); await page.wait_for_timeout(600)
+
+        # ---- the custom color is now a preset, here and on another block
+        await click_weekday(page, 3)
+        swatches = await page.evaluate("[...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => s.title)")
+        check("the custom color used on Monday is a preset when editing Wednesday",
+              "#FF8800" in swatches and swatches.index("#FF8800") == len(swatches) - 2, str(swatches))
+        check("every swatch sits on one row",
+              await page.evaluate("""() => { const tops = new Set([...document.querySelectorAll('#eventColorRow .color-swatch')].map(s => Math.round(s.getBoundingClientRect().top))); return tops.size === 1; }"""))
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
+        await rclick_weekday(page, 3)
+        await click_menu(page, "Customize")
+        swatches = await page.evaluate("[...document.querySelectorAll('.choice-modal .color-swatch')].map(s => s.title)")
+        check("and it survives a reload, in the Customize dialog too (served by the server)", "#FF8800" in swatches, str(swatches))
+        check("the dialog's row is one line as well",
+              await page.evaluate("""() => { const tops = new Set([...document.querySelectorAll('.choice-modal .color-swatch')].map(s => Math.round(s.getBoundingClientRect().top))); return tops.size === 1; }"""))
+        await pick_swatch(page, ".choice-modal", "#FF8800")
+        await choose_scope(page, "This event only", ok="Apply")
+        colors = await card_colors(page)
+        check("a preset applies like any swatch", colors.get("3") == colors.get("1"), str(colors))
+        await rclick_weekday(page, 3)
+        await click_menu(page, "Customize")
+        await pick_swatch(page, ".choice-modal", "Purple")
+        await choose_scope(page, "All Wednesdays", ok="Apply")
 
         # ---- an edit that changes more than color still goes through Edit recurring event
         await click_weekday(page, 3)

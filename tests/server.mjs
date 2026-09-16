@@ -24,6 +24,14 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 let events = [];
 let nextId = 1;
 
+// Custom colour presets, most recent first, as production keeps them.
+const PALETTE = new Set(['#b42318', '#c2410c', '#a16207', '#2f7d4a', '#0f766e', '#1d4ed8', '#6d28d9', '#be185d', '#7c4a1e', '#4b5563']);
+let customColors = [];
+const rememberColor = (hex) => {
+  if (!hex || PALETTE.has(hex)) return;
+  customColors = [hex, ...customColors.filter(h => h !== hex)].slice(0, 8);
+};
+
 // Admin is any password (the stub does not check it), or the token /login hands a remembered device.
 const TEST_TOKEN = '9999999999999.testtoken-signature-for-the-stub';
 const isAdmin = (req) => !!req.headers['x-admin-password'] || req.headers['x-admin-token'] === TEST_TOKEN;
@@ -93,7 +101,7 @@ createServer(async (req, res) => {
         events: admin === 'admin' ? served : buildPublicSchedule(served),
         config, mode: admin,
         updatedAt: new Date().toISOString(), updatedBy: 'test',
-        ...(admin === 'admin' ? { history: summarizeHistory(history) } : {})
+        ...(admin === 'admin' ? { history: summarizeHistory(history), customColors } : {})
       });
     }
     if (route.startsWith('/events/') && route.endsWith('/skip') && req.method === 'POST') {
@@ -141,6 +149,8 @@ createServer(async (req, res) => {
         }
       }
       if (!ev.color) delete ev.color;
+      if (ev.color === (ev.type === 'AVAILABLE' ? '#2f7d4a' : '#b42318')) delete ev.color;
+      rememberColor(ev.color);
       const next = events.slice();
       if (at >= 0) { next[at] = ev; } else { next.push(ev); }
       // the same honesty pass production runs: collapse whittled series,
@@ -154,9 +164,12 @@ createServer(async (req, res) => {
       const at = events.findIndex(e => e.id === id);
       if (at < 0) return json(res, 404, { error: 'That event no longer exists.' });
       const next = events.slice();
+      let color = body.color ? String(body.color).toLowerCase() : null;
+      if (color === (events[at].type === 'AVAILABLE' ? '#2f7d4a' : '#b42318')) color = null;
       try {
-        next[at] = applyColorScope(events[at], { color: body.color ? String(body.color).toLowerCase() : null, scope: body.scope || 'all', date: body.date });
+        next[at] = applyColorScope(events[at], { color, scope: body.scope || 'all', date: body.date });
       } catch (e) { return json(res, 400, { error: e.message }); }
+      rememberColor(color);
       commit(req, events, normalizeSchedule(next));
       return json(res, 200, { ok: true, sync: syncResult() });
     }

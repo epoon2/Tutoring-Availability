@@ -53,6 +53,17 @@ const REQUESTS_KEY =
   "requests-v1";
 
 
+/*
+  Custom colours the admin has used, most recent first, so a colour
+  picked once is a preset next time - the way a document keeps its
+  own custom colours.
+*/
+const SETTINGS_KEY =
+  "settings-v1";
+
+const MAX_CUSTOM_COLORS =
+  8;
+
 const HISTORY_KEY =
   "history-v1";
 
@@ -225,11 +236,14 @@ export default async (req) => {
                 history:
                   summarizeHistory(
                     await readHistory()
+                  ),
+                customColors:
+                  customColorsOf(
+                    await readSettings()
                   )
               }
             : {}
         )
-
       },
         200,
         publicCacheHeaders(
@@ -593,8 +607,9 @@ export default async (req) => {
           before,
           normalized
         );
-
-
+      await rememberCustomColor(
+        nextEvent.color
+      );
       return json({
         id,
         updatedAt:
@@ -994,6 +1009,9 @@ export default async (req) => {
         color === defaultColorFor( event.type )
           ? null
           : color;
+      await rememberCustomColor(
+        painted
+      );
       if ( event.recurrence && scope !== "all" ) {
         validateDate(
           body?.date
@@ -1952,6 +1970,93 @@ async function writeHistory(
     history
   );
 
+}
+
+
+async function readSettings() {
+  const store =
+    getStore(
+      STORE_NAME
+    );
+  const settings =
+    await store.get(
+      SETTINGS_KEY,
+      {
+        type:
+          "json",
+        consistency:
+          "strong"
+      }
+    );
+  return settings && typeof settings === "object"
+    ? settings
+    : {};
+}
+
+
+async function writeSettings(
+  settings
+) {
+  const store =
+    getStore(
+      STORE_NAME
+    );
+  await store.setJSON(
+    SETTINGS_KEY,
+    settings
+  );
+}
+
+
+/*
+  A colour outside the basic palette (and not a type's default) goes
+  to the front of the custom presets; the list stays short and
+  without repeats.
+*/
+async function rememberCustomColor(
+  color
+) {
+  if (
+    !color ||
+    PALETTE_HEXES.has( color ) ||
+    Object.values( DEFAULT_COLORS ).includes( color )
+  ) {
+    return;
+  }
+  const settings =
+    await readSettings();
+  const current =
+    Array.isArray( settings.customColors )
+      ? settings.customColors
+      : [];
+  if ( current[ 0 ] === color ) {
+    return;
+  }
+  const next =
+    [ color, ...current.filter( (hex) => hex !== color ) ]
+      .slice( 0, MAX_CUSTOM_COLORS );
+  await writeSettings({
+    ...settings,
+    customColors:
+      next
+  });
+}
+
+
+function customColorsOf(
+  settings
+) {
+  return (
+    Array.isArray( settings.customColors )
+      ? settings.customColors
+      : []
+  )
+    .filter(
+      (hex) =>
+        typeof hex === "string" &&
+        HEX_COLOR.test( hex )
+    )
+    .slice( 0, MAX_CUSTOM_COLORS );
 }
 
 
@@ -3248,6 +3353,15 @@ const DEFAULT_COLORS = {
   BLOCKED: "#b42318",
   AVAILABLE: "#2f7d4a"
 };
+
+/*
+  The basic palette the client offers; anything else is "custom".
+*/
+const PALETTE_HEXES =
+  new Set([
+    "#b42318", "#c2410c", "#a16207", "#2f7d4a", "#0f766e",
+    "#1d4ed8", "#6d28d9", "#be185d", "#7c4a1e", "#4b5563"
+  ]);
 
 function defaultColorFor(
   type
