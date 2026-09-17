@@ -638,6 +638,30 @@
           toggleProfileMenu();
         }
       );
+    $('themeBtn')
+      .addEventListener(
+        'click',
+        toggleTheme
+      );
+    renderThemeButton();
+    /*
+      A device that follows its own preference redraws when that
+      preference changes underneath the page.
+    */
+    if ( window.matchMedia ) {
+      window
+        .matchMedia( '(prefers-color-scheme: dark)' )
+        .addEventListener(
+          'change',
+          () => {
+            if ( !document.documentElement.getAttribute( 'data-theme' ) ) {
+              renderThemeButton();
+              applyConfigStyling();
+              renderAll();
+            }
+          }
+        );
+    }
     /*
       Any choice closes the menu; so does a click anywhere else.
     */
@@ -13688,6 +13712,25 @@
   ) {
     const rgb =
       hexToRgb( hex );
+    if ( isDarkTheme() ) {
+      /*
+        On a dark surface the roles flip: the text is a lightened
+        version of the colour, the tint a deep mix with the surface.
+      */
+      const surface =
+        hexToRgb( '#171d2b' );
+      const mix =
+        (from, to, amount) =>
+          from.map( (part, i) => part + ( to[ i ] - part ) * amount );
+      return {
+        ink:
+          rgbToHex( lightInk( rgb ) ),
+        tint:
+          rgbToHex( mix( rgb, surface, 0.72 ) ),
+        border:
+          rgbToHex( mix( rgb, surface, 0.45 ) )
+      };
+    }
     const ink =
       readableInk( rgb );
     return {
@@ -13698,6 +13741,88 @@
       border:
         rgbToHex( mixWithWhite( ink, 0.55 ) )
     };
+  }
+
+  /*
+    Text on a dark tint must be light: a colour is brightened until
+    its luminance is comfortably high, keeping its hue.
+  */
+  function lightInk(
+    rgb
+  ) {
+    const [ r, g, b ] = rgb;
+    const luminance =
+      ( 0.2126 * r + 0.7152 * g + 0.0722 * b ) / 255;
+    if ( luminance >= 0.62 ) {
+      return rgb;
+    }
+    const amount =
+      Math.min( 0.9, ( 0.62 - luminance ) / Math.max( 0.05, 1 - luminance ) );
+    return mixWithWhite( rgb, amount );
+  }
+
+  /* =========================================================
+     THEME (LIGHT / DARK)
+  ========================================================= */
+
+  /*
+    A per-device choice: light, dark, or nothing (the device's own
+    preference). Stored in the browser, applied to the root element;
+    everything that computes a colour in script is redrawn.
+  */
+  function isDarkTheme() {
+    const chosen =
+      document.documentElement.getAttribute( 'data-theme' );
+    if ( chosen === 'dark' ) return true;
+    if ( chosen === 'light' ) return false;
+    return Boolean(
+      window.matchMedia &&
+      window.matchMedia( '(prefers-color-scheme: dark)' ).matches
+    );
+  }
+
+  function applyTheme(
+    theme
+  ) {
+    if ( theme === 'dark' || theme === 'light' ) {
+      document.documentElement.setAttribute( 'data-theme', theme );
+      try {
+        localStorage.setItem( 'theme', theme );
+      } catch {}
+    } else {
+      document.documentElement.removeAttribute( 'data-theme' );
+      try {
+        localStorage.removeItem( 'theme' );
+      } catch {}
+    }
+    renderThemeButton();
+    applyConfigStyling();
+    renderAll();
+  }
+
+  function toggleTheme() {
+    applyTheme(
+      isDarkTheme()
+        ? 'light'
+        : 'dark'
+    );
+  }
+
+  function renderThemeButton() {
+    const dark =
+      isDarkTheme();
+    $('themeIcon').textContent =
+      dark
+        ? '☀'
+        : '☾';
+    $('themeBtn').title =
+      dark
+        ? 'Switch to light mode'
+        : 'Switch to dark mode';
+    $('themeBtn').setAttribute(
+      'aria-label',
+      $('themeBtn').title
+    );
   }
 
   /*
