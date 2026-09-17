@@ -3,27 +3,52 @@
 // already had; passwords reset by email; addresses; rate limits.
 // Run: node tests/install-shim.mjs && node tests/accounts.test.mjs
 import { createServer } from 'node:http';
+import crypto from 'node:crypto';
 import { getStore } from '@netlify/blobs';
 
 process.env.ADMIN_PASSWORD = 'admin-pw';
 process.env.SITE_NAME = 'Test Calendar';   // else the host would be read as "Site Test"
 
-// a fake Brevo that keeps every message
+// a fake Brevo that keeps every message, and a fake Google that keeps
+// every pushed event per calendar
 const sent = [];
+const pushed = {};
 const fake = createServer((req, res) => {
   let raw = '';
   req.on('data', (c) => raw += c);
   req.on('end', () => {
-    const body = JSON.parse(raw || '{}');
-    sent.push({ to: body.to[0].email, subject: body.subject, text: body.textContent, html: body.htmlContent, sender: body.sender });
-    res.writeHead(201, { 'Content-Type': 'application/json' });
-    res.end('{"messageId":"x"}');
+    const send = (code, body) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
+    const url = new URL(req.url, 'http://x');
+    if (url.pathname === '/smtp/email') {
+      const body = JSON.parse(raw || '{}');
+      sent.push({ to: body.to[0].email, subject: body.subject, text: body.textContent, html: body.htmlContent, sender: body.sender });
+      return send(201, { messageId: 'x' });
+    }
+    if (url.pathname === '/token') return send(200, { access_token: 'tok', expires_in: 3600 });
+    const m = /^\/calendars\/([^/]+)\/events(?:\/([^/]+))?$/.exec(url.pathname);
+    if (!m) return send(404, {});
+    const cal = decodeURIComponent(m[1]);
+    pushed[cal] = pushed[cal] || new Map();
+    const body = raw ? JSON.parse(raw) : null;
+    if (req.method === 'PUT') { if (!pushed[cal].has(m[2])) return send(404, {}); pushed[cal].set(m[2], body); return send(200, body); }
+    if (req.method === 'POST') { pushed[cal].set(body.id, body); return send(200, body); }
+    if (req.method === 'DELETE') { pushed[cal].delete(m[2]); res.writeHead(204); return res.end(); }
+    if (req.method === 'GET') return send(200, { items: [...pushed[cal].values()] });
+    return send(405, {});
   });
 });
 await new Promise((r) => fake.listen(0, '127.0.0.1', r));
 process.env.BREVO_API_KEY = 'k';
 process.env.NOTIFY_FROM_EMAIL = 'site@example.com';
 process.env.BREVO_API_BASE = `http://127.0.0.1:${fake.address().port}`;
+{
+  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({ client_email: 'portal@example.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) });
+  process.env.GOOGLE_CALENDAR_ID = 'ethan-site@group.calendar.google.com';   // the site-wide target the first calendar had
+  process.env.GOOGLE_API_BASE = `http://127.0.0.1:${fake.address().port}`;
+  process.env.GOOGLE_TOKEN_URL = `http://127.0.0.1:${fake.address().port}/token`;
+  process.env.CALENDAR_FEED_TOKEN = 'site-feed-token-0123456789';
+}
 
 const { default: handler } = await import('../netlify/functions/api.mjs');
 
@@ -187,6 +212,34 @@ for (let i = 0; i < 12; i++) await call('POST', '/requests', {}, { name: 'A', em
 r = await call('POST', '/requests', {}, { name: 'A', email: 'a@example.com', subject: 'Math', format: 'Online', start: '2031-01-08T10:00', end: '2031-01-08T11:00', recurrence: null });
 ok('so are session requests', r.status === 429, JSON.stringify(r.data));
 ok('the counts live in storage, not memory', await store.get('rl/login/unknown', { type: 'json' }) !== null);
+
+// ---- Google and the feed, per calendar
+ok("the first calendar's block went to the site's Google calendar", pushed['ethan-site@group.calendar.google.com'] && pushed['ethan-site@group.calendar.google.com'].size === 1);
+ok("Maya's went nowhere: she has chosen no Google calendar", Object.keys(pushed).length === 1, JSON.stringify(Object.keys(pushed)));
+const mayaNow = (await call('POST', '/login', { 'x-forwarded-for': '10.0.0.3' }, { email: 'maya@example.com', password: 'maya-pass-4' })).data.token;
+r = await call('GET', '/settings?calendar=maya', { 'x-session': mayaNow });
+ok('Settings tells her the service account to share with, and that no calendar is chosen', r.data.google.available && r.data.google.serviceAccountEmail === 'portal@example.iam.gserviceaccount.com' && r.data.google.calendarId === '' && r.data.config.googleSync === false, JSON.stringify(r.data.google));
+ok('and gives her a feed address of her own', /\/api\/feed\/[A-Za-z0-9_-]{20,}\/maya\.ics$/.test(r.data.feed.url), r.data.feed.url);
+const mayaFeed = r.data.feed.url;
+r = await call('PUT', '/settings?calendar=maya', { 'x-session': mayaNow }, { googleCalendarId: 'not a calendar id' });
+ok('a Google Calendar ID must look like an address', r.status === 400);
+r = await call('PUT', '/settings?calendar=maya', { 'x-session': mayaNow }, { googleCalendarId: 'maya-cal@group.calendar.google.com' });
+ok('choosing one pushes everything she has to it', r.status === 200 && r.data.config.googleSync === true && r.data.sync && r.data.sync.google === 'ok'
+  && pushed['maya-cal@group.calendar.google.com'] && pushed['maya-cal@group.calendar.google.com'].size === 1, JSON.stringify(r.data.sync));
+r = await call('POST', '/events?calendar=maya', { 'x-session': mayaNow }, { type: 'BLOCKED', title: 'Kai', start: '2026-09-10T12:00', end: '2026-09-10T13:00', recurrence: null });
+ok('and later blocks follow, to hers and not the site one', pushed['maya-cal@group.calendar.google.com'].size === 2 && pushed['ethan-site@group.calendar.google.com'].size === 1);
+r = await call('GET', '/settings?calendar=ethan', { 'x-session': ethan });
+ok("the first calendar shows the site's Google calendar as its own, from the environment", r.data.google.calendarId === 'ethan-site@group.calendar.google.com' && r.data.google.fromSite === true && r.data.feed.url.endsWith('/api/feed/site-feed-token-0123456789/ethan.ics'), JSON.stringify(r.data.google) + r.data.feed.url);
+
+const ics = async (path) => { const res = await handler(new Request('http://site.test' + path.replace('http://site.test', ''))); return { status: res.status, text: await res.text() }; };
+let feed = await ics(mayaFeed);
+ok("Maya's feed lists her two sessions under her own title", feed.status === 200 && (feed.text.match(/BEGIN:VEVENT/g) || []).length === 2 && feed.text.includes("X-WR-CALNAME:Maya Chen's Calendar"), feed.text.slice(0, 200));
+feed = await ics('/api/feed/site-feed-token-0123456789/tutoring.ics');
+ok("the site's own token still opens the first calendar's feed, at its old address", feed.status === 200 && (feed.text.match(/BEGIN:VEVENT/g) || []).length === 1 && feed.text.includes('X-WR-CALNAME:Ethan'), feed.text.slice(0, 200));
+feed = await ics('/api/feed/site-feed-token-0123456789/ethan.ics');
+ok('and at the new one', feed.status === 200);
+feed = await ics(mayaFeed.replace(/\/[A-Za-z0-9_-]+\/maya\.ics$/, '/wrong-token-wrong-token-wrong/maya.ics'));
+ok('a wrong token is a plain 404', feed.status === 404);
 
 fake.close();
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\naccounts: all ${ran} checks passed`);

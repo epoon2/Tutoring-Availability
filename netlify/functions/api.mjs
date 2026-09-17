@@ -253,6 +253,119 @@ export default async (req) => {
     }
 
 
+    /*
+      CALENDAR FEED
+
+      /api/feed/<token>/<name>.ics - every booked session as a plain
+      block, for Google Calendar to subscribe to. The token names the
+      calendar as well as opening it, so this runs before the usual
+      calendar lookup.
+
+      The token is the whole secret, so a wrong or absent one is a
+      plain 404 - nothing here says whether the feed exists.
+    */
+
+    if (
+      req.method === "GET" &&
+      route.startsWith(
+        "/feed/"
+      )
+    ) {
+
+      const feedMatch =
+        /^\/feed\/([^/]+)\/[A-Za-z0-9._-]+\.ics$/
+          .exec(
+            route
+          );
+
+
+      const feedCalendar =
+        feedMatch
+          ? await calendarForFeedToken(
+              store,
+              decodeURIComponent(
+                feedMatch[1]
+              )
+            )
+          : null;
+
+
+      if (
+        !feedCalendar
+      ) {
+
+        return json(
+          {
+            error:
+              "Not found."
+          },
+          404
+        );
+
+      }
+
+
+      activeCalendar =
+        feedCalendar;
+
+
+      useSettings(
+        await readSettings()
+      );
+
+
+      const events =
+        await readEvents();
+
+
+      const nowKey =
+        currentMinuteKey();
+
+
+      const expanded =
+        expandEventsForRange(
+          events,
+          nowKey -
+            FEED_WEEKS_BACK *
+            7 *
+            1440,
+          nowKey +
+            FEED_WEEKS_AHEAD *
+            7 *
+            1440
+        );
+
+
+      return new Response(
+        buildIcs(
+          expanded,
+          {
+            timeZone:
+              activeSettings.timezoneId,
+            calendarName:
+              activeSettings.title
+          }
+        ),
+        {
+          status:
+            200,
+
+          headers: {
+            "Cache-Control":
+              "private, no-store",
+
+            "Content-Type":
+              "text/calendar; charset=utf-8",
+
+            "Content-Disposition":
+              'inline; filename="tutoring.ics"'
+          }
+        }
+      );
+
+    }
+
+
     const calendar =
       await resolveCalendar(
         store,
@@ -506,97 +619,6 @@ export default async (req) => {
 
 
     /*
-      CALENDAR FEED
-
-      /api/feed/<token>/tutoring.ics - every booked session as a
-      plain "Tutoring" block, for Google Calendar to subscribe to.
-
-      The token is the whole secret, so a wrong or absent one is a
-      plain 404 - nothing here says whether the feed exists.
-    */
-
-    if (
-      req.method === "GET" &&
-      route.startsWith(
-        "/feed/"
-      )
-    ) {
-
-      const feedMatch =
-        /^\/feed\/([^/]+)\/tutoring\.ics$/
-          .exec(
-            route
-          );
-
-
-      if (
-        !feedMatch ||
-        !feedTokenIsValid(
-          decodeURIComponent(
-            feedMatch[1]
-          )
-        )
-      ) {
-
-        return json(
-          {
-            error:
-              "Not found."
-          },
-          404
-        );
-
-      }
-
-
-      const events =
-        await readEvents();
-
-
-      const nowKey =
-        currentMinuteKey();
-
-
-      const expanded =
-        expandEventsForRange(
-          events,
-          nowKey -
-            FEED_WEEKS_BACK *
-            7 *
-            1440,
-          nowKey +
-            FEED_WEEKS_AHEAD *
-            7 *
-            1440
-        );
-
-
-      return new Response(
-        buildIcs(
-          expanded,
-          { timeZone: activeSettings.timezoneId }
-        ),
-        {
-          status:
-            200,
-
-          headers: {
-            "Cache-Control":
-              "private, no-store",
-
-            "Content-Type":
-              "text/calendar; charset=utf-8",
-
-            "Content-Disposition":
-              'inline; filename="tutoring.ics"'
-          }
-        }
-      );
-
-    }
-
-
-    /*
       SETTINGS
       GET  /settings  the full record (admin only: it holds the
                       notification address)
@@ -611,15 +633,22 @@ export default async (req) => {
       requireAdmin(
         req
       );
+      const slug =
+        await currentSlug( store );
       return json({
         settings:
           activeSettings,
-        slug:
-          await currentSlug( store ),
+        slug,
         config:
           getConfig(),
         mail:
-          mailStatus()
+          mailStatus(),
+        google:
+          googleStatus(),
+        feed: {
+          url:
+            feedUrlFor( url, await ensureFeedToken( store ), slug )
+        }
       });
     }
     /*
@@ -701,6 +730,8 @@ export default async (req) => {
         );
       const zoneChanged =
         next.timezoneId !== activeSettings.timezoneId;
+      const googleChanged =
+        next.googleCalendarId !== activeSettings.googleCalendarId;
       /*
         The calendar's address. A change frees the old one; an address
         someone else holds is refused rather than altered.
@@ -734,11 +765,11 @@ export default async (req) => {
         ...( slug ? { slug } : {} )
       });
       let sync;
-      if ( zoneChanged ) {
+      if ( zoneChanged || googleChanged ) {
         sync =
           await resyncAll(
             await readEvents(),
-            process.env,
+            googleEnv(),
             { timeZone: activeSettings.timezoneId }
           );
       }
@@ -954,7 +985,7 @@ export default async (req) => {
         await mirrorDifference(
           before,
           normalized,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         );
       await rememberCustomColor(
@@ -1302,7 +1333,7 @@ export default async (req) => {
         await mirrorDifference(
           before,
           normalized,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         );
 
@@ -1436,7 +1467,7 @@ export default async (req) => {
         await mirrorDifference(
           events,
           normalized,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         );
       return json({
@@ -1516,7 +1547,7 @@ export default async (req) => {
         await mirrorDifference(
           events,
           normalized,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         );
       return json({
@@ -1637,7 +1668,7 @@ export default async (req) => {
         await mirrorDifference(
           events,
           normalized,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         );
 
@@ -1797,7 +1828,7 @@ export default async (req) => {
         await mirrorDifference(
           current,
           result.events,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         );
 
@@ -1947,7 +1978,7 @@ export default async (req) => {
         await mirrorDifference(
           current,
           version,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         );
 
@@ -2056,7 +2087,9 @@ export default async (req) => {
 
       const sync =
         await mirrorSavedEvent(
-          nextEvent
+          nextEvent,
+          googleEnv(),
+          { timeZone: activeSettings.timezoneId }
         );
 
 
@@ -2097,7 +2130,7 @@ export default async (req) => {
       return json(
         await resyncAll(
           events,
-          process.env,
+          googleEnv(),
           { timeZone: activeSettings.timezoneId }
         )
       );
@@ -2310,6 +2343,8 @@ async function handleAccountRoute(
         ...( fresh.notificationEmail ? {} : { notificationEmail: email } )
       });
     } else {
+      const feedToken =
+        crypto.randomBytes( 24 ).toString( "base64url" );
       await store.setJSON( `cal/${ calendarId }/${ SETTINGS_KEY }`, {
         ownerId:
           user.id,
@@ -2322,10 +2357,11 @@ async function handleAccountRoute(
         live:
           false,
         feedToken:
-          crypto.randomBytes( 24 ).toString( "base64url" ),
+          feedToken,
         createdAt:
           new Date().toISOString()
       });
+      await store.setJSON( `feed/${ feedToken }`, calendarId );
     }
     const verification =
       await sendVerification( store, user, origin );
@@ -2728,6 +2764,12 @@ function envDefaults() {
         "students"
     },
     notificationEmail:
+      "",
+    /*
+      The Google calendar this one mirrors into. The first calendar
+      falls back to the site's GOOGLE_CALENDAR_ID, as before accounts.
+    */
+    googleCalendarId:
       ""
   };
 }
@@ -2790,6 +2832,7 @@ function settingsFrom(
     ...( Number.isInteger( record.dayStart ) ? { dayStart: record.dayStart } : {} ),
     ...( Number.isInteger( record.dayEnd ) ? { dayEnd: record.dayEnd } : {} ),
     ...( typeof record.notificationEmail === "string" ? { notificationEmail: record.notificationEmail } : {} ),
+    ...( typeof record.googleCalendarId === "string" ? { googleCalendarId: record.googleCalendarId.trim() } : {} ),
     colors: {
       ...base.colors,
       ...( record.colors && HEX_COLOR.test( record.colors.available || "" ) ? { available: record.colors.available } : {} ),
@@ -2835,7 +2878,7 @@ function configFrom(
     labels:
       { ...settings.labels },
     googleSync:
-      googleSyncConfigured()
+      googleSyncConfigured( googleEnvFor( settings ) )
   };
 }
 
@@ -2907,7 +2950,136 @@ function validateSettings(
     }
     next.notificationEmail = email;
   }
+  if ( "googleCalendarId" in body ) {
+    const id =
+      String( body.googleCalendarId || "" ).trim();
+    if ( id && ( id.length > 200 || !/^[^\s]+@[^\s]+$/.test( id ) ) ) {
+      bad( "A Google Calendar ID looks like an email address - find it under the calendar's settings, \"Integrate calendar\"." );
+    }
+    next.googleCalendarId = id;
+  }
   return next;
+}
+
+/*
+  The environment the Google mirror sees for one calendar: the site's
+  service account, and the Google calendar this one chose. The first
+  calendar keeps using the site's GOOGLE_CALENDAR_ID until it chooses
+  its own.
+*/
+function googleEnvFor(
+  settings,
+  calendarId = activeCalendar.id
+) {
+  const chosen =
+    settings.googleCalendarId ||
+    ( calendarId === MAIN_CALENDAR_ID ? process.env.GOOGLE_CALENDAR_ID : "" ) ||
+    "";
+  return {
+    ...process.env,
+    GOOGLE_CALENDAR_ID:
+      chosen
+  };
+}
+
+function googleEnv() {
+  return googleEnvFor( activeSettings );
+}
+
+/*
+  What Settings shows about Google: whether the site has a service
+  account at all, and its address, which the owner shares their
+  calendar with.
+*/
+function googleStatus() {
+  let email =
+    null;
+  try {
+    email =
+      JSON.parse( process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "null" )?.client_email || null;
+  } catch {
+    email =
+      null;
+  }
+  return {
+    available:
+      Boolean( email ),
+    serviceAccountEmail:
+      email,
+    calendarId:
+      activeSettings.googleCalendarId ||
+      ( activeCalendar.id === MAIN_CALENDAR_ID ? process.env.GOOGLE_CALENDAR_ID || "" : "" ),
+    fromSite:
+      !activeSettings.googleCalendarId &&
+      activeCalendar.id === MAIN_CALENDAR_ID &&
+      Boolean( process.env.GOOGLE_CALENDAR_ID )
+  };
+}
+
+/*
+  THE FEED TOKEN
+
+  The first calendar's feed is behind CALENDAR_FEED_TOKEN if the site
+  has one; every other calendar (and the first, without that variable)
+  gets a random token kept with its settings and indexed under
+  feed/<token>, so the feed route can find the calendar from the
+  address alone.
+*/
+async function ensureFeedToken(
+  store
+) {
+  if (
+    activeCalendar.id === MAIN_CALENDAR_ID &&
+    typeof process.env.CALENDAR_FEED_TOKEN === "string" &&
+    process.env.CALENDAR_FEED_TOKEN.length >= 16
+  ) {
+    return process.env.CALENDAR_FEED_TOKEN;
+  }
+  const stored =
+    await readSettings();
+  if ( stored.feedToken ) {
+    const indexed =
+      await store.get( `feed/${ stored.feedToken }`, { type: "json", consistency: "strong" } );
+    if ( indexed !== activeCalendar.id ) {
+      await store.setJSON( `feed/${ stored.feedToken }`, activeCalendar.id );
+    }
+    return stored.feedToken;
+  }
+  const token =
+    crypto.randomBytes( 24 ).toString( "base64url" );
+  await writeSettings({ ...stored, feedToken: token });
+  await store.setJSON( `feed/${ token }`, activeCalendar.id );
+  return token;
+}
+
+function feedUrlFor(
+  url,
+  token,
+  slug
+) {
+  return `${ url.origin }/api/feed/${ encodeURIComponent( token ) }/${ slug || "tutoring" }.ics`;
+}
+
+/*
+  Which calendar a feed token opens: the first, for the site's own
+  token; else whichever the index names. Null for anything else.
+*/
+async function calendarForFeedToken(
+  store,
+  token
+) {
+  if ( feedTokenIsValid( token ) ) {
+    return { id: MAIN_CALENDAR_ID, slug: null };
+  }
+  if ( !token || !/^[A-Za-z0-9_-]{20,64}$/.test( token ) ) {
+    return null;
+  }
+  const id =
+    await store.get( `feed/${ token }`, { type: "json", consistency: "strong" } );
+  if ( !id ) {
+    return null;
+  }
+  return { id, slug: null };
 }
 
 /*

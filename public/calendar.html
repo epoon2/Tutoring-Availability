@@ -1592,6 +1592,63 @@
         </button>
       </div>
 
+      <h3 class="settings-heading">Google Calendar</h3>
+
+      <div id="googleSetup">
+        <p class="settings-help">
+          Booked sessions can be copied into a Google calendar of yours.
+          In Google Calendar, open that calendar's settings, share it with
+          <code id="serviceAccountEmail"></code>
+          (<em>Make changes to events</em>), then paste its Calendar ID
+          from <em>Integrate calendar</em> below.
+        </p>
+        <label class="field">
+          <span>
+            Google Calendar ID
+            <small>leave empty to turn the copy off</small>
+          </span>
+          <input
+            id="settingGoogleCalendarId"
+            type="text"
+            maxlength="200"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="abc123@group.calendar.google.com"
+          >
+        </label>
+        <p
+          id="googleFromSite"
+          class="settings-help hidden"
+        >
+          This is the site's own Google calendar, set in Netlify. Enter another here to use it instead.
+        </p>
+      </div>
+
+      <p
+        id="googleUnavailable"
+        class="settings-help hidden"
+      >
+        Google Calendar copying is not set up on this site (it needs a
+        service account in Netlify). The feed below works with any calendar.
+      </p>
+
+      <label class="field">
+        <span>
+          Calendar feed
+          <small>subscribe from any calendar app: Google Calendar → Other calendars → From URL</small>
+        </span>
+        <span class="share-row">
+          <code id="feedLink"></code>
+          <button
+            id="copyFeedLinkBtn"
+            class="btn small secondary"
+            type="button"
+          >
+            Copy
+          </button>
+        </span>
+      </label>
+
       <div
         id="settingsError"
         class="form-error"

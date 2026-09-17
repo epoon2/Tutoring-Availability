@@ -682,17 +682,22 @@
           renderShareLink( $('settingSlug').value.trim().toLowerCase() );
         }
       );
-    $('copyShareLinkBtn')
-      .addEventListener(
-        'click',
-        async () => {
-          try {
-            await navigator.clipboard.writeText( $('shareLink').textContent );
-            $('copyShareLinkBtn').textContent = 'Copied';
-            setTimeout( () => { $('copyShareLinkBtn').textContent = 'Copy'; }, 1500 );
-          } catch (e) {
-            setStatus( 'Copy the link by selecting it.' );
-          }
+    [ [ 'copyShareLinkBtn', 'shareLink' ], [ 'copyFeedLinkBtn', 'feedLink' ] ]
+      .forEach(
+        ([ buttonId, textId ]) => {
+          $(buttonId)
+            .addEventListener(
+              'click',
+              async () => {
+                try {
+                  await navigator.clipboard.writeText( $(textId).textContent );
+                  $(buttonId).textContent = 'Copied';
+                  setTimeout( () => { $(buttonId).textContent = 'Copy'; }, 1500 );
+                } catch (e) {
+                  setStatus( 'Copy the link by selecting it.' );
+                }
+              }
+            );
         }
       );
     $('backToAdminBtn')
@@ -13761,6 +13766,8 @@
     let settings;
     let mail;
     let slug;
+    let google;
+    let feed;
     try {
       const data =
         await api( '/settings' );
@@ -13770,6 +13777,10 @@
         data.mail;
       slug =
         data.slug;
+      google =
+        data.google || {};
+      feed =
+        data.feed || {};
     } catch (error) {
       setStatus( error.message );
       return;
@@ -13778,6 +13789,21 @@
       mail,
       settings.notificationEmail
     );
+    $('googleSetup')
+      .classList
+      .toggle( 'hidden', !google.available );
+    $('googleUnavailable')
+      .classList
+      .toggle( 'hidden', Boolean( google.available ) );
+    $('serviceAccountEmail').textContent =
+      google.serviceAccountEmail || '';
+    $('settingGoogleCalendarId').value =
+      google.calendarId || '';
+    $('googleFromSite')
+      .classList
+      .toggle( 'hidden', !google.fromSite );
+    $('feedLink').textContent =
+      feed.url || '';
     $('settingSlug').value =
       slug || '';
     $('settingSlugPrefix').textContent =
@@ -14023,7 +14049,9 @@
       notificationEmail:
         $('settingNotificationEmail').value,
       slug:
-        $('settingSlug').value.trim().toLowerCase()
+        $('settingSlug').value.trim().toLowerCase(),
+      googleCalendarId:
+        $('settingGoogleCalendarId').value.trim()
     };
     if ( body.dayEnd <= body.dayStart ) {
       $('settingsError').textContent =

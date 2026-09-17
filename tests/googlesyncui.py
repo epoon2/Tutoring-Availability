@@ -107,6 +107,39 @@ async def main():
             check("a good result reads as good and hides Sync now",
                   await page.evaluate("document.getElementById('syncNotice').classList.contains('ok')")
                   and not await visible(page, "#syncNoticeRetryBtn"))
+
+            # ---- Settings: the Google calendar this one copies into, and the feed
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(600)
+            check("Settings names the service account to share a calendar with",
+                  await visible(page, "#googleSetup") and await page.text_content("#serviceAccountEmail") == "portal@example.iam.gserviceaccount.com")
+            check("and shows the site's own Google calendar as the current one",
+                  await page.input_value("#settingGoogleCalendarId") == "tutoring@group.calendar.google.com" and await visible(page, "#googleFromSite"))
+            check("with a feed link to subscribe to", "/api/feed/" in (await page.text_content("#feedLink")) and (await page.text_content("#feedLink")).endswith("/ethan.ics"))
+            await page.fill("#settingGoogleCalendarId", "mine@group.calendar.google.com")
+            await page.click("#saveSettingsBtn"); await page.wait_for_timeout(1000)
+            status = await page.text_content("#status")
+            check("choosing another calendar saves and re-pushes", status.startswith("Settings saved"), status)
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(600)
+            check("and it is now the calendar's own choice",
+                  await page.input_value("#settingGoogleCalendarId") == "mine@group.calendar.google.com" and not await visible(page, "#googleFromSite"))
+            await page.fill("#settingGoogleCalendarId", "")
+            await page.click("#saveSettingsBtn"); await page.wait_for_timeout(1000)
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(600)
+            check("clearing it goes back to the site's, since this is the first calendar",
+                  await page.input_value("#settingGoogleCalendarId") == "tutoring@group.calendar.google.com" and await visible(page, "#googleFromSite"))
+            await page.evaluate("document.querySelector('#settingsModal [data-close]').click()")
+        finally:
+            server.terminate(); server.wait()
+
+        # ---- no credentials: Settings says so, the feed still there
+        server = start_server("")
+        try:
+            page = await (await b.new_context(viewport={"width": 1400, "height": 950})).new_page()
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            await login(page)
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(600)
+            check("without a service account Settings says Google copying is not set up, and keeps the feed",
+                  await visible(page, "#googleUnavailable") and not await visible(page, "#googleSetup") and "/api/feed/" in (await page.text_content("#feedLink")))
         finally:
             server.terminate(); server.wait()
 

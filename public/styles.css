@@ -3129,3 +3129,22 @@ body.calendar-missing .subline,
 body.calendar-missing .header-actions {
   display: none !important;
 }
+
+.settings-heading {
+  margin: 18px 0 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.settings-help {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.settings-help code {
+  user-select: all;
+  color: var(--text);
+}
