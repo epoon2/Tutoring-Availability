@@ -97,5 +97,17 @@ await req('PUT', '/settings', { timezoneId: 'America/Los_Angeles' });
 r = await req('GET', `/feed/${process.env.CALENDAR_FEED_TOKEN}/tutoring.ics`);
 ok('Los Angeles keeps its VTIMEZONE feed', r.text.includes('TZID:America/Los_Angeles') && r.text.includes('DTSTART;TZID=America/Los_Angeles:'));
 
+// ---- looks: week start, clock, typeface
+r = await req('PUT', '/settings', { weekStart: 1, hourFormat: '24', font: 'serif' });
+ok('week start, clock and typeface are saved and served in the config', r.status === 200 && r.data.config.weekStart === 1 && r.data.config.hourFormat === '24' && r.data.config.font === 'serif', JSON.stringify(r.data.config));
+r = await req('PUT', '/settings', { weekStart: 3 });
+ok('the week starts on Sunday or Monday only', r.status === 400);
+r = await req('PUT', '/settings', { hourFormat: '13' });
+ok('the clock is 12 or 24', r.status === 400);
+r = await req('PUT', '/settings', { font: 'comic' });
+ok('the typeface is one of the choices', r.status === 400);
+r = await req('GET', '/events?start=2026-09-06&end=2026-09-12', null, false);
+ok('visitors get them too', r.data.config.weekStart === 1 && r.data.config.hourFormat === '24' && r.data.config.font === 'serif');
+
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\nsettings: all ${ran} checks passed`);
 process.exit(fails.length ? 1 : 0);

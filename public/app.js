@@ -36,10 +36,11 @@
     dismissedMailError:
       null,
 
+    /*
+      Set just below: startOfWeek reads the settings, which live here.
+    */
     weekStart:
-      startOfWeek(
-        new Date()
-      ),
+      null,
 
     adminPassword:
       '',
@@ -172,6 +173,12 @@
     lastLoadedAt:
       0
   };
+
+
+  state.weekStart =
+    startOfWeek(
+      new Date()
+    );
 
 
   /*
@@ -674,6 +681,21 @@
       .addEventListener(
         'click',
         resendVerification
+      );
+    $('settingPreset')
+      .addEventListener(
+        'change',
+        () => {
+          const preset =
+            WORDING_PRESETS[ $('settingPreset').value ];
+          if ( !preset ) {
+            return;
+          }
+          $('settingLabelAvailable').value = preset.available;
+          $('settingLabelBlocked').value = preset.blocked;
+          $('settingLabelPerson').value = preset.person;
+          $('settingLabelPeople').value = preset.people;
+        }
       );
     $('settingSlug')
       .addEventListener(
@@ -2309,6 +2331,7 @@
       date.toLocaleTimeString(
         undefined,
         {
+          hour12: !is24h(),
           hour:
             'numeric',
 
@@ -9829,6 +9852,7 @@
         weekday: 'short',
         month: 'short',
         day: 'numeric',
+        hour12: !is24h(),
         hour: 'numeric',
         minute: '2-digit'
       }
@@ -11076,6 +11100,29 @@
         .toUpperCase();
 
 
+        if ( is24h() ) {
+      if (
+        !parts.hour.value ||
+        !parts.minute.value ||
+        !Number.isFinite( hour ) ||
+        !Number.isFinite( minute ) ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59
+      ) {
+        return '';
+      }
+      return (
+        String( hour )
+          .padStart( 2, '0' ) +
+        ':' +
+        String( minute )
+          .padStart( 2, '0' )
+      );
+    }
+
+
     if (
       !parts.hour.value ||
       !parts.minute.value ||
@@ -11098,6 +11145,7 @@
       meridiem === 'AM'
         ? hour % 12
         : ( hour % 12 ) + 12;
+
 
 
     return (
@@ -11151,12 +11199,15 @@
       Number( match[2] );
 
 
-    parts.hour.value =
-      String(
-        hour24 % 12 === 0
-          ? 12
-          : hour24 % 12
-      );
+        parts.hour.value =
+      is24h()
+        ? String( hour24 ).padStart( 2, '0' )
+        : String(
+            hour24 % 12 === 0
+              ? 12
+              : hour24 % 12
+          );
+
 
 
     parts.minute.value =
@@ -11260,13 +11311,11 @@
           }
 
 
-          if (
+                    if (
             digits.length === 1 &&
-            Number( digits ) > 1
+            Number( digits ) > ( is24h() ? 2 : 1 )
           ) {
-
             focusNext( parts.minute );
-
           }
 
         }
@@ -11290,16 +11339,10 @@
               .slice( 0, 2 );
 
 
-          parts.minute.value = digits;
-
-
+                    parts.minute.value = digits;
           publish();
-
-
-          if ( digits.length === 2 ) {
-
+          if ( digits.length === 2 && !is24h() ) {
             focusNext( parts.meridiem );
-
           }
 
         }
@@ -11414,7 +11457,19 @@
                   Number( field.value );
 
 
-                if ( field === parts.hour ) {
+                if ( field === parts.hour && is24h() ) {
+
+                  if ( numeric > 23 ) {
+
+                    numeric = 23;
+
+                  }
+
+
+                  field.value =
+                    String( numeric ).padStart( 2, '0' );
+
+                } else if ( field === parts.hour ) {
 
                   if ( numeric === 0 ) {
 
@@ -11749,15 +11804,27 @@
   }
 
 
-  function formatClockLabel(
+    function formatClockLabel(
     hour24,
     minute
   ) {
+
+    if ( is24h() ) {
+
+      return (
+        String( hour24 ).padStart( 2, '0' ) +
+        ':' +
+        String( minute ).padStart( 2, '0' )
+      );
+
+    }
+
 
     const hour =
       hour24 % 12 === 0
         ? 12
         : hour24 % 12;
+
 
 
     return (
@@ -13681,8 +13748,24 @@
         root.setProperty( '--' + prefix + '-bg', shades.tint );
         root.setProperty( '--' + prefix + '-border', shades.border );
       };
-    paint( 'available', colors.available );
+        paint( 'available', colors.available );
     paint( 'blocked', colors.blocked );
+    const html =
+      document.documentElement;
+    if ( state.config.font && state.config.font !== 'system' ) {
+      html.setAttribute( 'data-font', state.config.font );
+    } else {
+      html.removeAttribute( 'data-font' );
+    }
+    html.setAttribute( 'data-clock', is24h() ? '24' : '12' );
+    /*
+      A new first day of the week moves the week on screen to the one
+      that contains the same days.
+    */
+    if ( state.view === 'week' ) {
+      state.weekStart =
+        startOfWeek( addDays( state.weekStart, 3 ) );
+    }
     const setText =
       (id, text) => {
         const element =
@@ -13747,11 +13830,24 @@
         String( hour );
       option.textContent =
         hour === 24
-          ? '12 AM (midnight)'
+          ? ( is24h() ? '24:00 (midnight)' : '12 AM (midnight)' )
           : formatMinutes( hour * 60 );
       select.appendChild( option );
     }
   }
+
+  /*
+    Ready-made wording for the kinds of calendar people keep: what open
+    and booked time are called, and the word for whoever books it.
+  */
+  const WORDING_PRESETS = {
+    tutoring:     { available: 'Available',  blocked: 'Blocked Session', person: 'student',  people: 'students' },
+    lessons:      { available: 'Open',       blocked: 'Lesson',          person: 'pupil',    people: 'pupils' },
+    office:       { available: 'Open',       blocked: 'Meeting',         person: 'visitor',  people: 'visitors' },
+    coaching:     { available: 'Open',       blocked: 'Session',         person: 'client',   people: 'clients' },
+    classes:      { available: 'Open',       blocked: 'Class',           person: 'attendee', people: 'attendees' },
+    appointments: { available: 'Open',       blocked: 'Appointment',     person: 'client',   people: 'clients' }
+  };
 
   function renderShareLink(
     slug
@@ -13804,6 +13900,14 @@
       .toggle( 'hidden', !google.fromSite );
     $('feedLink').textContent =
       feed.url || '';
+    $('settingWeekStart').value =
+      String( settings.weekStart === 1 ? 1 : 0 );
+    $('settingHourFormat').value =
+      settings.hourFormat === '24' ? '24' : '12';
+    $('settingFont').value =
+      settings.font || 'system';
+    $('settingPreset').value =
+      '';
     $('settingSlug').value =
       slug || '';
     $('settingSlugPrefix').textContent =
@@ -14051,7 +14155,13 @@
       slug:
         $('settingSlug').value.trim().toLowerCase(),
       googleCalendarId:
-        $('settingGoogleCalendarId').value.trim()
+        $('settingGoogleCalendarId').value.trim(),
+      weekStart:
+        Number( $('settingWeekStart').value ),
+      hourFormat:
+        $('settingHourFormat').value,
+      font:
+        $('settingFont').value
     };
     if ( body.dayEnd <= body.dayStart ) {
       $('settingsError').textContent =
@@ -16815,6 +16925,8 @@
             timeZone:
               'UTC',
 
+            hour12: !is24h(),
+
             hour:
               'numeric',
 
@@ -16831,6 +16943,8 @@
           {
             timeZone:
               'UTC',
+
+            hour12: !is24h(),
 
             hour:
               'numeric',
@@ -17048,9 +17162,17 @@
       );
 
 
+        /*
+      The week starts on the day the settings say: Sunday unless the
+      calendar chose Monday.
+    */
+    const first =
+      state.config.weekStart === 1 ? 1 : 0;
+
+
     result.setDate(
       result.getDate() -
-      result.getDay()
+      ( ( result.getDay() - first + 7 ) % 7 )
     );
 
 
@@ -17110,6 +17232,15 @@
 
 
 
+    /*
+    The clock is a setting: "2:30 PM" or "14:30". Every label on the
+    page goes through the helpers below, so one flag changes them all.
+  */
+  function is24h() {
+    return state.config.hourFormat === '24';
+  }
+
+
   function formatMinutes(
     minutes
   ) {
@@ -17123,6 +17254,18 @@
         1440
       ) %
       1440;
+
+
+    if ( is24h() ) {
+
+      return (
+        String( Math.floor( normalized / 60 ) ).padStart( 2, '0' ) +
+        ':' +
+        String( normalized % 60 ).padStart( 2, '0' )
+      );
+
+    }
+
 
 
     const hour24 =
@@ -17198,7 +17341,8 @@
       );
 
 
-    const opening =
+        const opening =
+      !is24h() &&
       start.slice(
         -2
       ) ===
@@ -17210,6 +17354,7 @@
             -3
           )
         : start;
+
 
 
     return (
@@ -17478,6 +17623,7 @@
           .toLocaleTimeString(
             undefined,
             {
+              hour12: !is24h(),
               hour:
                 'numeric',
 
@@ -17512,6 +17658,8 @@
 
             day:
               'numeric',
+
+            hour12: !is24h(),
 
             hour:
               'numeric',

@@ -151,10 +151,13 @@
 }
 
 
-body {
-  margin: 0;
-
-  font-family:
+/*
+  The typeface is a setting. Each choice is a stack of fonts the
+  device already has, so nothing is downloaded and the page never
+  waits on a font.
+*/
+:root {
+  --font-family:
     Inter,
     ui-sans-serif,
     system-ui,
@@ -162,6 +165,52 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+}
+
+:root[data-font="serif"] {
+  --font-family:
+    Georgia,
+    "Iowan Old Style",
+    "Palatino Linotype",
+    "Times New Roman",
+    serif;
+}
+
+:root[data-font="humanist"] {
+  --font-family:
+    "Gill Sans",
+    "Trebuchet MS",
+    Verdana,
+    "Segoe UI",
+    sans-serif;
+}
+
+:root[data-font="rounded"] {
+  --font-family:
+    "Nunito",
+    "Avenir Next Rounded",
+    "Arial Rounded MT Bold",
+    "Varela Round",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+
+:root[data-font="mono"] {
+  --font-family:
+    ui-monospace,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+}
+
+
+body {
+  margin: 0;
+
+  font-family: var(--font-family);
 
   background: var(--bg);
   color: var(--text);
@@ -3147,4 +3196,11 @@ body.calendar-missing .header-actions {
 .settings-help code {
   user-select: all;
   color: var(--text);
+}
+
+/*
+  A 24-hour clock has no AM/PM segment.
+*/
+:root[data-clock="24"] .time-seg-meridiem {
+  display: none;
 }

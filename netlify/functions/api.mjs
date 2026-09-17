@@ -2770,9 +2770,21 @@ function envDefaults() {
       falls back to the site's GOOGLE_CALENDAR_ID, as before accounts.
     */
     googleCalendarId:
-      ""
+      "",
+    /*
+      Looks: a typeface, the day the week starts on, and the clock.
+    */
+    font:
+      "system",
+    weekStart:
+      0,
+    hourFormat:
+      "12"
   };
 }
+
+const FONTS =
+  new Set([ "system", "serif", "humanist", "rounded", "mono" ]);
 
 function timezoneIsValid(
   id
@@ -2833,6 +2845,9 @@ function settingsFrom(
     ...( Number.isInteger( record.dayEnd ) ? { dayEnd: record.dayEnd } : {} ),
     ...( typeof record.notificationEmail === "string" ? { notificationEmail: record.notificationEmail } : {} ),
     ...( typeof record.googleCalendarId === "string" ? { googleCalendarId: record.googleCalendarId.trim() } : {} ),
+    ...( FONTS.has( record.font ) ? { font: record.font } : {} ),
+    ...( record.weekStart === 1 || record.weekStart === 0 ? { weekStart: record.weekStart } : {} ),
+    ...( record.hourFormat === "24" || record.hourFormat === "12" ? { hourFormat: record.hourFormat } : {} ),
     colors: {
       ...base.colors,
       ...( record.colors && HEX_COLOR.test( record.colors.available || "" ) ? { available: record.colors.available } : {} ),
@@ -2878,7 +2893,13 @@ function configFrom(
     labels:
       { ...settings.labels },
     googleSync:
-      googleSyncConfigured( googleEnvFor( settings ) )
+      googleSyncConfigured( googleEnvFor( settings ) ),
+    font:
+      settings.font,
+    weekStart:
+      settings.weekStart,
+    hourFormat:
+      settings.hourFormat
   };
 }
 
@@ -2949,6 +2970,20 @@ function validateSettings(
       bad( "That notification email address does not look right." );
     }
     next.notificationEmail = email;
+  }
+  if ( "font" in body ) {
+    if ( !FONTS.has( body.font ) ) bad( "That typeface is not one of the choices." );
+    next.font = body.font;
+  }
+  if ( "weekStart" in body ) {
+    const day = Number( body.weekStart );
+    if ( day !== 0 && day !== 1 ) bad( "The week starts on Sunday or Monday." );
+    next.weekStart = day;
+  }
+  if ( "hourFormat" in body ) {
+    const format = String( body.hourFormat );
+    if ( format !== "12" && format !== "24" ) bad( "The clock is 12-hour or 24-hour." );
+    next.hourFormat = format;
   }
   if ( "googleCalendarId" in body ) {
     const id =

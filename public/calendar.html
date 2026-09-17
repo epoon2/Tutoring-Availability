@@ -1490,6 +1490,40 @@
         </label>
       </div>
 
+      <div class="field-row">
+        <label class="field">
+          <span>
+            Week starts on
+          </span>
+          <select id="settingWeekStart">
+            <option value="0">Sunday</option>
+            <option value="1">Monday</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>
+            Clock
+          </span>
+          <select id="settingHourFormat">
+            <option value="12">12-hour (2:30 PM)</option>
+            <option value="24">24-hour (14:30)</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>
+          Typeface
+        </span>
+        <select id="settingFont">
+          <option value="system">Default (clean sans-serif)</option>
+          <option value="humanist">Humanist sans-serif</option>
+          <option value="rounded">Rounded</option>
+          <option value="serif">Serif</option>
+          <option value="mono">Monospace</option>
+        </select>
+      </label>
+
       <div class="field">
         <span>
           Default color for open time
@@ -1512,6 +1546,22 @@
           role="group"
         ></div>
       </div>
+
+      <label class="field">
+        <span>
+          Wording preset
+          <small>fills in the names below; edit them freely afterwards</small>
+        </span>
+        <select id="settingPreset">
+          <option value="">Choose a preset…</option>
+          <option value="tutoring">Tutoring</option>
+          <option value="lessons">Music or other lessons</option>
+          <option value="office">Office hours</option>
+          <option value="coaching">Coaching or training</option>
+          <option value="classes">Classes</option>
+          <option value="appointments">Appointments</option>
+        </select>
+      </label>
 
       <div class="field-row">
         <label class="field">
