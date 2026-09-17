@@ -797,7 +797,7 @@ export default async (req) => {
       ) {
 
         fail(
-          "The tutor has too many pending requests right now. Please try again later.",
+          `${ activeSettings.displayName } has too many pending requests right now. Please try again later.`,
           429
         );
 
@@ -4565,7 +4565,7 @@ function validateRequest(
   const email =
     String( request.email || "" ).trim().toLowerCase();
   if ( !email || email.length > 120 || !EMAIL_PATTERN.test( email ) ) {
-    bad( "Please enter an email address the tutor can reply to." );
+    bad( `Please enter an email address ${ activeSettings.displayName } can reply to.` );
   }
   const phone =
     String( request.phone || "" ).trim().slice( 0, 40 );

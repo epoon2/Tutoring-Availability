@@ -936,11 +936,10 @@
               .toggle( 'hidden' );
 
 
-          $('summaryToggle')
+          $('summaryToggleLabel')
             .textContent =
-              nowHidden
-                ? 'Show each student'
-                : 'Hide each student';
+              ( nowHidden ? 'Show each ' : 'Hide each ' ) +
+              peopleWord( 1 );
 
 
           $('summaryToggle')
@@ -11850,10 +11849,10 @@
 
         overlapping.length ===
         1
-          ? 'That time overlaps a session the tutor has already blocked out.'
+          ? 'That time overlaps a session ' + ownerName() + ' has already blocked out.'
           : 'That time overlaps ' +
             overlapping.length +
-            ' sessions the tutor has already blocked out.',
+            ' sessions ' + ownerName() + ' has already blocked out.',
 
         overlapping.map(
           (event) => ({
@@ -11906,8 +11905,8 @@
         'Outside available hours',
 
         windows.length
-          ? 'The tutor has not marked that whole time as available.'
-          : 'The tutor has no availability listed on that day.',
+          ? ownerName() + ' has not marked that whole time as available.'
+          : ownerName() + ' has no availability listed on that day.',
 
         windows.map(
           (event) => ({
@@ -12088,7 +12087,7 @@
     ) {
       $('requestError')
         .textContent =
-          'Please enter an email address the tutor can reply to.';
+          'Please enter an email address ' + ownerName() + ' can reply to.';
       $('requestEmail')
         .focus();
       return;
@@ -12285,7 +12284,7 @@
 
 
       setStatus(
-        'Request sent. The tutor will confirm it before it appears on the calendar.'
+        'Request sent. ' + ownerName() + ' will confirm it before it appears on the calendar.'
       );
 
     } catch (error) {
@@ -12700,14 +12699,9 @@
 
     return [
       request.name,
-
-      formatLabel(
-        request
-      ),
-
-      'Tutoring'
+      '(' + formatLabel( request ) + ')'
     ]
-      .join(' ');
+      .join( ' ' );
 
   }
 
@@ -13170,6 +13164,14 @@
       : ( labels.blocked || 'Blocked Session' );
   }
 
+  /*
+    Whoever owns this calendar, by the display name in the settings:
+    the requester is told "Maya will confirm it", not "the tutor".
+  */
+  function ownerName() {
+    return ( state.config.tutorName || '' ).trim() || 'The owner';
+  }
+
   function peopleWord(
     count
   ) {
@@ -13211,6 +13213,16 @@
     setText( 'legendBlocked', labelFor( 'BLOCKED' ) );
     setText( 'eventTypeAvailableOption', labelFor( 'AVAILABLE' ) );
     setText( 'summaryPeopleLabel', peopleWord( 2 ) );
+    setText( 'summaryToggleLabel',
+      ( $('summaryList') && !$('summaryList').classList.contains( 'hidden' ) ? 'Hide each ' : 'Show each ' ) + peopleWord( 1 ) );
+    setText( 'requestIntro', 'Ask for a time that works for you. Nothing is booked until ' + ownerName() + ' confirms it.' );
+    setText( 'requestWarningFooter', 'You can still send this request. ' + ownerName() + ' will confirm whether the time works.' );
+    setText( 'requestEmailHint', 'so ' + ownerName() + ' can get back to you' );
+    const description =
+      document.querySelector( 'meta[name="description"]' );
+    if ( description ) {
+      description.setAttribute( 'content', state.config.portalTitle || '' );
+    }
     setText( 'requestsSubtitle', 'Submitted by ' + peopleWord( 2 ) + ', waiting on you' );
   }
 

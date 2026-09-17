@@ -55,7 +55,7 @@
 
   <meta
     name="apple-mobile-web-app-title"
-    content="Tutoring"
+    content="Calendar"
   >
 
   <link
@@ -87,7 +87,7 @@
 
           <span
             id="updatedLabel"
-            title="When the tutor last changed the schedule itself"
+            title="When the schedule itself was last changed"
           >
             Loading…
           </span>
@@ -332,7 +332,7 @@
           aria-expanded="false"
           aria-controls="summaryList"
         >
-          Show each student
+          <span id="summaryToggleLabel">Show each student</span>
         </button>
 
       </div>
@@ -571,9 +571,12 @@
       </div>
 
 
-      <p class="request-intro">
+      <p
+        id="requestIntro"
+        class="request-intro"
+      >
         Ask for a time that works for you. Nothing is booked until
-        the tutor confirms it.
+        it is confirmed.
       </p>
 
 
@@ -599,7 +602,7 @@
       <label class="field">
         <span>
           Email
-          <small>so the tutor can get back to you</small>
+          <small id="requestEmailHint">so you can be reached about it</small>
         </span>
         <input
           id="requestEmail"
@@ -1128,9 +1131,12 @@
         ></div>
 
 
-        <div class="conflict-warning-footer">
-          You can still send this request. The tutor will confirm
-          whether the time works.
+        <div
+          id="requestWarningFooter"
+          class="conflict-warning-footer"
+        >
+          You can still send this request. It will be confirmed
+          if the time works.
         </div>
 
       </div>
@@ -1950,7 +1956,7 @@
           type="text"
           maxlength="100"
           required
-          placeholder="e.g. Jayden Tutoring, Class, Work"
+          placeholder="e.g. Maya - Algebra II, Class, Work"
         >
 
       </label>
