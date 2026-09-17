@@ -17,7 +17,9 @@ import {
 } from '../netlify/functions/history.mjs';
 
 const ROOT = new URL('../public/', import.meta.url).pathname;
-const PORT = Number(process.argv[2] || 8877);
+// The port comes from the command line, else from the environment (a
+// host such as Render assigns one), else 8877.
+const PORT = Number(process.argv[2] || process.env.PORT || 8877);
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
                '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png' };
 
