@@ -4506,8 +4506,19 @@
 
 
       label.className =
-        'time-label';
-
+        'time-label' +
+        /*
+          The first and last labels sit on the grid's edges, where a
+          centred label would be half outside it - so they hang below
+          the top line and above the bottom one instead.
+        */
+        (
+          hour === startHour
+            ? ' first'
+            : hour === endHour
+              ? ' last'
+              : ''
+        );
 
       label.style.top =
         (

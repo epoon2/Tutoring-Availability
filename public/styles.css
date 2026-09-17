@@ -710,6 +710,18 @@ button:disabled {
   font-size: 11px;
 }
 
+/*
+  The edge labels: the first would be half above the grid (under the
+  day header) and the last half below it, so they stay inside.
+*/
+.time-label.first {
+  transform: translateY(2px);
+}
+
+.time-label.last {
+  transform: translateY(calc(-100% - 2px));
+}
+
 
 /* -----------------------------
    DAY COLUMNS
