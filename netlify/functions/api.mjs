@@ -23,6 +23,11 @@ import {
 } from "./googlesync.mjs";
 
 import {
+  mailConfigured,
+  sendMail,
+  requestNotification
+} from "./mail.mjs";
+import {
   recordBeforeWrite,
   applyUndo,
   applyRedo,
@@ -245,7 +250,9 @@ export default async (req) => {
                 customColors:
                   customColorsOf(
                     await readSettings()
-                  )
+                  ),
+                mail:
+                  mailStatus()
               }
             : {}
         )
@@ -370,7 +377,52 @@ export default async (req) => {
         settings:
           activeSettings,
         config:
-          getConfig()
+          getConfig(),
+        mail:
+          mailStatus()
+      });
+    }
+    /*
+      POST /settings/testmail - send a test to the notification
+      address, so the setup can be checked without waiting for a
+      request. A success also clears a remembered failure.
+    */
+    if (
+      route === "/settings/testmail" &&
+      req.method === "POST"
+    ) {
+      requireAdmin(
+        req
+      );
+      const to =
+        activeSettings.notificationEmail;
+      if ( !mailConfigured() ) {
+        fail( "Email sending is not set up on the site yet (BREVO_API_KEY and NOTIFY_FROM_EMAIL).", 400 );
+      }
+      if ( !to ) {
+        fail( "Enter and save a notification email first.", 400 );
+      }
+      try {
+        await sendMail({
+          to,
+          fromName:
+            activeConfig.portalTitle,
+          subject:
+            `Test from ${ activeConfig.portalTitle }`,
+          text:
+            `This is a test. New session requests on ${ activeConfig.portalTitle } will be sent to this address.`,
+          html:
+            `<p>This is a test. New session requests on <strong>${ activeConfig.portalTitle.replace( /[&<>]/g, "" ) }</strong> will be sent to this address.</p>`
+        });
+      } catch ( error ) {
+        await rememberMailOutcome( error );
+        fail( error.message, 502 );
+      }
+      await rememberMailOutcome( null );
+      return json({
+        ok:
+          true,
+        to
       });
     }
     if (
@@ -737,13 +789,13 @@ export default async (req) => {
       requests.push(
         incoming
       );
-
-
       await writeRequests(
         requests
       );
-
-
+      await notifyNewRequest(
+        incoming,
+        url.origin + "/"
+      );
       return json(
         {
           id:
@@ -2104,13 +2156,99 @@ let activeSettings =
 let activeConfig =
   configFrom( activeSettings );
 
+/*
+  The stored record as it is, for the few things kept on it that are
+  not settings - the last email failure, say.
+*/
+let activeRecord =
+  {};
+
 function useSettings(
   stored
 ) {
+  activeRecord =
+    stored && typeof stored === "object"
+      ? stored
+      : {};
   activeSettings =
     settingsFrom( stored );
   activeConfig =
     configFrom( activeSettings );
+}
+
+/*
+  What the admin page shows about email: whether sending is set up,
+  where notifications go, and the last failure if one is remembered.
+*/
+function mailStatus() {
+  return {
+    configured:
+      mailConfigured(),
+    address:
+      activeSettings.notificationEmail || "",
+    lastError:
+      activeRecord.lastMailError || null
+  };
+}
+
+async function rememberMailOutcome(
+  error
+) {
+  const stored =
+    await readSettings();
+  const next =
+    { ...stored };
+  if ( error ) {
+    next.lastMailError = {
+      at:
+        new Date().toISOString(),
+      message:
+        String( error.message || error )
+    };
+  } else {
+    delete next.lastMailError;
+  }
+  await writeSettings( next );
+  useSettings( next );
+}
+
+/*
+  Tell the admin about a new request. Nothing here can fail the
+  request itself: a send that goes wrong is logged and remembered for
+  the banner, and the requester is none the wiser.
+*/
+async function notifyNewRequest(
+  request,
+  siteUrl
+) {
+  const to =
+    activeSettings.notificationEmail;
+  if ( !to || !mailConfigured() ) {
+    return { sent: false, reason: !to ? "no-address" : "not-configured" };
+  }
+  const message =
+    requestNotification({
+      request,
+      config:
+        activeConfig,
+      siteUrl
+    });
+  try {
+    await sendMail({
+      to,
+      fromName:
+        activeConfig.portalTitle,
+      ...message
+    });
+    if ( activeRecord.lastMailError ) {
+      await rememberMailOutcome( null );
+    }
+    return { sent: true };
+  } catch ( error ) {
+    console.error( "Request notification failed", error );
+    await rememberMailOutcome( error );
+    return { sent: false, reason: "failed", error: error.message };
+  }
 }
 
 function getConfig() {

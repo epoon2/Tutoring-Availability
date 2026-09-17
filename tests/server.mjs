@@ -60,6 +60,13 @@ const syncResult = () => FAKE_GOOGLE === 'failed'
 
 // The settings record, kept in memory and shaped by the real code.
 let settingsRecord = {};
+// FAKE_MAIL=ok|failed|off pretends the site has (or lacks) Brevo, and
+// answers a test send with that outcome; a failure is remembered as
+// production remembers it.
+const FAKE_MAIL = process.env.FAKE_MAIL || 'off';
+let lastMailError = null;
+const sentMail = [];
+const mailStatus = () => ({ configured: FAKE_MAIL !== 'off', address: settings().notificationEmail || '', lastError: lastMailError });
 const settings = () => settingsFrom(settingsRecord);
 const config = () => ({ ...configFrom(settings()), googleSync: Boolean(FAKE_GOOGLE) });
 const defaultColorFor = (type) => type === 'AVAILABLE' ? settings().colors.available : settings().colors.blocked;
@@ -83,7 +90,16 @@ createServer(async (req, res) => {
     if (route === '/config') return json(res, 200, { config: config() });
     if (route === '/settings' && req.method === 'GET') {
       if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
-      return json(res, 200, { settings: settings(), config: config() });
+      return json(res, 200, { settings: settings(), config: config(), mail: mailStatus() });
+    }
+    if (route === '/settings/testmail' && req.method === 'POST') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      if (FAKE_MAIL === 'off') return json(res, 400, { error: 'Email sending is not set up on the site yet (BREVO_API_KEY and NOTIFY_FROM_EMAIL).' });
+      if (!settings().notificationEmail) return json(res, 400, { error: 'Enter and save a notification email first.' });
+      if (FAKE_MAIL === 'failed') { lastMailError = { at: new Date().toISOString(), message: 'Brevo 401: Key not found' }; return json(res, 502, { error: 'Brevo 401: Key not found' }); }
+      lastMailError = null;
+      sentMail.push({ to: settings().notificationEmail, test: true });
+      return json(res, 200, { ok: true, to: settings().notificationEmail });
     }
     if (route === '/settings' && req.method === 'PUT') {
       if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
@@ -114,7 +130,7 @@ createServer(async (req, res) => {
         events: admin === 'admin' ? served : buildPublicSchedule(served),
         config: config(), mode: admin,
         updatedAt: new Date().toISOString(), updatedBy: 'test',
-        ...(admin === 'admin' ? { history: summarizeHistory(history), customColors } : {})
+        ...(admin === 'admin' ? { history: summarizeHistory(history), customColors, mail: mailStatus() } : {})
       });
     }
     if (route.startsWith('/events/') && route.endsWith('/skip') && req.method === 'POST') {

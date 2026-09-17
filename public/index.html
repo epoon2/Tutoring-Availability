@@ -425,6 +425,29 @@
     ></div>
 
 
+    <!-- EMAIL NOTICE (ADMIN) -->
+
+    <div
+      id="mailNotice"
+      class="sync-notice hidden"
+      role="status"
+    >
+      <span id="mailNoticeText"></span>
+      <button
+        id="mailNoticeSettingsBtn"
+        class="text-btn"
+      >
+        Open Settings
+      </button>
+      <button
+        id="mailNoticeCloseBtn"
+        class="text-btn"
+        aria-label="Dismiss"
+      >
+        Dismiss
+      </button>
+    </div>
+
     <!-- GOOGLE SYNC NOTICE (ADMIN) -->
 
     <div
@@ -1322,6 +1345,20 @@
           placeholder="you@example.com"
         >
       </label>
+
+      <div class="mail-test-row">
+        <span
+          id="mailStatusText"
+          class="mail-status"
+        ></span>
+        <button
+          id="testMailBtn"
+          class="btn secondary small"
+          type="button"
+        >
+          Send a test email
+        </button>
+      </div>
 
       <div
         id="settingsError"

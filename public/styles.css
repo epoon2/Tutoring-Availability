@@ -2709,3 +2709,31 @@ body:not(.view-week).list-view .calendar {
     grid-template-columns: 1fr;
   }
 }
+
+
+.mail-test-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -6px 0 14px;
+}
+
+.mail-status {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mail-status.ok {
+  color: var(--available);
+}
+
+.mail-status.bad {
+  color: var(--blocked);
+}
+
+.btn.small {
+  padding: 7px 11px;
+  font-size: 13px;
+}

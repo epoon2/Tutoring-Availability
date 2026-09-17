@@ -27,6 +27,15 @@
     settingsColors:
       null,
 
+    /*
+      The failed-email notice: which failure is on screen, and which
+      one the admin dismissed, so it does not come straight back.
+    */
+    shownMailError:
+      null,
+    dismissedMailError:
+      null,
+
     weekStart:
       startOfWeek(
         new Date()
@@ -678,6 +687,24 @@
       .addEventListener(
         'click',
         saveSettings
+      );
+    $('testMailBtn')
+      .addEventListener(
+        'click',
+        sendTestMail
+      );
+    $('mailNoticeSettingsBtn')
+      .addEventListener(
+        'click',
+        () => {
+          hideMailNotice();
+          openSettings();
+        }
+      );
+    $('mailNoticeCloseBtn')
+      .addEventListener(
+        'click',
+        hideMailNotice
       );
 
 
@@ -2982,6 +3009,9 @@
             .map( normalizeHex )
             .filter( Boolean );
       }
+      applyMailStatus(
+        data.mail
+      );
 
 
       /*
@@ -13057,13 +13087,22 @@
     endAction();
     $('settingsError').textContent = '';
     let settings;
+    let mail;
     try {
+      const data =
+        await api( '/settings' );
       settings =
-        ( await api( '/settings' ) ).settings;
+        data.settings;
+      mail =
+        data.mail;
     } catch (error) {
       setStatus( error.message );
       return;
     }
+    renderMailStatus(
+      mail,
+      settings.notificationEmail
+    );
     $('settingTitle').value =
       settings.title || '';
     $('settingDisplayName').value =
@@ -13151,6 +13190,129 @@
       settings.notificationEmail || '';
     openModal( 'settingsModal' );
     $('settingTitle').focus();
+  }
+
+  /*
+    Email: whether the site can send at all, and whether the last
+    notification went out. The dialog shows it; the banner shows a
+    failure until it is dismissed or the next send succeeds.
+  */
+  function renderMailStatus(
+    mail,
+    address
+  ) {
+    const line =
+      $('mailStatusText');
+    const button =
+      $('testMailBtn');
+    if ( !mail || !mail.configured ) {
+      line.textContent =
+        'Email sending is not set up on the site yet - requests still arrive under Requests.';
+      line.className =
+        'mail-status';
+      button.disabled =
+        true;
+      return;
+    }
+    button.disabled =
+      false;
+    if ( mail.lastError ) {
+      line.textContent =
+        'The last email failed: ' + mail.lastError.message;
+      line.className =
+        'mail-status bad';
+    } else if ( address ) {
+      line.textContent =
+        'New requests are emailed to ' + address + '.';
+      line.className =
+        'mail-status ok';
+    } else {
+      line.textContent =
+        'Enter an address and save to be emailed about new requests.';
+      line.className =
+        'mail-status';
+    }
+  }
+
+  function applyMailStatus(
+    mail
+  ) {
+    if ( !state.isAdmin || !mail || !mail.lastError ) {
+      return;
+    }
+    if ( state.dismissedMailError === mail.lastError.at ) {
+      return;
+    }
+    $('mailNoticeText').textContent =
+      'A new-request email could not be sent (' +
+      mail.lastError.message +
+      '). The request is still under Requests.';
+    $('mailNotice')
+      .classList
+      .remove( 'hidden' );
+    state.shownMailError =
+      mail.lastError.at;
+  }
+
+  function hideMailNotice() {
+    state.dismissedMailError =
+      state.shownMailError;
+    $('mailNotice')
+      .classList
+      .add( 'hidden' );
+  }
+
+  async function sendTestMail() {
+    const line =
+      $('mailStatusText');
+    const button =
+      $('testMailBtn');
+    const typed =
+      $('settingNotificationEmail').value.trim();
+    /*
+      The test goes to the SAVED address; an unsaved change is saved
+      first so the test means what the admin sees.
+    */
+    button.disabled =
+      true;
+    line.textContent =
+      'Sending…';
+    line.className =
+      'mail-status';
+    try {
+      if ( typed ) {
+        await api(
+          '/settings',
+          {
+            method:
+              'PUT',
+            body:
+              JSON.stringify({ notificationEmail: typed })
+          }
+        );
+      }
+      const data =
+        await api(
+          '/settings/testmail',
+          {
+            method:
+              'POST'
+          }
+        );
+      line.textContent =
+        'Test email sent to ' + data.to + '. Check the inbox (and spam, the first time).';
+      line.className =
+        'mail-status ok';
+      hideMailNotice();
+    } catch (error) {
+      line.textContent =
+        'The test failed: ' + error.message;
+      line.className =
+        'mail-status bad';
+    } finally {
+      button.disabled =
+        false;
+    }
   }
 
   async function saveSettings() {
