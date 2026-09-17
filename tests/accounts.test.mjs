@@ -208,8 +208,9 @@ for (let i = 0; i < 20; i++) await call('POST', '/login', {}, { email: `x${i}@ex
 r = await call('POST', '/login', {}, { email: 'maya@example.com', password: 'maya-pass-4' });
 ok('too many logins from one address are held off', r.status === 429 && /try again/.test(r.data.error), JSON.stringify(r.data));
 const store = getStore('tutoring-availability');
-for (let i = 0; i < 12; i++) await call('POST', '/requests', {}, { name: 'A', email: 'a@example.com', subject: 'Math', format: 'Online', start: '2031-01-08T10:00', end: '2031-01-08T11:00', recurrence: null });
-r = await call('POST', '/requests', {}, { name: 'A', email: 'a@example.com', subject: 'Math', format: 'Online', start: '2031-01-08T10:00', end: '2031-01-08T11:00', recurrence: null });
+const soon = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);   // inside the default 12-week window
+for (let i = 0; i < 12; i++) await call('POST', '/requests', {}, { name: 'A', email: 'a@example.com', subject: 'Math', format: 'Online', start: soon + 'T10:00', end: soon + 'T11:00', recurrence: null });
+r = await call('POST', '/requests', {}, { name: 'A', email: 'a@example.com', subject: 'Math', format: 'Online', start: soon + 'T10:00', end: soon + 'T11:00', recurrence: null });
 ok('so are session requests', r.status === 429, JSON.stringify(r.data));
 ok('the counts live in storage, not memory', await store.get('rl/login/unknown', { type: 'json' }) !== null);
 

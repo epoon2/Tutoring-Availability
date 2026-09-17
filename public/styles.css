@@ -3204,3 +3204,10 @@ body.calendar-missing .header-actions {
 :root[data-clock="24"] .time-seg-meridiem {
   display: none;
 }
+
+.request-rules {
+  margin: -6px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}

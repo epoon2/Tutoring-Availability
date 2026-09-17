@@ -1008,10 +1008,15 @@ export default async (req) => {
       how a student asks for a slot.
     */
 
-    if (
+        if (
       req.method === "POST" &&
       route === "/requests"
     ) {
+
+      if ( !activeSettings.requests.enabled ) {
+        fail( "This calendar is not taking requests right now.", 403 );
+      }
+
 
       const body =
         await req.json();
@@ -2578,6 +2583,21 @@ function adminPasswordMatches(
 }
 
 
+function describeMinutes(
+  minutes
+) {
+  if ( minutes % 60 === 0 ) {
+    const hours =
+      minutes / 60;
+    return hours === 1 ? "one hour" : `${ hours } hours`;
+  }
+  if ( minutes > 60 ) {
+    return `${ Math.floor( minutes / 60 ) } h ${ minutes % 60 } min`;
+  }
+  return `${ minutes } minutes`;
+}
+
+
 function describeWait(
   seconds
 ) {
@@ -2779,8 +2799,51 @@ function envDefaults() {
     weekStart:
       0,
     hourFormat:
-      "12"
+      "12",
+    /*
+      The request form: whether visitors get one, what it says at the
+      top, and the rules a request must meet.
+    */
+    requests: {
+      enabled:
+        true,
+      intro:
+        "",
+      minNoticeHours:
+        0,
+      maxWeeksAhead:
+        12,
+      minMinutes:
+        15,
+      maxMinutes:
+        MAX_REQUEST_MINUTES
+    },
+    /*
+      What visitors are shown of booked time: unnamed blocks, or
+      nothing at all (the open time still shrinks around them).
+    */
+    privacy: {
+      showBooked:
+        true
+    }
   };
+}
+
+const REQUEST_RULE_LIMITS = {
+  minNoticeHours: [ 0, 24 * 14 ],
+  maxWeeksAhead: [ 1, 52 ],
+  minMinutes: [ 15, 8 * 60 ],
+  maxMinutes: [ 15, 8 * 60 ],
+  intro: 300
+};
+
+function integerIn(
+  value,
+  [ low, high ]
+) {
+  const n =
+    Number( value );
+  return Number.isInteger( n ) && n >= low && n <= high ? n : null;
 }
 
 const FONTS =
@@ -2848,6 +2911,24 @@ function settingsFrom(
     ...( FONTS.has( record.font ) ? { font: record.font } : {} ),
     ...( record.weekStart === 1 || record.weekStart === 0 ? { weekStart: record.weekStart } : {} ),
     ...( record.hourFormat === "24" || record.hourFormat === "12" ? { hourFormat: record.hourFormat } : {} ),
+    requests: {
+      ...base.requests,
+      ...( record.requests && typeof record.requests === "object"
+        ? {
+            ...( typeof record.requests.enabled === "boolean" ? { enabled: record.requests.enabled } : {} ),
+            ...( typeof record.requests.intro === "string" ? { intro: record.requests.intro.slice( 0, REQUEST_RULE_LIMITS.intro ) } : {} ),
+            ...Object.fromEntries(
+              [ "minNoticeHours", "maxWeeksAhead", "minMinutes", "maxMinutes" ]
+                .map( (key) => [ key, integerIn( record.requests[ key ], REQUEST_RULE_LIMITS[ key ] ) ] )
+                .filter( ([ , value ]) => value !== null )
+            )
+          }
+        : {} )
+    },
+    privacy: {
+      ...base.privacy,
+      ...( record.privacy && typeof record.privacy.showBooked === "boolean" ? { showBooked: record.privacy.showBooked } : {} )
+    },
     colors: {
       ...base.colors,
       ...( record.colors && HEX_COLOR.test( record.colors.available || "" ) ? { available: record.colors.available } : {} ),
@@ -2864,6 +2945,9 @@ function settingsFrom(
   if ( !( out.dayStart >= 0 && out.dayStart <= 23 && out.dayEnd >= 1 && out.dayEnd <= 24 && out.dayEnd > out.dayStart ) ) {
     out.dayStart = base.dayStart;
     out.dayEnd = base.dayEnd;
+  }
+  if ( out.requests.maxMinutes < out.requests.minMinutes ) {
+    out.requests.maxMinutes = out.requests.minMinutes;
   }
   return out;
 }
@@ -2899,7 +2983,11 @@ function configFrom(
     weekStart:
       settings.weekStart,
     hourFormat:
-      settings.hourFormat
+      settings.hourFormat,
+    requests:
+      { ...settings.requests },
+    privacy:
+      { ...settings.privacy }
   };
 }
 
@@ -2984,6 +3072,39 @@ function validateSettings(
     const format = String( body.hourFormat );
     if ( format !== "12" && format !== "24" ) bad( "The clock is 12-hour or 24-hour." );
     next.hourFormat = format;
+  }
+  if ( body.requests && typeof body.requests === "object" ) {
+    const incoming =
+      body.requests;
+    next.requests =
+      { ...current.requests };
+    if ( "enabled" in incoming ) next.requests.enabled = Boolean( incoming.enabled );
+    if ( "intro" in incoming ) {
+      const intro =
+        String( incoming.intro || "" ).trim();
+      if ( intro.length > REQUEST_RULE_LIMITS.intro ) bad( `The request form's introduction is too long (${ REQUEST_RULE_LIMITS.intro } characters at most).` );
+      next.requests.intro = intro;
+    }
+    const names = {
+      minNoticeHours: "the notice a request needs (0 to 336 hours)",
+      maxWeeksAhead: "how far ahead a request can be (1 to 52 weeks)",
+      minMinutes: "the shortest session (15 minutes to 8 hours)",
+      maxMinutes: "the longest session (15 minutes to 8 hours)"
+    };
+    for ( const key of Object.keys( names ) ) {
+      if ( key in incoming ) {
+        const value =
+          integerIn( incoming[ key ], REQUEST_RULE_LIMITS[ key ] );
+        if ( value === null ) bad( `Please enter ${ names[ key ] }.` );
+        next.requests[ key ] = value;
+      }
+    }
+    if ( next.requests.maxMinutes < next.requests.minMinutes ) bad( "The longest session cannot be shorter than the shortest." );
+  }
+  if ( body.privacy && typeof body.privacy === "object" ) {
+    next.privacy =
+      { ...current.privacy };
+    if ( "showBooked" in body.privacy ) next.privacy.showBooked = Boolean( body.privacy.showBooked );
   }
   if ( "googleCalendarId" in body ) {
     const id =
@@ -5510,26 +5631,70 @@ function validateRequest(
   }
 
 
+    const rules =
+    activeSettings.requests;
+
+
   if (
     endKey -
     startKey >
-    MAX_REQUEST_MINUTES
+    rules.maxMinutes
   ) {
 
     bad(
-      "A single session cannot run longer than eight hours."
+      `A single session cannot run longer than ${ describeMinutes( rules.maxMinutes ) }.`
     );
 
   }
 
 
   if (
+    endKey -
     startKey <
-    currentMinuteKey()
+    rules.minMinutes
+  ) {
+
+    bad(
+      `A session must be at least ${ describeMinutes( rules.minMinutes ) } long.`
+    );
+
+  }
+
+
+  const nowKey =
+    currentMinuteKey();
+
+
+  if (
+    startKey <
+    nowKey
   ) {
 
     bad(
       "Please choose a time in the future."
+    );
+
+  }
+
+
+  if (
+    rules.minNoticeHours > 0 &&
+    startKey < nowKey + rules.minNoticeHours * 60
+  ) {
+
+    bad(
+      `Requests need at least ${ describeMinutes( rules.minNoticeHours * 60 ) }' notice.`
+    );
+
+  }
+
+
+  if (
+    startKey > nowKey + rules.maxWeeksAhead * 7 * 1440
+  ) {
+
+    bad(
+      `Requests can be made up to ${ rules.maxWeeksAhead === 1 ? "one week" : rules.maxWeeksAhead + " weeks" } ahead.`
     );
 
   }
@@ -6305,12 +6470,10 @@ function buildPublicSchedule(
     busy the day is.
   */
 
-  const publicBlocked =
+    const publicBlocked =
     [];
-
-
   for (
-    const block of blockedSessions
+    const block of activeSettings.privacy.showBooked ? blockedSessions : []
   ) {
 
     for (

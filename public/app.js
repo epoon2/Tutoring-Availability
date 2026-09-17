@@ -3510,8 +3510,49 @@
       .classList
       .toggle(
         'hidden',
-        state.isAdmin
+        state.isAdmin ||
+        !requestsOpen()
       );
+  }
+
+
+  /*
+    Whether visitors may ask for a session here at all.
+  */
+  function requestsOpen() {
+    return !state.config.requests || state.config.requests.enabled !== false;
+  }
+
+
+  /*
+    The rules a request must meet, in one line under the form's
+    introduction - only the ones that are not the defaults.
+  */
+  function describeRequestRules(
+    rules
+  ) {
+    const parts =
+      [];
+    const length =
+      (minutes) =>
+        minutes % 60 === 0
+          ? ( minutes / 60 === 1 ? '1 hour' : ( minutes / 60 ) + ' hours' )
+          : minutes > 60
+            ? Math.floor( minutes / 60 ) + ' h ' + ( minutes % 60 ) + ' min'
+            : minutes + ' minutes';
+    if ( rules.minNoticeHours > 0 ) {
+      parts.push( 'at least ' + length( rules.minNoticeHours * 60 ) + "' notice" );
+    }
+    if ( rules.maxWeeksAhead && rules.maxWeeksAhead < 12 ) {
+      parts.push( 'up to ' + ( rules.maxWeeksAhead === 1 ? 'one week' : rules.maxWeeksAhead + ' weeks' ) + ' ahead' );
+    }
+    if ( ( rules.minMinutes && rules.minMinutes > 15 ) || ( rules.maxMinutes && rules.maxMinutes < 480 ) ) {
+      parts.push( 'sessions of ' + length( rules.minMinutes || 15 ) + ' to ' + length( rules.maxMinutes || 480 ) );
+    }
+    if ( !parts.length ) {
+      return '';
+    }
+    return 'Requests need ' + parts.join( ', ' ) + '.';
   }
 
   /*
@@ -13781,7 +13822,13 @@
     setText( 'summaryPeopleLabel', peopleWord( 2 ) );
     setText( 'summaryToggleLabel',
       ( $('summaryList') && !$('summaryList').classList.contains( 'hidden' ) ? 'Hide each ' : 'Show each ' ) + peopleWord( 1 ) );
-    setText( 'requestIntro', 'Ask for a time that works for you. Nothing is booked until ' + ownerName() + ' confirms it.' );
+    const requestRules =
+      state.config.requests || {};
+    setText( 'requestIntro', requestRules.intro || ( 'Ask for a time that works for you. Nothing is booked until ' + ownerName() + ' confirms it.' ) );
+    setText( 'requestRules', describeRequestRules( requestRules ) );
+    if ( $('requestRules') ) {
+      $('requestRules').classList.toggle( 'hidden', !describeRequestRules( requestRules ) );
+    }
     setText( 'requestWarningFooter', 'You can still send this request. ' + ownerName() + ' will confirm whether the time works.' );
     setText( 'requestEmailHint', 'so ' + ownerName() + ' can get back to you' );
     const description =
@@ -13849,6 +13896,40 @@
     appointments: { available: 'Open',       blocked: 'Appointment',     person: 'client',   people: 'clients' }
   };
 
+  /*
+    Session lengths from a quarter hour to eight hours, in the steps
+    people actually use.
+  */
+  function fillMinuteSelect(
+    select,
+    chosen
+  ) {
+    const steps =
+      [ 15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 420, 480 ];
+    if ( !steps.includes( chosen ) ) {
+      steps.push( chosen );
+      steps.sort( (a, b) => a - b );
+    }
+    select.innerHTML = '';
+    steps.forEach(
+      (minutes) => {
+        const option =
+          document.createElement( 'option' );
+        option.value =
+          String( minutes );
+        option.textContent =
+          minutes % 60 === 0
+            ? ( minutes / 60 ) + ( minutes === 60 ? ' hour' : ' hours' )
+            : minutes > 60
+              ? Math.floor( minutes / 60 ) + ' h ' + ( minutes % 60 ) + ' min'
+              : minutes + ' minutes';
+        select.appendChild( option );
+      }
+    );
+    select.value =
+      String( chosen );
+  }
+
   function renderShareLink(
     slug
   ) {
@@ -13900,6 +13981,20 @@
       .toggle( 'hidden', !google.fromSite );
     $('feedLink').textContent =
       feed.url || '';
+    const requests =
+      settings.requests || {};
+    $('settingRequestsEnabled').checked =
+      requests.enabled !== false;
+    $('settingRequestIntro').value =
+      requests.intro || '';
+    $('settingMinNotice').value =
+      String( requests.minNoticeHours || 0 );
+    $('settingMaxWeeks').value =
+      String( requests.maxWeeksAhead || 12 );
+    fillMinuteSelect( $('settingMinMinutes'), requests.minMinutes || 15 );
+    fillMinuteSelect( $('settingMaxMinutes'), requests.maxMinutes || 480 );
+    $('settingShowBooked').checked =
+      !settings.privacy || settings.privacy.showBooked !== false;
     $('settingWeekStart').value =
       String( settings.weekStart === 1 ? 1 : 0 );
     $('settingHourFormat').value =
@@ -14161,7 +14256,25 @@
       hourFormat:
         $('settingHourFormat').value,
       font:
-        $('settingFont').value
+        $('settingFont').value,
+      requests: {
+        enabled:
+          $('settingRequestsEnabled').checked,
+        intro:
+          $('settingRequestIntro').value,
+        minNoticeHours:
+          Number( $('settingMinNotice').value ),
+        maxWeeksAhead:
+          Number( $('settingMaxWeeks').value ),
+        minMinutes:
+          Number( $('settingMinMinutes').value ),
+        maxMinutes:
+          Number( $('settingMaxMinutes').value )
+      },
+      privacy: {
+        showBooked:
+          $('settingShowBooked').checked
+      }
     };
     if ( body.dayEnd <= body.dayStart ) {
       $('settingsError').textContent =

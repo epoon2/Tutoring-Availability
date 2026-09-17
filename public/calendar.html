@@ -641,6 +641,11 @@
         it is confirmed.
       </p>
 
+      <p
+        id="requestRules"
+        class="request-rules hidden"
+      ></p>
+
 
       <!-- NAME -->
 
@@ -1641,6 +1646,89 @@
           Send a test email
         </button>
       </div>
+
+      <h3 class="settings-heading">Requests</h3>
+
+      <label class="checkbox-row">
+        <input
+          id="settingRequestsEnabled"
+          type="checkbox"
+        >
+        <span>
+          Visitors can request a session
+          <small>turn off to show the calendar only</small>
+        </span>
+      </label>
+
+      <label class="field">
+        <span>
+          Introduction on the request form
+          <small>leave empty for the standard one</small>
+        </span>
+        <textarea
+          id="settingRequestIntro"
+          rows="2"
+          maxlength="300"
+          placeholder="Ask for a time that works for you. Nothing is booked until it is confirmed."
+        ></textarea>
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>
+            Notice needed
+            <small>hours before the session</small>
+          </span>
+          <input
+            id="settingMinNotice"
+            type="number"
+            min="0"
+            max="336"
+            step="1"
+          >
+        </label>
+        <label class="field">
+          <span>
+            How far ahead
+            <small>weeks</small>
+          </span>
+          <input
+            id="settingMaxWeeks"
+            type="number"
+            min="1"
+            max="52"
+            step="1"
+          >
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>
+            Shortest session
+          </span>
+          <select id="settingMinMinutes"></select>
+        </label>
+        <label class="field">
+          <span>
+            Longest session
+          </span>
+          <select id="settingMaxMinutes"></select>
+        </label>
+      </div>
+
+      <h3 class="settings-heading">Privacy</h3>
+
+      <label class="checkbox-row">
+        <input
+          id="settingShowBooked"
+          type="checkbox"
+        >
+        <span>
+          Show booked time to visitors
+          <small>as unnamed blocks; names and notes are never shown. Off, visitors see open time only.</small>
+        </span>
+      </label>
 
       <h3 class="settings-heading">Google Calendar</h3>
 
