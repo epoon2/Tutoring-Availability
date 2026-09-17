@@ -25,8 +25,33 @@ import {
 import {
   mailConfigured,
   sendMail,
-  requestNotification
+  requestNotification,
+  verificationEmail,
+  resetEmail
 } from "./mail.mjs";
+import {
+  VERIFY_HOURS,
+  RESET_HOURS,
+  emailIsValid,
+  normalizeEmail,
+  passwordMatches,
+  passwordProblem,
+  hashPassword,
+  issueSession,
+  readUser,
+  findUserByEmail,
+  writeUser,
+  createUser,
+  userFromRequest,
+  issueToken,
+  consumeToken,
+  clientAddress,
+  rateLimit,
+  slugify,
+  slugIsValid,
+  claimSlug,
+  calendarForSlug
+} from "./accounts.mjs";
 import {
   recordBeforeWrite,
   applyUndo,
@@ -84,15 +109,89 @@ const MAX_REQUEST_MINUTES =
   8 * 60;
 
 
+/*
+  CALENDARS
+
+  Every account owns one calendar. The first calendar - the one the
+  site ran with before there were accounts - is "main" and keeps its
+  original storage keys, so nothing already saved moves; every later
+  calendar keeps its records under cal/<id>/. A request names its
+  calendar by slug (?calendar=ethan); with none it means main, which
+  is what older links and the feed expect.
+*/
+
+const MAIN_CALENDAR_ID =
+  "main";
+
+let activeCalendar =
+  { id: MAIN_CALENDAR_ID, slug: null };
+
+/*
+  The signed-in account behind the request's session header, if any.
+*/
+let activeUser =
+  null;
+
+function storageKey(
+  name
+) {
+  return activeCalendar.id === MAIN_CALENDAR_ID
+    ? name
+    : `cal/${ activeCalendar.id }/${ name }`;
+}
+
+function cacheTag() {
+  return activeCalendar.id === MAIN_CALENDAR_ID
+    ? EVENTS_CACHE_TAG
+    : `cal-${ activeCalendar.id }`;
+}
+
+/*
+  Which calendar a request is about. An unknown slug is a 404 for
+  everything but the account routes, which belong to no calendar.
+*/
+async function resolveCalendar(
+  store,
+  slug
+) {
+  if ( !slug ) {
+    return { id: MAIN_CALENDAR_ID, slug: null };
+  }
+  const id =
+    await calendarForSlug( store, slug );
+  if ( id ) {
+    return { id, slug };
+  }
+  /*
+    Main's address is not indexed until someone asks for it, so the
+    first request to /ethan claims it from the display name.
+  */
+  const mainSlug =
+    await ensureMainSlug( store );
+  return mainSlug === slug
+    ? { id: MAIN_CALENDAR_ID, slug }
+    : null;
+}
+
+async function ensureMainSlug(
+  store
+) {
+  const stored =
+    await store.get( SETTINGS_KEY, { type: "json", consistency: "strong" } ) || {};
+  if ( stored.slug ) {
+    return stored.slug;
+  }
+  const wanted =
+    slugify( settingsFrom( stored ).displayName ) || "calendar";
+  const slug =
+    await claimSlug( store, wanted, MAIN_CALENDAR_ID );
+  await store.setJSON( SETTINGS_KEY, { ...stored, slug } );
+  return slug;
+}
+
+
 export default async (req) => {
   try {
-    /*
-      The calendar's settings shape everything below - hours, colours,
-      wording, time zone - so they are read before the route is.
-    */
-    useSettings(
-      await readSettings()
-    );
     const url =
       new URL(
         req.url
@@ -105,6 +204,113 @@ export default async (req) => {
         ""
       ) ||
       "/";
+
+
+    const store =
+      getStore(
+        STORE_NAME
+      );
+
+
+    /*
+      Who is asking, and about which calendar. The account routes
+      come first: they belong to no calendar and must work even when
+      the address in the query is stale.
+    */
+    activeUser =
+      await userFromRequest(
+        store,
+        req
+      );
+
+
+    if (
+      route === "/signup" ||
+      route === "/login" ||
+      route === "/me" ||
+      route === "/verify" ||
+      route === "/resend" ||
+      route === "/forgot" ||
+      route === "/reset" ||
+      route === "/account/password"
+    ) {
+      activeCalendar =
+        { id: MAIN_CALENDAR_ID, slug: null };
+      useSettings(
+        await readSettings()
+      );
+      const handled =
+        await handleAccountRoute(
+          req,
+          route,
+          url,
+          store
+        );
+      if ( handled ) {
+        return handled;
+      }
+    }
+
+
+    const calendar =
+      await resolveCalendar(
+        store,
+        (
+          url.searchParams.get( "calendar" ) ||
+          req.headers.get( "x-calendar" ) ||
+          ""
+        ).trim().toLowerCase()
+      );
+
+
+    if (
+      !calendar
+    ) {
+      return json(
+        {
+          error:
+            "There is no calendar at this address.",
+          missing:
+            true
+        },
+        404
+      );
+    }
+
+
+    activeCalendar =
+      calendar;
+
+
+    /*
+      The calendar's settings shape everything below - hours, colours,
+      wording, time zone - so they are read before the route is.
+    */
+    useSettings(
+      await readSettings()
+    );
+
+
+    /*
+      A calendar whose owner has not confirmed their email is not
+      public yet: the owner sees it, nobody else does. The first
+      calendar was live before accounts existed and stays so.
+    */
+    if (
+      activeCalendar.id !== MAIN_CALENDAR_ID &&
+      !activeRecord.live &&
+      !ownsActiveCalendar()
+    ) {
+      return json(
+        {
+          error:
+            "This calendar is not published yet. Its owner still has to confirm their email.",
+          unpublished:
+            true
+        },
+        404
+      );
+    }
 
 
     /*
@@ -223,6 +429,34 @@ export default async (req) => {
 
         config:
           getConfig(),
+
+        /*
+          The calendar's address, and what became of the session the
+          page sent: "valid" (an account, though maybe not this
+          calendar's owner), "invalid" (expired or signed out
+          everywhere), or nothing when none was sent.
+        */
+        calendar: {
+          slug:
+            await currentSlug( store ),
+          claimed:
+            Boolean( activeRecord.ownerId ) ||
+            activeCalendar.id !== MAIN_CALENDAR_ID
+        },
+
+        session:
+          req.headers.get( "x-session" )
+            ? ( activeUser ? "valid" : "invalid" )
+            : null,
+
+        ...(
+          activeUser
+            ? {
+                account:
+                  await accountSummary( store, activeUser, url.origin )
+              }
+            : {}
+        ),
 
         events:
           admin
@@ -376,6 +610,8 @@ export default async (req) => {
       return json({
         settings:
           activeSettings,
+        slug:
+          await currentSlug( store ),
         config:
           getConfig(),
         mail:
@@ -461,13 +697,37 @@ export default async (req) => {
         );
       const zoneChanged =
         next.timezoneId !== activeSettings.timezoneId;
+      /*
+        The calendar's address. A change frees the old one; an address
+        someone else holds is refused rather than altered.
+      */
+      let slug =
+        stored.slug || null;
+      if ( "slug" in body ) {
+        const wanted =
+          String( body.slug || "" ).trim().toLowerCase();
+        if ( !slugIsValid( wanted ) ) {
+          bad( "An address is 3 to 30 letters, numbers and dashes, and cannot be a word the site uses itself." );
+        }
+        if ( wanted !== stored.slug ) {
+          const owner =
+            await calendarForSlug( store, wanted );
+          if ( owner && owner !== activeCalendar.id ) {
+            bad( "That address is taken. Please choose another." );
+          }
+          slug =
+            await claimSlug( store, wanted, activeCalendar.id, stored.slug || null );
+        }
+      }
       await writeSettings({
         ...stored,
-        ...next
+        ...next,
+        ...( slug ? { slug } : {} )
       });
       useSettings({
         ...stored,
-        ...next
+        ...next,
+        ...( slug ? { slug } : {} )
       });
       let sync;
       if ( zoneChanged ) {
@@ -483,72 +743,13 @@ export default async (req) => {
           true,
         settings:
           activeSettings,
+        slug:
+          slug || await currentSlug( store ),
         config:
           getConfig(),
         ...( sync ? { sync } : {} )
       });
     }
-    /*
-      ADMIN LOGIN
-    */
-
-    if (
-      req.method === "POST" &&
-      route === "/login"
-    ) {
-
-      requireAdmin(
-        req
-      );
-
-
-      /*
-        "Keep me signed in": a token the device can hold instead of
-        the password. It is the password's HMAC over an expiry, so it
-        proves nothing on its own, cannot be turned back into the
-        password, and dies for every device the moment the password
-        changes on Netlify.
-      */
-
-      let body =
-        {};
-
-      try {
-        body =
-          await req.json();
-      } catch {
-        body =
-          {};
-      }
-
-
-      const remember =
-        body?.remember === true;
-
-
-      return json({
-        ok:
-          true,
-
-        ...(
-          remember
-            ? {
-                token:
-                  issueAdminToken(),
-
-                expiresAt:
-                  new Date(
-                    Date.now() +
-                    ADMIN_TOKEN_DAYS * 86400000
-                  ).toISOString()
-              }
-            : {}
-        )
-      });
-
-    }
-
-
     /*
       CREATE / UPDATE EVENT
     */
@@ -785,6 +986,21 @@ export default async (req) => {
         validateRequest(
           body
         );
+
+
+      /*
+        Anyone may send a request, so one address cannot send them
+        without end.
+      */
+      const wait =
+        await rateLimit(
+          store,
+          "request",
+          clientAddress( req )
+        );
+      if ( wait ) {
+        fail( `Too many requests from this device. Please try again in ${ describeWait( wait ) }.`, 429 );
+      }
 
 
       const requests =
@@ -1938,6 +2154,495 @@ export default async (req) => {
   so the notification address stays private.
 */
 
+/*
+  ACCOUNT ROUTES
+
+    POST /signup            email, password, display name; the site's
+                            admin password too, to take over the first
+                            calendar rather than start a new one
+    POST /login             email and password -> a session token
+                            (or, with no email, the older admin-password
+                            login for the first calendar)
+    GET  /me                the account behind a session
+    POST /verify            the code from the confirmation email
+    POST /resend            another confirmation email
+    POST /forgot            a password-reset email, if the address exists
+    POST /reset             the code from that email and a new password
+    POST /account/password  change the password while signed in
+
+  Every route that could be hammered is rate-limited by address; the
+  answers never say whether an email address has an account, except
+  at sign-up, where the person typing it needs to know.
+
+  Returns null for a request that is none of these.
+*/
+
+async function handleAccountRoute(
+  req,
+  route,
+  url,
+  store
+) {
+  if ( req.method !== "POST" && route !== "/me" ) {
+    return null;
+  }
+  const origin =
+    url.origin;
+  const address =
+    clientAddress( req );
+  const readBody =
+    async () => {
+      try {
+        const body =
+          await req.json();
+        return body && typeof body === "object" ? body : {};
+      } catch {
+        return {};
+      }
+    };
+  const limited =
+    async (bucket, who = address) => {
+      const wait =
+        await rateLimit( store, bucket, who );
+      if ( wait ) {
+        fail( `Too many attempts. Please try again in ${ describeWait( wait ) }.`, 429 );
+      }
+    };
+  const answer =
+    async (user, extra = {}, status = 200) =>
+      json({
+        ok:
+          true,
+        ...issueSession( user ),
+        account:
+          await accountSummary( store, user, origin ),
+        ...extra
+      }, status );
+
+  if ( route === "/signup" ) {
+    const body =
+      await readBody();
+    const email =
+      normalizeEmail( body.email );
+    if ( !emailIsValid( email ) ) {
+      bad( "Please enter a valid email address." );
+    }
+    const problem =
+      passwordProblem( body.password );
+    if ( problem ) {
+      bad( problem );
+    }
+    const displayName =
+      String( body.displayName || "" ).trim().slice( 0, SETTINGS_LIMITS.displayName ) || email.split( "@" )[ 0 ];
+    if ( await findUserByEmail( store, email ) ) {
+      fail( "There is already an account with that email. Log in instead, or reset your password.", 409 );
+    }
+    await limited( "signup" );
+    const mainRecord =
+      await store.get( SETTINGS_KEY, { type: "json", consistency: "strong" } ) || {};
+    const claimingMain =
+      typeof body.adminPassword === "string" && body.adminPassword !== "";
+    let calendarId;
+    let slug;
+    if ( claimingMain ) {
+      if ( mainRecord.ownerId ) {
+        fail( "That calendar already belongs to an account.", 409 );
+      }
+      if ( !adminPasswordMatches( body.adminPassword ) ) {
+        fail( "Incorrect admin password.", 401 );
+      }
+      calendarId =
+        MAIN_CALENDAR_ID;
+      slug =
+        await ensureMainSlug( store );
+    } else {
+      calendarId =
+        crypto.randomUUID();
+      const wanted =
+        slugify( body.slug || displayName ) || "calendar";
+      if ( body.slug && !slugIsValid( wanted ) ) {
+        bad( "An address is 3 to 30 letters, numbers and dashes, and cannot be a word the site uses itself." );
+      }
+      if ( body.slug && await calendarForSlug( store, wanted ) ) {
+        bad( "That address is taken. Please choose another." );
+      }
+      slug =
+        await claimSlug( store, slugIsValid( wanted ) ? wanted : "calendar", calendarId );
+    }
+    const user =
+      await createUser( store, { email, password: body.password, displayName, calendarId } );
+    if ( claimingMain ) {
+      const fresh =
+        await store.get( SETTINGS_KEY, { type: "json", consistency: "strong" } ) || {};
+      await store.setJSON( SETTINGS_KEY, {
+        ...fresh,
+        ownerId:
+          user.id,
+        slug,
+        live:
+          true,
+        ...( fresh.notificationEmail ? {} : { notificationEmail: email } )
+      });
+    } else {
+      await store.setJSON( `cal/${ calendarId }/${ SETTINGS_KEY }`, {
+        ownerId:
+          user.id,
+        slug,
+        title:
+          `${ displayName }'s Calendar`,
+        displayName,
+        notificationEmail:
+          email,
+        live:
+          false,
+        feedToken:
+          crypto.randomBytes( 24 ).toString( "base64url" ),
+        createdAt:
+          new Date().toISOString()
+      });
+    }
+    const verification =
+      await sendVerification( store, user, origin );
+    return answer( user, { verification }, 201 );
+  }
+
+  if ( route === "/login" ) {
+    const body =
+      await readBody();
+    if ( !body.email ) {
+      return legacyLogin( req, body );
+    }
+    await limited( "login" );
+    const email =
+      normalizeEmail( body.email );
+    await limited( "login", `email:${ email }` );
+    const user =
+      await findUserByEmail( store, email );
+    if ( !user || !passwordMatches( body.password, user ) ) {
+      fail( "That email and password do not match.", 401 );
+    }
+    return answer( user );
+  }
+
+  if ( route === "/me" ) {
+    if ( req.method !== "GET" ) {
+      return null;
+    }
+    if ( !activeUser ) {
+      fail( "Please log in.", 401 );
+    }
+    return json({
+      ok:
+        true,
+      account:
+        await accountSummary( store, activeUser, origin )
+    });
+  }
+
+  if ( route === "/verify" ) {
+    await limited( "verify" );
+    const body =
+      await readBody();
+    const record =
+      await consumeToken( store, body.token, "verify" );
+    const user =
+      record ? await readUser( store, record.userId ) : null;
+    if ( !user ) {
+      fail( "That confirmation link has expired or was already used. Log in and ask for a new one.", 400 );
+    }
+    if ( !user.verifiedAt ) {
+      user.verifiedAt =
+        new Date().toISOString();
+      await writeUser( store, user );
+      await publishCalendar( store, user.calendarId );
+    }
+    return answer( user );
+  }
+
+  if ( route === "/resend" ) {
+    if ( !activeUser ) {
+      fail( "Please log in.", 401 );
+    }
+    if ( activeUser.verifiedAt ) {
+      return json({ ok: true, verification: "done" });
+    }
+    await limited( "verify", `user:${ activeUser.id }` );
+    const verification =
+      await sendVerification( store, activeUser, origin );
+    return json({ ok: true, verification });
+  }
+
+  if ( route === "/forgot" ) {
+    await limited( "forgot" );
+    const body =
+      await readBody();
+    const email =
+      normalizeEmail( body.email );
+    if ( !emailIsValid( email ) ) {
+      bad( "Please enter a valid email address." );
+    }
+    if ( !mailConfigured() ) {
+      fail( "Password reset by email is not set up on this site yet.", 400 );
+    }
+    const user =
+      await findUserByEmail( store, email );
+    if ( user ) {
+      const token =
+        await issueToken( store, { kind: "reset", userId: user.id, hours: RESET_HOURS } );
+      const link =
+        `${ origin }/?reset=${ token }`;
+      try {
+        await sendMail({
+          to:
+            user.email,
+          fromName:
+            siteName( url ),
+          ...resetEmail({ displayName: user.displayName, link, siteName: siteName( url ), hours: RESET_HOURS })
+        });
+      } catch ( error ) {
+        console.error( "Reset email failed", error );
+        fail( "The reset email could not be sent right now. Please try again later.", 502 );
+      }
+    }
+    return json({
+      ok:
+        true,
+      message:
+        "If that address has an account, a reset link is on its way. It works for two hours."
+    });
+  }
+
+  if ( route === "/reset" ) {
+    await limited( "verify" );
+    const body =
+      await readBody();
+    const problem =
+      passwordProblem( body.password );
+    if ( problem ) {
+      bad( problem );
+    }
+    const record =
+      await consumeToken( store, body.token, "reset" );
+    const user =
+      record ? await readUser( store, record.userId ) : null;
+    if ( !user ) {
+      fail( "That reset link has expired or was already used. Ask for a new one.", 400 );
+    }
+    Object.assign( user, hashPassword( body.password ) );
+    user.pwVersion =
+      ( user.pwVersion || 1 ) + 1;
+    if ( !user.verifiedAt ) {
+      user.verifiedAt =
+        new Date().toISOString();
+      await publishCalendar( store, user.calendarId );
+    }
+    await writeUser( store, user );
+    return answer( user );
+  }
+
+  if ( route === "/account/password" ) {
+    if ( !activeUser ) {
+      fail( "Please log in.", 401 );
+    }
+    const body =
+      await readBody();
+    if ( !passwordMatches( body.current, activeUser ) ) {
+      fail( "Your current password is not right.", 401 );
+    }
+    const problem =
+      passwordProblem( body.password );
+    if ( problem ) {
+      bad( problem );
+    }
+    Object.assign( activeUser, hashPassword( body.password ) );
+    activeUser.pwVersion =
+      ( activeUser.pwVersion || 1 ) + 1;
+    await writeUser( store, activeUser );
+    return answer( activeUser );
+  }
+
+  return null;
+}
+
+
+/*
+  The older way in: the site's admin password in a header opens the
+  first calendar until an account claims it. "Keep me signed in"
+  answers with a token the device holds instead of the password: the
+  password's HMAC over an expiry, which proves nothing on its own and
+  dies for every device the moment the password changes on Netlify.
+*/
+function legacyLogin(
+  req,
+  body
+) {
+  requireAdmin(
+    req
+  );
+  const remember =
+    body.remember === true;
+  return json({
+    ok:
+      true,
+    ...(
+      remember
+        ? {
+            token:
+              issueAdminToken(),
+            expiresAt:
+              new Date(
+                Date.now() +
+                ADMIN_TOKEN_DAYS * 86400000
+              ).toISOString()
+          }
+        : {}
+    )
+  });
+}
+
+
+function adminPasswordMatches(
+  password
+) {
+  const expected =
+    Buffer.from( process.env.ADMIN_PASSWORD || "" );
+  const supplied =
+    Buffer.from( String( password || "" ) );
+  return (
+    expected.length > 0 &&
+    expected.length === supplied.length &&
+    crypto.timingSafeEqual( expected, supplied )
+  );
+}
+
+
+function describeWait(
+  seconds
+) {
+  if ( seconds < 90 ) {
+    return `${ seconds } seconds`;
+  }
+  const minutes =
+    Math.ceil( seconds / 60 );
+  return minutes === 1 ? "a minute" : `${ minutes } minutes`;
+}
+
+
+function siteName(
+  url
+) {
+  return process.env.SITE_NAME || url.host;
+}
+
+
+/*
+  What the page is told about the signed-in account: never the hash,
+  never the id.
+*/
+async function accountSummary(
+  store,
+  user,
+  origin
+) {
+  const slug =
+    await slugOfCalendar( store, user.calendarId );
+  return {
+    email:
+      user.email,
+    displayName:
+      user.displayName,
+    verified:
+      Boolean( user.verifiedAt ),
+    slug,
+    url:
+      `${ origin }/${ slug }`
+  };
+}
+
+
+async function slugOfCalendar(
+  store,
+  calendarId
+) {
+  if ( calendarId === MAIN_CALENDAR_ID ) {
+    return ensureMainSlug( store );
+  }
+  const record =
+    await store.get( `cal/${ calendarId }/${ SETTINGS_KEY }`, { type: "json", consistency: "strong" } ) || {};
+  return record.slug || null;
+}
+
+
+/*
+  The address of the calendar in hand, claimed for the first calendar
+  the first time anyone asks.
+*/
+async function currentSlug(
+  store
+) {
+  return activeCalendar.slug || activeRecord.slug || slugOfCalendar( store, activeCalendar.id );
+}
+
+
+/*
+  A confirmed email makes the calendar public.
+*/
+async function publishCalendar(
+  store,
+  calendarId
+) {
+  if ( calendarId === MAIN_CALENDAR_ID ) {
+    return;
+  }
+  const key =
+    `cal/${ calendarId }/${ SETTINGS_KEY }`;
+  const record =
+    await store.get( key, { type: "json", consistency: "strong" } ) || {};
+  await store.setJSON( key, { ...record, live: true } );
+}
+
+
+/*
+  The confirmation email. Where the site cannot send mail at all, the
+  address is taken on trust and the calendar goes live at once -
+  there is no other way to confirm it.
+*/
+async function sendVerification(
+  store,
+  user,
+  origin
+) {
+  if ( !mailConfigured() ) {
+    if ( !user.verifiedAt ) {
+      user.verifiedAt =
+        new Date().toISOString();
+      await writeUser( store, user );
+      await publishCalendar( store, user.calendarId );
+    }
+    return "off";
+  }
+  const token =
+    await issueToken( store, { kind: "verify", userId: user.id, hours: VERIFY_HOURS } );
+  const link =
+    `${ origin }/?verify=${ token }`;
+  const name =
+    siteName( new URL( origin ) );
+  try {
+    await sendMail({
+      to:
+        user.email,
+      fromName:
+        name,
+      ...verificationEmail({ displayName: user.displayName, link, siteName: name, hours: VERIFY_HOURS })
+    });
+    return "sent";
+  } catch ( error ) {
+    console.error( "Verification email failed", error );
+    return "failed";
+  }
+}
+
+
 const SETTINGS_LIMITS = {
   title: 80,
   displayName: 40,
@@ -2331,7 +3036,7 @@ async function readEvents() {
 
   const current =
     await store.get(
-      EVENTS_KEY,
+      storageKey( EVENTS_KEY ),
       {
         type:
           "json",
@@ -2360,7 +3065,9 @@ async function readEvents() {
   */
 
   const legacy =
-    await store.get(
+    activeCalendar.id !== MAIN_CALENDAR_ID
+      ? null
+      : await store.get(
       LEGACY_EVENTS_KEY,
       {
         type:
@@ -2396,7 +3103,7 @@ async function readEvents() {
 
 
   await store.setJSON(
-    EVENTS_KEY,
+    storageKey( EVENTS_KEY ),
     migrated
   );
 
@@ -2417,13 +3124,13 @@ async function writeEvents(
 
 
   await store.setJSON(
-    EVENTS_KEY,
+    storageKey( EVENTS_KEY ),
     events
   );
 
 
   try {
-    await purgeCache({ tags: [EVENTS_CACHE_TAG] });
+    await purgeCache({ tags: [ cacheTag() ] });
   } catch (error) {
     console.error("Cache purge failed", error);
   }
@@ -2491,7 +3198,7 @@ async function readHistory() {
 
 
   return await store.get(
-    HISTORY_KEY,
+    storageKey( HISTORY_KEY ),
     {
       type:
         "json",
@@ -2515,7 +3222,7 @@ async function writeHistory(
 
 
   await store.setJSON(
-    HISTORY_KEY,
+    storageKey( HISTORY_KEY ),
     history
   );
 
@@ -2529,7 +3236,7 @@ async function readSettings() {
     );
   const settings =
     await store.get(
-      SETTINGS_KEY,
+      storageKey( SETTINGS_KEY ),
       {
         type:
           "json",
@@ -2551,7 +3258,7 @@ async function writeSettings(
       STORE_NAME
     );
   await store.setJSON(
-    SETTINGS_KEY,
+    storageKey( SETTINGS_KEY ),
     settings
   );
 }
@@ -2620,7 +3327,7 @@ async function readRequests() {
 
   const current =
     await store.get(
-      REQUESTS_KEY,
+      storageKey( REQUESTS_KEY ),
       {
         type:
           "json",
@@ -2658,7 +3365,7 @@ async function writeRequests(
 
 
   await store.setJSON(
-    REQUESTS_KEY,
+    storageKey( REQUESTS_KEY ),
     requests
   );
 
@@ -2791,44 +3498,55 @@ function requireAdmin(
 ) {
 
   if (
-    !process.env.ADMIN_PASSWORD
-  ) {
-
-    const error =
-      new Error(
-        "ADMIN_PASSWORD is not configured in Netlify."
-      );
-
-
-    error.status =
-      503;
-
-
-    throw error;
-
-  }
-
-
-  if (
-    !hasValidAdminPassword(
+    hasValidAdminPassword(
       req
     )
   ) {
-
-    const error =
-      new Error(
-        "Incorrect admin password."
-      );
-
-
-    error.status =
-      401;
-
-
-    throw error;
-
+    return;
   }
 
+  /*
+    A session that no longer opens this calendar: it expired, the
+    password changed, or it belongs to someone else's account.
+  */
+  if (
+    req.headers.get( "x-session" )
+  ) {
+    fail(
+      activeUser
+        ? "This is not your calendar."
+        : "Please log in again.",
+      401
+    );
+  }
+
+  if (
+    !process.env.ADMIN_PASSWORD
+  ) {
+    fail(
+      "ADMIN_PASSWORD is not configured in Netlify.",
+      503
+    );
+  }
+
+  fail(
+    "Incorrect admin password.",
+    401
+  );
+
+}
+
+
+/*
+  The owner of the calendar in hand: a signed-in account that owns
+  it, or - for the first calendar, until an account claims it - the
+  site's admin password or the device token made from it.
+*/
+function ownsActiveCalendar() {
+  return Boolean(
+    activeUser &&
+    activeUser.calendarId === activeCalendar.id
+  );
 }
 
 
@@ -2939,6 +3657,25 @@ function hasValidAdminToken(
 function hasValidAdminPassword(
   req
 ) {
+
+  if (
+    ownsActiveCalendar()
+  ) {
+
+    return true;
+
+  }
+
+
+  if (
+    activeCalendar.id !== MAIN_CALENDAR_ID ||
+    activeRecord.ownerId
+  ) {
+
+    return false;
+
+  }
+
 
   const expected =
     process.env.ADMIN_PASSWORD ||
@@ -6060,15 +6797,15 @@ function json(body, status = 200, extraHeaders = {}) {
 */
 
 function publicCacheHeaders(req, admin) {
-  if (admin || req.headers.get("x-admin-password") || req.headers.get("x-admin-token")) {
+  if (admin || req.headers.get("x-admin-password") || req.headers.get("x-admin-token") || req.headers.get("x-session")) {
     return {};                       // admin, or anyone carrying a credential header: never cache
   }
   return {
     "Cache-Control": "public, max-age=0, must-revalidate",
     "Netlify-CDN-Cache-Control":
       "public, s-maxage=3600, durable",
-    "Netlify-Cache-Tag": EVENTS_CACHE_TAG,
-    "Vary": "x-admin-password, x-admin-token"
+    "Netlify-Cache-Tag": cacheTag(),
+    "Vary": "x-admin-password, x-admin-token, x-session"
   };
 }
 

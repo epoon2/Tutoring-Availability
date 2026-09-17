@@ -167,3 +167,63 @@ function describeRecurrence(recurrence) {
   const until = recurrence.endType === "ON" ? ` until ${recurrence.until}` : recurrence.endType === "COUNT" ? `, ${recurrence.count} times` : "";
   return `${every} on ${days}${until}`;
 }
+
+
+/*
+  ACCOUNT EMAILS
+
+  Two short messages for the sign-up flow: the link that proves an
+  address is real, and the link that lets a forgotten password be
+  replaced. Both links carry a code that works once and expires.
+*/
+
+const SIMPLE_STYLE =
+  "font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111827";
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+export function verificationEmail({ displayName, link, siteName, hours }) {
+  const site = siteName || "the calendar site";
+  const text = [
+    `Hi ${displayName},`,
+    "",
+    `Confirm your email to publish your calendar on ${site}:`,
+    link,
+    "",
+    `The link works for ${hours} hours. If you did not sign up, you can ignore this email.`
+  ].join("\n");
+  const html = [
+    `<div style="${SIMPLE_STYLE}">`,
+    `<p>Hi ${escapeHtml(displayName)},</p>`,
+    `<p>Confirm your email to publish your calendar on ${escapeHtml(site)}:</p>`,
+    `<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 16px;background:#2f56d9;color:#fff;border-radius:8px;text-decoration:none">Confirm my email</a></p>`,
+    `<p style="color:#6b7280;font-size:13px">Or open this link: <a href="${escapeHtml(link)}">${escapeHtml(link)}</a><br>`,
+    `The link works for ${hours} hours. If you did not sign up, you can ignore this email.</p>`,
+    `</div>`
+  ].join("");
+  return { subject: `Confirm your email for ${site}`, text, html };
+}
+
+export function resetEmail({ displayName, link, siteName, hours }) {
+  const site = siteName || "the calendar site";
+  const text = [
+    `Hi ${displayName},`,
+    "",
+    `Someone asked to reset the password for your account on ${site}. If that was you, choose a new one here:`,
+    link,
+    "",
+    `The link works for ${hours} hours. If you did not ask for this, your password stays as it is.`
+  ].join("\n");
+  const html = [
+    `<div style="${SIMPLE_STYLE}">`,
+    `<p>Hi ${escapeHtml(displayName)},</p>`,
+    `<p>Someone asked to reset the password for your account on ${escapeHtml(site)}. If that was you, choose a new one here:</p>`,
+    `<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 16px;background:#2f56d9;color:#fff;border-radius:8px;text-decoration:none">Choose a new password</a></p>`,
+    `<p style="color:#6b7280;font-size:13px">Or open this link: <a href="${escapeHtml(link)}">${escapeHtml(link)}</a><br>`,
+    `The link works for ${hours} hours. If you did not ask for this, your password stays as it is.</p>`,
+    `</div>`
+  ].join("");
+  return { subject: `Reset your password for ${site}`, text, html };
+}
