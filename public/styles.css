@@ -3211,3 +3211,18 @@ body.calendar-missing .header-actions {
   font-size: 13px;
   line-height: 1.5;
 }
+
+/*
+  The language menu in the header: styled like the icon buttons beside
+  it, with the browser's own dropdown.
+*/
+.lang-select {
+  height: 38px;
+  padding: 0 8px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}

@@ -182,6 +182,14 @@
 
 
   /*
+    A translated string, for what visitors read.
+  */
+  const t =
+    (key, vars) =>
+      window.I18N.t( key, vars );
+
+
+  /*
     Public pages revalidate at most this
     often. The server tags the public
     response for the CDN and a write
@@ -227,6 +235,8 @@
     resumeRememberedDevice();
 
     installManifest();
+
+    initLanguage();
 
     loadWeek();
 
@@ -2329,7 +2339,7 @@
 
     const time =
       date.toLocaleTimeString(
-        undefined,
+        I18N.locale(),
         {
           hour12: !is24h(),
           hour:
@@ -2349,7 +2359,7 @@
 
 
     return date.toLocaleDateString(
-      undefined,
+      I18N.locale(),
       {
         month:
           'short',
@@ -2715,7 +2725,7 @@
 
     const dayLabel =
       day.toLocaleDateString(
-        undefined,
+        I18N.locale(),
         {
           weekday:
             'short',
@@ -3132,7 +3142,7 @@
     ) {
 
       setStatus(
-        'Loading…'
+        t( 'loading' )
       );
 
     }
@@ -3213,6 +3223,7 @@
           {}
         )
       };
+      syncLanguage();
       applyConfigStyling();
       renderProfileChip();
       if (
@@ -3300,14 +3311,11 @@
             .timezoneLabel;
 
 
-      $('updatedLabel')
+            $('updatedLabel')
         .textContent =
           data.lastUpdated
-            ? `${state.config.tutorName} last updated the schedule ` +
-              formatUpdated(
-                data.lastUpdated
-              )
-            : `${state.config.tutorName} has not saved any times yet`;
+            ? t( 'updated_by', { owner: state.config.tutorName, when: formatUpdated( data.lastUpdated ) } )
+            : t( 'not_saved', { owner: state.config.tutorName } );
 
 
       state.lastLoadedAt =
@@ -4373,7 +4381,7 @@
     const day =
       session.date
         .toLocaleDateString(
-          undefined,
+          I18N.locale(),
           {
             weekday: 'short'
           }
@@ -4437,7 +4445,7 @@
       $('weekLabel')
         .textContent =
           state.weekStart.toLocaleDateString(
-            undefined,
+            I18N.locale(),
             {
               weekday: 'long',
               month: 'long',
@@ -4456,7 +4464,7 @@
       $('weekLabel')
         .textContent =
           state.weekStart.toLocaleDateString(
-            undefined,
+            I18N.locale(),
             {
               month: 'long',
               year: 'numeric'
@@ -4479,7 +4487,7 @@
       .textContent =
         state.weekStart
           .toLocaleDateString(
-            undefined,
+            I18N.locale(),
             {
               month:
                 'short',
@@ -4490,7 +4498,7 @@
           ) +
         ' – ' +
         end.toLocaleDateString(
-          undefined,
+          I18N.locale(),
           {
             month:
               'short',
@@ -4876,7 +4884,7 @@
       head.innerHTML =
         `<div class="dow">${
           date.toLocaleDateString(
-            undefined,
+            I18N.locale(),
             {
               weekday:
                 'short'
@@ -5727,7 +5735,7 @@
 
       heading.textContent =
         date.toLocaleDateString(
-          undefined,
+          I18N.locale(),
           {
             weekday:
               'long',
@@ -6067,7 +6075,7 @@
             60000
           )
             .toLocaleDateString(
-              undefined,
+              I18N.locale(),
               {
                 timeZone:
                   'UTC',
@@ -6743,7 +6751,7 @@
           range.start,
           d
         ).toLocaleDateString(
-          undefined,
+          I18N.locale(),
           {
             weekday: 'short'
           }
@@ -7166,7 +7174,7 @@
       ctx.font = font( 12, '700' );
       ctx.fillText(
         date.toLocaleDateString(
-          undefined,
+          I18N.locale(),
           {
             weekday: 'short',
             month: 'numeric',
@@ -7482,7 +7490,7 @@
       ctx.font = font( 10, '700' );
       ctx.fillText(
         addDays( range.start, d )
-          .toLocaleDateString( undefined, { weekday: 'short' } )
+          .toLocaleDateString( I18N.locale(), { weekday: 'short' } )
           .toUpperCase(),
         left + d * COL_W + 8,
         top + 17
@@ -8709,7 +8717,7 @@
 
 
     return date.toLocaleDateString(
-      undefined,
+      I18N.locale(),
       {
         weekday: 'short',
         month: 'short',
@@ -9888,7 +9896,7 @@
     return new Date(
       localDateTime
     ).toLocaleString(
-      undefined,
+      I18N.locale(),
       {
         weekday: 'short',
         month: 'short',
@@ -12375,7 +12383,7 @@
 
       $('requestError')
         .textContent =
-          'Please enter your name.';
+          t( 'need_name' );
 
 
       $('requestName')
@@ -12397,7 +12405,7 @@
     ) {
       $('requestError')
         .textContent =
-          'Please enter an email address ' + ownerName() + ' can reply to.';
+          t( 'need_email', { owner: ownerName() } );
       $('requestEmail')
         .focus();
       return;
@@ -12419,7 +12427,7 @@
     ) {
       $('requestError')
         .textContent =
-          'Please enter the subject.';
+          t( 'need_subject' );
       $('requestSubject')
         .focus();
       return;
@@ -12437,7 +12445,7 @@
 
       $('requestError')
         .textContent =
-          'Please choose online or in person.';
+          t( 'need_format' );
 
 
       $('requestFormat')
@@ -12480,7 +12488,7 @@
 
       $('requestError')
         .textContent =
-          'Please choose a start and end time.';
+          t( 'need_times' );
 
 
       return;
@@ -12495,7 +12503,7 @@
 
       $('requestError')
         .textContent =
-          'The end time must be after the start time.';
+          t( 'end_after_start' );
 
 
       return;
@@ -12594,7 +12602,7 @@
 
 
       setStatus(
-        'Request sent. ' + ownerName() + ' will confirm it before it appears on the calendar.'
+        t( 'request_sent', { owner: ownerName() } )
       );
 
     } catch (error) {
@@ -13337,10 +13345,10 @@
       .toggle( 'hidden', !legacy );
     $('loginTitle')
       .textContent =
-        legacy ? 'Admin access' : 'Log in';
+        legacy ? 'Admin access' : t( 'login_title' );
     $('loginSubmitBtn')
       .textContent =
-        legacy ? 'Enter admin mode' : 'Log in';
+        legacy ? 'Enter admin mode' : t( 'login_btn' );
     $('legacyLoginLink')
       .textContent =
         legacy ? 'Log in with an account instead' : 'Use the admin password instead';
@@ -13478,7 +13486,7 @@
     $('loginError').textContent = '';
     if ( !email || !password ) {
       $('loginError').textContent =
-        'Please enter your email and password.';
+        t( 'login_blank' );
       return;
     }
     $('loginSubmitBtn').disabled = true;
@@ -13598,6 +13606,67 @@
 
 
   /*
+    LANGUAGE
+
+    The device's choice, else the browser's language, else the
+    calendar's default once the settings arrive. Changing it redraws
+    everything a visitor reads without a reload.
+  */
+  function initLanguage() {
+    const select =
+      $('langSelect');
+    Object.entries( window.I18N.LANGUAGES ).forEach(
+      ([ code, name ]) => {
+        const option =
+          document.createElement( 'option' );
+        option.value =
+          code;
+        option.textContent =
+          name;
+        select.appendChild( option );
+      }
+    );
+    select.addEventListener(
+      'change',
+      () => {
+        window.I18N.set( select.value );
+        applyLanguage();
+        renderAll();
+        loadWeek( true );
+      }
+    );
+    window.I18N.set( window.I18N.detect( 'en' ), false );
+    applyLanguage();
+  }
+
+
+  /*
+    The calendar's own default applies when this device never chose
+    and the browser's language is not one we have.
+  */
+  function syncLanguage() {
+    const wanted =
+      window.I18N.detect( state.config.language || 'en' );
+    if ( wanted !== window.I18N.get() ) {
+      window.I18N.set( wanted, false );
+      applyLanguage();
+    }
+  }
+
+
+  function applyLanguage() {
+    window.I18N.apply();
+    $('langSelect').value =
+      window.I18N.get();
+    $('langSelect').title =
+      t( 'language' );
+    if ( state.loginMode ) {
+      setLoginMode( state.loginMode );
+    }
+  }
+
+
+  /*
     The address in the page's own URL: /ethan names the calendar
     "ethan"; the page itself, or no path, means the first calendar.
   */
@@ -13626,13 +13695,9 @@
   ) {
     document.body.classList.add( 'calendar-missing' );
     $('missingTitle').textContent =
-      reason.unpublished
-        ? 'This calendar is not published yet'
-        : 'There is no calendar at this address';
+      t( reason.unpublished ? 'unpublished_title' : 'missing_title' );
     $('missingText').textContent =
-      reason.unpublished
-        ? 'Its owner still has to confirm their email. Check back soon.'
-        : 'Check the link you were given, or start a calendar of your own.';
+      t( reason.unpublished ? 'unpublished_text' : 'missing_text' );
     $('portalTitle').textContent =
       'Calendar';
     document.title =
@@ -13824,13 +13889,13 @@
       ( $('summaryList') && !$('summaryList').classList.contains( 'hidden' ) ? 'Hide each ' : 'Show each ' ) + peopleWord( 1 ) );
     const requestRules =
       state.config.requests || {};
-    setText( 'requestIntro', requestRules.intro || ( 'Ask for a time that works for you. Nothing is booked until ' + ownerName() + ' confirms it.' ) );
+    setText( 'requestIntro', requestRules.intro || t( 'request_intro', { owner: ownerName() } ) );
     setText( 'requestRules', describeRequestRules( requestRules ) );
     if ( $('requestRules') ) {
       $('requestRules').classList.toggle( 'hidden', !describeRequestRules( requestRules ) );
     }
-    setText( 'requestWarningFooter', 'You can still send this request. ' + ownerName() + ' will confirm whether the time works.' );
-    setText( 'requestEmailHint', 'so ' + ownerName() + ' can get back to you' );
+    setText( 'requestWarningFooter', t( 'warning_footer', { owner: ownerName() } ) );
+    setText( 'requestEmailHint', t( 'email_hint', { owner: ownerName() } ) );
     const description =
       document.querySelector( 'meta[name="description"]' );
     if ( description ) {
@@ -14001,6 +14066,8 @@
       settings.hourFormat === '24' ? '24' : '12';
     $('settingFont').value =
       settings.font || 'system';
+    $('settingLanguage').value =
+      settings.language || 'en';
     $('settingPreset').value =
       '';
     $('settingSlug').value =
@@ -14257,6 +14324,8 @@
         $('settingHourFormat').value,
       font:
         $('settingFont').value,
+      language:
+        $('settingLanguage').value,
       requests: {
         enabled:
           $('settingRequestsEnabled').checked,
@@ -17010,7 +17079,7 @@
     const dateText =
       startDate
         .toLocaleDateString(
-          undefined,
+          I18N.locale(),
           {
             timeZone:
               'UTC',
@@ -17033,7 +17102,7 @@
     const startTime =
       startDate
         .toLocaleTimeString(
-          undefined,
+          I18N.locale(),
           {
             timeZone:
               'UTC',
@@ -17052,7 +17121,7 @@
     const endTime =
       endDate
         .toLocaleTimeString(
-          undefined,
+          I18N.locale(),
           {
             timeZone:
               'UTC',
@@ -17083,7 +17152,7 @@
     const endDateText =
       endDate
         .toLocaleDateString(
-          undefined,
+          I18N.locale(),
           {
             timeZone:
               'UTC',
@@ -17704,7 +17773,7 @@
 
       $('checkedLabel')
         .textContent =
-          'Refreshed just now';
+          t( 'refreshed_now' );
 
 
       return;
@@ -17727,23 +17796,24 @@
     }
 
 
-    $('checkedLabel')
+        $('checkedLabel')
       .textContent =
-        'Refreshed at ' +
-        new Date(
-          state.lastLoadedAt
-        )
-          .toLocaleTimeString(
-            undefined,
-            {
-              hour12: !is24h(),
-              hour:
-                'numeric',
-
-              minute:
-                '2-digit'
-            }
-          );
+        t( 'refreshed_at', {
+          time:
+            new Date(
+              state.lastLoadedAt
+            )
+              .toLocaleTimeString(
+                I18N.locale(),
+                {
+                  hour12: !is24h(),
+                  hour:
+                    'numeric',
+                  minute:
+                    '2-digit'
+                }
+              )
+        } );
 
   }
 
@@ -17764,7 +17834,7 @@
     )
       ? iso
       : date.toLocaleString(
-          undefined,
+          I18N.locale(),
           {
             month:
               'short',

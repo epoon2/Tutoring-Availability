@@ -118,10 +118,17 @@
 
 
       <div class="header-actions">
+        <select
+          id="langSelect"
+          class="lang-select"
+          aria-label="Language"
+          title="Language"
+        ></select>
         <button
           id="themeBtn"
           class="icon-btn theme-btn"
           type="button"
+          data-i18n-title="theme"
           title="Switch between light and dark"
           aria-label="Switch between light and dark"
         >
@@ -133,21 +140,21 @@
         <button
           id="refreshBtn"
           class="btn secondary"
-        >
+         data-i18n="refresh">
           Refresh
         </button>
 
         <button
           id="requestBtn"
           class="btn primary"
-        >
+         data-i18n="request">
           Request a session
         </button>
 
         <button
           id="adminBtn"
           class="btn secondary"
-        >
+         data-i18n="login">
           Log in
         </button>
 
@@ -226,7 +233,7 @@
               role="menuitem"
               href="/"
               title="Your own calendar"
-            >
+             data-i18n="my_calendar">
               My calendar
             </a>
             <button
@@ -242,7 +249,7 @@
               class="menu-item hidden"
               role="menuitem"
               title="Sign out on this device"
-            >
+             data-i18n="sign_out">
               Sign out
             </button>
           </div>
@@ -368,6 +375,7 @@
       <button
         id="prevWeekBtn"
         class="icon-btn"
+        data-i18n-title="prev_week"
         aria-label="Previous week"
       >
         ‹
@@ -376,13 +384,14 @@
       <button
         id="todayBtn"
         class="btn secondary small"
-      >
+       data-i18n="today">
         Today
       </button>
 
       <button
         id="nextWeekBtn"
         class="icon-btn"
+        data-i18n-title="next_week"
         aria-label="Next week"
       >
         ›
@@ -398,7 +407,7 @@
           id="viewGridBtn"
           class="btn secondary small"
           aria-pressed="true"
-        >
+         data-i18n="grid">
           Grid
         </button>
 
@@ -406,7 +415,7 @@
           id="viewListBtn"
           class="btn secondary small"
           aria-pressed="false"
-        >
+         data-i18n="list">
           List
         </button>
 
@@ -422,7 +431,7 @@
           id="viewDayBtn"
           class="btn secondary small"
           aria-pressed="false"
-        >
+         data-i18n="day">
           Day
         </button>
 
@@ -430,7 +439,7 @@
           id="viewWeekBtn"
           class="btn secondary small"
           aria-pressed="true"
-        >
+         data-i18n="week">
           Week
         </button>
 
@@ -438,7 +447,7 @@
           id="viewMonthBtn"
           class="btn secondary small"
           aria-pressed="false"
-        >
+         data-i18n="month">
           Month
         </button>
 
@@ -447,7 +456,7 @@
       <button
         id="saveWeekBtn"
         class="btn secondary small"
-      >
+       data-i18n="screenshot">
         Screenshot weekly schedule
       </button>
 
@@ -505,7 +514,7 @@
     >
       <h2 id="missingTitle">There is no calendar at this address</h2>
       <p id="missingText">Check the link you were given, or start a calendar of your own.</p>
-      <a class="btn primary" href="/">Go to the home page</a>
+      <a class="btn primary" href="/" data-i18n="go_home">Go to the home page</a>
     </section>
 
 
@@ -590,13 +599,13 @@
 
     <section class="help-box">
 
-      <strong>
+      <strong data-i18n="public_view">
         Public view:
       </strong>
 
-      Upcoming available times and anonymized blocked sessions are shown.
+      <span data-i18n="public_view_text">Upcoming available times and anonymized blocked sessions are shown.
       Times that have already passed are hidden, and private event names
-      and notes are never shown.
+      and notes are never shown.</span>
 
     </section>
 
@@ -618,7 +627,7 @@
 
       <div class="modal-header">
 
-        <h2 id="requestModalTitle">
+        <h2 id="requestModalTitle" data-i18n="request_title">
           Request a session
         </h2>
 
@@ -651,7 +660,7 @@
 
       <label class="field">
 
-        <span>
+        <span data-i18n="your_name">
           Your name
         </span>
 
@@ -661,6 +670,7 @@
           maxlength="80"
           required
           placeholder="e.g. John"
+          data-i18n-placeholder="name_placeholder"
         >
       </label>
 
@@ -668,7 +678,7 @@
 
       <label class="field">
         <span>
-          Email
+          <span data-i18n="email">Email</span>
           <small id="requestEmailHint">so you can be reached about it</small>
         </span>
         <input
@@ -684,8 +694,8 @@
       <div class="field-row">
         <label class="field">
           <span>
-            Phone
-            <small>optional</small>
+            <span data-i18n="phone">Phone</span>
+            <small data-i18n="optional">optional</small>
           </span>
           <input
             id="requestPhone"
@@ -697,8 +707,8 @@
         </label>
         <label class="field">
           <span>
-            Parent / guardian
-            <small>optional</small>
+            <span data-i18n="guardian">Parent / guardian</span>
+            <small data-i18n="optional">optional</small>
           </span>
           <input
             id="requestGuardian"
@@ -717,7 +727,7 @@
 
         <div class="field">
 
-          <span>
+          <span data-i18n="starts">
             Starts
           </span>
 
@@ -801,7 +811,7 @@
 
         <div class="field">
 
-          <span>
+          <span data-i18n="ends">
             Ends
           </span>
 
@@ -891,7 +901,7 @@
 
         <label class="field">
 
-          <span>
+          <span data-i18n="repeat">
             Repeat
           </span>
 
@@ -900,11 +910,11 @@
             data-repeat-type
           >
 
-            <option value="NONE">
+            <option value="NONE" data-i18n="no_repeat">
               Does not repeat
             </option>
 
-            <option value="WEEKLY">
+            <option value="WEEKLY" data-i18n="weekly">
               Weekly
             </option>
 
@@ -915,7 +925,7 @@
 
         <label class="field">
 
-          <span>
+          <span data-i18n="format">
             Format
           </span>
 
@@ -930,15 +940,15 @@
               disabled
               selected
               hidden
-            >
+             data-i18n="select_one">
               Select One
             </option>
 
-            <option value="ONLINE">
+            <option value="ONLINE" data-i18n="online">
               Online
             </option>
 
-            <option value="IN_PERSON">
+            <option value="IN_PERSON" data-i18n="in_person">
               In-Person
             </option>
 
@@ -959,7 +969,7 @@
 
         <div class="repeat-every-row">
 
-          <span>
+          <span data-i18n="repeat_every">
             Repeat every
           </span>
 
@@ -972,7 +982,7 @@
             data-repeat-interval
           >
 
-          <span>
+          <span data-i18n="weeks">
             week(s)
           </span>
 
@@ -981,7 +991,7 @@
 
         <div class="recurrence-section">
 
-          <div class="recurrence-label">
+          <div class="recurrence-label" data-i18n="repeat_on">
             Repeat on
           </div>
 
@@ -996,7 +1006,7 @@
               class="weekday-btn"
               data-day="0"
               title="Sunday"
-            >
+             data-i18n-weekday="0">
               S
             </button>
 
@@ -1005,7 +1015,7 @@
               class="weekday-btn"
               data-day="1"
               title="Monday"
-            >
+             data-i18n-weekday="1">
               M
             </button>
 
@@ -1014,7 +1024,7 @@
               class="weekday-btn"
               data-day="2"
               title="Tuesday"
-            >
+             data-i18n-weekday="2">
               T
             </button>
 
@@ -1023,7 +1033,7 @@
               class="weekday-btn"
               data-day="3"
               title="Wednesday"
-            >
+             data-i18n-weekday="3">
               W
             </button>
 
@@ -1032,7 +1042,7 @@
               class="weekday-btn"
               data-day="4"
               title="Thursday"
-            >
+             data-i18n-weekday="4">
               T
             </button>
 
@@ -1041,7 +1051,7 @@
               class="weekday-btn"
               data-day="5"
               title="Friday"
-            >
+             data-i18n-weekday="5">
               F
             </button>
 
@@ -1050,7 +1060,7 @@
               class="weekday-btn"
               data-day="6"
               title="Saturday"
-            >
+             data-i18n-weekday="6">
               S
             </button>
 
@@ -1061,7 +1071,7 @@
 
         <div class="recurrence-section">
 
-          <div class="recurrence-label">
+          <div class="recurrence-label" data-i18n="ends">
             Ends
           </div>
 
@@ -1076,7 +1086,7 @@
               checked
             >
 
-            <span>
+            <span data-i18n="never">
               Never
             </span>
 
@@ -1092,7 +1102,7 @@
               data-repeat-end
             >
 
-            <span>
+            <span data-i18n="on">
               On
             </span>
 
@@ -1115,7 +1125,7 @@
               data-repeat-end
             >
 
-            <span>
+            <span data-i18n="after">
               After
             </span>
 
@@ -1129,7 +1139,7 @@
               disabled
             >
 
-            <span>
+            <span data-i18n="occurrences">
               occurrences
             </span>
 
@@ -1144,7 +1154,7 @@
 
       <label class="field">
 
-        <span>
+        <span data-i18n="subject">
           Subject
         </span>
 
@@ -1178,7 +1188,7 @@
             <div
               id="requestWarningTitle"
               class="conflict-warning-title"
-            >
+             data-i18n="outside_hours">
               Outside available hours
             </div>
 
@@ -1226,7 +1236,7 @@
         <button
           class="btn secondary"
           data-close="requestModal"
-        >
+         data-i18n="cancel">
           Cancel
         </button>
 
@@ -1234,7 +1244,7 @@
         <button
           id="sendRequestAnywayBtn"
           class="btn warning hidden"
-        >
+         data-i18n="send_anyway">
           Send Anyway
         </button>
 
@@ -1242,7 +1252,7 @@
         <button
           id="sendRequestBtn"
           class="btn primary"
-        >
+         data-i18n="send_request">
           Send request
         </button>
 
@@ -1287,7 +1297,7 @@
 
         <label class="field">
 
-          <span>
+          <span data-i18n="email">
             Email
           </span>
 
@@ -1302,7 +1312,7 @@
 
         <label class="field">
 
-          <span>
+          <span data-i18n="password">
             Password
           </span>
 
@@ -1315,8 +1325,8 @@
         </label>
 
         <p class="login-links">
-          <a href="/?forgot">Forgot your password?</a>
-          <a href="/?signup">Create an account</a>
+          <a href="/?forgot" data-i18n="forgot">Forgot your password?</a>
+          <a href="/?signup" data-i18n="create_account">Create an account</a>
         </p>
 
       </div>
@@ -1326,7 +1336,7 @@
 
         <label class="field">
 
-          <span>
+          <span data-i18n="password">
             Password
           </span>
 
@@ -1351,8 +1361,8 @@
         >
 
         <span>
-          Keep me signed in on this device
-          <small>for 90 days, or until the password changes</small>
+          <span data-i18n="keep_signed_in">Keep me signed in on this device</span>
+          <small data-i18n="keep_note">for 90 days, or until the password changes</small>
         </span>
 
       </label>
@@ -1378,7 +1388,7 @@
         <button
           class="btn secondary"
           data-close="loginModal"
-        >
+         data-i18n="cancel">
           Cancel
         </button>
 
@@ -1515,6 +1525,21 @@
           </select>
         </label>
       </div>
+
+      <label class="field">
+        <span>
+          Language for visitors
+          <small>what the page reads in until a visitor picks their own</small>
+        </span>
+        <select id="settingLanguage">
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="zh">中文</option>
+          <option value="fr">Français</option>
+          <option value="ko">한국어</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+      </label>
 
       <label class="field">
         <span>
@@ -2680,6 +2705,10 @@
 
   <script
     src="/session.js"
+  ></script>
+
+  <script
+    src="/i18n.js"
   ></script>
 
   <script

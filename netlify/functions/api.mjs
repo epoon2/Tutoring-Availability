@@ -2801,6 +2801,12 @@ function envDefaults() {
     hourFormat:
       "12",
     /*
+      What visitors read the page in, until they pick a language of
+      their own.
+    */
+    language:
+      "en",
+    /*
       The request form: whether visitors get one, what it says at the
       top, and the rules a request must meet.
     */
@@ -2848,6 +2854,9 @@ function integerIn(
 
 const FONTS =
   new Set([ "system", "serif", "humanist", "rounded", "mono" ]);
+
+const LANGUAGES =
+  new Set([ "en", "es", "zh", "fr", "ko", "vi" ]);
 
 function timezoneIsValid(
   id
@@ -2911,6 +2920,7 @@ function settingsFrom(
     ...( FONTS.has( record.font ) ? { font: record.font } : {} ),
     ...( record.weekStart === 1 || record.weekStart === 0 ? { weekStart: record.weekStart } : {} ),
     ...( record.hourFormat === "24" || record.hourFormat === "12" ? { hourFormat: record.hourFormat } : {} ),
+    ...( LANGUAGES.has( record.language ) ? { language: record.language } : {} ),
     requests: {
       ...base.requests,
       ...( record.requests && typeof record.requests === "object"
@@ -2984,6 +2994,8 @@ function configFrom(
       settings.weekStart,
     hourFormat:
       settings.hourFormat,
+    language:
+      settings.language,
     requests:
       { ...settings.requests },
     privacy:
@@ -3067,6 +3079,10 @@ function validateSettings(
     const day = Number( body.weekStart );
     if ( day !== 0 && day !== 1 ) bad( "The week starts on Sunday or Monday." );
     next.weekStart = day;
+  }
+  if ( "language" in body ) {
+    if ( !LANGUAGES.has( body.language ) ) bad( "That language is not one of the choices." );
+    next.language = body.language;
   }
   if ( "hourFormat" in body ) {
     const format = String( body.hourFormat );
