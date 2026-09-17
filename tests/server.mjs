@@ -9,7 +9,7 @@ import { extname, join, normalize } from 'node:path';
 import {
   expandEventsForRange, expandWeeklyEvent, localDateTimeToMinuteKey,
   buildPublicSchedule, findBlockedConflicts, normalizeSchedule,
-  applyColorScope, dropWeekday
+  applyColorScope, dropWeekday, settingsFrom, configFrom, validateSettings
 } from '../netlify/functions/api.mjs';
 import {
   recordBeforeWrite, applyUndo, applyRedo, summarizeHistory, emptyHistory,
@@ -30,7 +30,7 @@ let nextId = 1;
 const PALETTE = new Set(['#b42318', '#c2410c', '#a16207', '#2f7d4a', '#0f766e', '#1d4ed8', '#6d28d9', '#be185d', '#7c4a1e', '#4b5563']);
 let customColors = [];
 const rememberColor = (hex) => {
-  if (!hex || PALETTE.has(hex)) return;
+  if (!hex || PALETTE.has(hex) || hex === settings().colors.available || hex === settings().colors.blocked) return;
   if (customColors.includes(hex)) return;
   customColors = [...customColors, hex].slice(-16);
 };
@@ -58,12 +58,11 @@ const syncResult = () => FAKE_GOOGLE === 'failed'
   ? { google: 'failed', error: 'Google 401: invalid key' }
   : FAKE_GOOGLE ? { google: 'ok' } : { google: 'off' };
 
-const config = {
-  portalTitle: "Ethan's Tutoring Availability",
-  tutorName: 'Ethan', timezone: 'America/Los_Angeles',
-  dayStart: 8, dayEnd: 24,
-  googleSync: Boolean(FAKE_GOOGLE)
-};
+// The settings record, kept in memory and shaped by the real code.
+let settingsRecord = {};
+const settings = () => settingsFrom(settingsRecord);
+const config = () => ({ ...configFrom(settings()), googleSync: Boolean(FAKE_GOOGLE) });
+const defaultColorFor = (type) => type === 'AVAILABLE' ? settings().colors.available : settings().colors.blocked;
 
 const json = (res, code, body) => {
   res.writeHead(code, { 'Content-Type': 'application/json' });
@@ -81,7 +80,18 @@ createServer(async (req, res) => {
       const chunks = []; for await (const c of req) chunks.push(c);
       try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch {}
     }
-    if (route === '/config') return json(res, 200, { config });
+    if (route === '/config') return json(res, 200, { config: config() });
+    if (route === '/settings' && req.method === 'GET') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      return json(res, 200, { settings: settings(), config: config() });
+    }
+    if (route === '/settings' && req.method === 'PUT') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      try {
+        settingsRecord = { ...settingsRecord, ...validateSettings(body, settings()) };
+      } catch (e) { return json(res, 400, { error: e.message }); }
+      return json(res, 200, { ok: true, settings: settings(), config: config(), sync: syncResult() });
+    }
     if (route === '/login') {
       // the password, or the remembered-device token production would hand out
       if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
@@ -102,7 +112,7 @@ createServer(async (req, res) => {
         // Public visitors get the same reduced interval schedule
         // production builds; admins get the raw expanded events.
         events: admin === 'admin' ? served : buildPublicSchedule(served),
-        config, mode: admin,
+        config: config(), mode: admin,
         updatedAt: new Date().toISOString(), updatedBy: 'test',
         ...(admin === 'admin' ? { history: summarizeHistory(history), customColors } : {})
       });
@@ -152,7 +162,7 @@ createServer(async (req, res) => {
         }
       }
       if (!ev.color) delete ev.color;
-      if (ev.color === (ev.type === 'AVAILABLE' ? '#2f7d4a' : '#b42318')) delete ev.color;
+      if (ev.color === defaultColorFor(ev.type)) delete ev.color;
       rememberColor(ev.color);
       const next = events.slice();
       if (at >= 0) { next[at] = ev; } else { next.push(ev); }
@@ -168,7 +178,7 @@ createServer(async (req, res) => {
       if (at < 0) return json(res, 404, { error: 'That event no longer exists.' });
       const next = events.slice();
       let color = body.color ? String(body.color).toLowerCase() : null;
-      if (color === (events[at].type === 'AVAILABLE' ? '#2f7d4a' : '#b42318')) color = null;
+      if (color === defaultColorFor(events[at].type)) color = null;
       try {
         next[at] = applyColorScope(events[at], { color, scope: body.scope || 'all', date: body.date });
       } catch (e) { return json(res, 400, { error: e.message }); }

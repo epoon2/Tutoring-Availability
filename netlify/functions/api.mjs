@@ -80,9 +80,14 @@ const MAX_REQUEST_MINUTES =
 
 
 export default async (req) => {
-
   try {
-
+    /*
+      The calendar's settings shape everything below - hours, colours,
+      wording, time zone - so they are read before the route is.
+    */
+    useSettings(
+      await readSettings()
+    );
     const url =
       new URL(
         req.url
@@ -323,7 +328,8 @@ export default async (req) => {
 
       return new Response(
         buildIcs(
-          expanded
+          expanded,
+          { timeZone: activeSettings.timezoneId }
         ),
         {
           status:
@@ -345,6 +351,73 @@ export default async (req) => {
     }
 
 
+    /*
+      SETTINGS
+      GET  /settings  the full record (admin only: it holds the
+                      notification address)
+      PUT  /settings  change any of it; the config the page uses comes
+                      back. A time zone change re-pushes every booked
+                      session to Google, since their instants moved.
+    */
+    if (
+      route === "/settings" &&
+      req.method === "GET"
+    ) {
+      requireAdmin(
+        req
+      );
+      return json({
+        settings:
+          activeSettings,
+        config:
+          getConfig()
+      });
+    }
+    if (
+      route === "/settings" &&
+      req.method === "PUT"
+    ) {
+      requireAdmin(
+        req
+      );
+      const body =
+        await req.json();
+      const stored =
+        await readSettings();
+      const next =
+        validateSettings(
+          body,
+          settingsFrom( stored )
+        );
+      const zoneChanged =
+        next.timezoneId !== activeSettings.timezoneId;
+      await writeSettings({
+        ...stored,
+        ...next
+      });
+      useSettings({
+        ...stored,
+        ...next
+      });
+      let sync;
+      if ( zoneChanged ) {
+        sync =
+          await resyncAll(
+            await readEvents(),
+            process.env,
+            { timeZone: activeSettings.timezoneId }
+          );
+      }
+      return json({
+        ok:
+          true,
+        settings:
+          activeSettings,
+        config:
+          getConfig(),
+        ...( sync ? { sync } : {} )
+      });
+    }
     /*
       ADMIN LOGIN
     */
@@ -605,7 +678,9 @@ export default async (req) => {
       const sync =
         await mirrorDifference(
           before,
-          normalized
+          normalized,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         );
       await rememberCustomColor(
         nextEvent.color
@@ -936,7 +1011,9 @@ export default async (req) => {
       const sync =
         await mirrorDifference(
           before,
-          normalized
+          normalized,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         );
 
 
@@ -1068,7 +1145,9 @@ export default async (req) => {
       const sync =
         await mirrorDifference(
           events,
-          normalized
+          normalized,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         );
       return json({
         ok:
@@ -1146,7 +1225,9 @@ export default async (req) => {
       const sync =
         await mirrorDifference(
           events,
-          normalized
+          normalized,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         );
       return json({
         ok:
@@ -1265,7 +1346,9 @@ export default async (req) => {
       const sync =
         await mirrorDifference(
           events,
-          normalized
+          normalized,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         );
 
 
@@ -1423,7 +1506,9 @@ export default async (req) => {
       const sync =
         await mirrorDifference(
           current,
-          result.events
+          result.events,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         );
 
 
@@ -1571,7 +1656,9 @@ export default async (req) => {
       const sync =
         await mirrorDifference(
           current,
-          version
+          version,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         );
 
 
@@ -1719,7 +1806,9 @@ export default async (req) => {
 
       return json(
         await resyncAll(
-          events
+          events,
+          process.env,
+          { timeZone: activeSettings.timezoneId }
         )
       );
 
@@ -1767,48 +1856,268 @@ export default async (req) => {
   CONFIG
 */
 
-function getConfig() {
+/*
+  SETTINGS
 
+  What makes this calendar this calendar: its title, whose name it
+  speaks in, its time zone, the hours it shows, the two default
+  colours, and the words it uses for open and booked time. Stored in
+  the settings record beside the custom colour presets; anything not
+  set falls back to the environment, then to the built-in defaults.
+  The public page sees the resulting config, never the record itself,
+  so the notification address stays private.
+*/
+
+const SETTINGS_LIMITS = {
+  title: 80,
+  displayName: 40,
+  label: 30,
+  noun: 20,
+  email: 120
+};
+
+const EMAIL_PATTERN =
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function envDefaults() {
   return {
-    portalTitle:
+    title:
       process.env.PORTAL_TITLE ||
       "Ethan's Tutoring Availability",
-
-    /*
-      Shown wherever the page needs to say a
-      person did something, rather than the
-      page itself. Configurable for the same
-      reason the title is.
-    */
-
-    tutorName:
+    displayName:
       process.env.TUTOR_NAME ||
       "Ethan",
-
-    timezoneLabel:
-      process.env.TIMEZONE_LABEL ||
-      "Pacific Time (PT)",
-
     timezoneId:
       TIMEZONE_ID,
-
-    /*
-      Lets the admin page show the Google
-      sync controls only where they do
-      something.
-    */
-
-    googleSync:
-      googleSyncConfigured(),
-
     dayStart:
       8,
-
     dayEnd:
-      24
+      24,
+    colors: {
+      available:
+        "#2f7d4a",
+      blocked:
+        "#b42318"
+    },
+    labels: {
+      available:
+        "Available",
+      blocked:
+        "Blocked Session",
+      person:
+        "student",
+      people:
+        "students"
+    },
+    notificationEmail:
+      ""
   };
-
 }
+
+function timezoneIsValid(
+  id
+) {
+  try {
+    new Intl.DateTimeFormat( "en-US", { timeZone: id } );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/*
+  "Pacific Time (PT)", "Eastern Time (ET)", "United Kingdom Time" -
+  the generic names, so the label does not flip with daylight saving.
+*/
+function timezoneLabelFor(
+  id
+) {
+  const name =
+    (style) => {
+      try {
+        return new Intl.DateTimeFormat( "en-US", { timeZone: id, timeZoneName: style } )
+          .formatToParts( new Date() )
+          .find( (part) => part.type === "timeZoneName" )?.value || "";
+      } catch {
+        return "";
+      }
+    };
+  const long =
+    name( "longGeneric" ) || id;
+  const short =
+    name( "shortGeneric" );
+  return short && short !== long && short.length <= 6
+    ? `${ long } (${ short })`
+    : long;
+}
+
+/*
+  The stored record over the defaults, field by field, so a record
+  written by an older version is still whole.
+*/
+function settingsFrom(
+  stored
+) {
+  const base =
+    envDefaults();
+  const record =
+    stored && typeof stored === "object"
+      ? stored
+      : {};
+  const out = {
+    ...base,
+    ...( typeof record.title === "string" && record.title.trim() ? { title: record.title } : {} ),
+    ...( typeof record.displayName === "string" && record.displayName.trim() ? { displayName: record.displayName } : {} ),
+    ...( typeof record.timezoneId === "string" && timezoneIsValid( record.timezoneId ) ? { timezoneId: record.timezoneId } : {} ),
+    ...( Number.isInteger( record.dayStart ) ? { dayStart: record.dayStart } : {} ),
+    ...( Number.isInteger( record.dayEnd ) ? { dayEnd: record.dayEnd } : {} ),
+    ...( typeof record.notificationEmail === "string" ? { notificationEmail: record.notificationEmail } : {} ),
+    colors: {
+      ...base.colors,
+      ...( record.colors && HEX_COLOR.test( record.colors.available || "" ) ? { available: record.colors.available } : {} ),
+      ...( record.colors && HEX_COLOR.test( record.colors.blocked || "" ) ? { blocked: record.colors.blocked } : {} )
+    },
+    labels: {
+      ...base.labels,
+      ...Object.fromEntries(
+        Object.entries( record.labels || {} )
+          .filter( ([ key, value ]) => key in base.labels && typeof value === "string" && value.trim() )
+      )
+    }
+  };
+  if ( !( out.dayStart >= 0 && out.dayStart <= 23 && out.dayEnd >= 1 && out.dayEnd <= 24 && out.dayEnd > out.dayStart ) ) {
+    out.dayStart = base.dayStart;
+    out.dayEnd = base.dayEnd;
+  }
+  return out;
+}
+
+/*
+  What the page is told. Everything a visitor may see; the
+  notification address is not among it.
+*/
+function configFrom(
+  settings
+) {
+  return {
+    portalTitle:
+      settings.title,
+    tutorName:
+      settings.displayName,
+    timezoneId:
+      settings.timezoneId,
+    timezoneLabel:
+      timezoneLabelFor( settings.timezoneId ),
+    dayStart:
+      settings.dayStart,
+    dayEnd:
+      settings.dayEnd,
+    colors:
+      { ...settings.colors },
+    labels:
+      { ...settings.labels },
+    googleSync:
+      googleSyncConfigured()
+  };
+}
+
+/*
+  A settings body from the admin: every field checked, unknown fields
+  ignored, the presets and anything else in the record left alone.
+*/
+function validateSettings(
+  body,
+  current
+) {
+  if ( !body || typeof body !== "object" ) {
+    bad( "Invalid settings." );
+  }
+  const text =
+    (value, limit, what) => {
+      const out =
+        String( value ?? "" ).trim();
+      if ( !out ) bad( `Please enter ${ what }.` );
+      if ( out.length > limit ) bad( `${ what[ 0 ].toUpperCase() + what.slice( 1 ) } is too long (${ limit } characters at most).` );
+      return out;
+    };
+  const next =
+    { ...current };
+  if ( "title" in body ) next.title = text( body.title, SETTINGS_LIMITS.title, "a calendar title" );
+  if ( "displayName" in body ) next.displayName = text( body.displayName, SETTINGS_LIMITS.displayName, "a display name" );
+  if ( "timezoneId" in body ) {
+    const id =
+      String( body.timezoneId || "" ).trim();
+    if ( !timezoneIsValid( id ) ) bad( "That time zone is not recognised." );
+    next.timezoneId = id;
+  }
+  if ( "dayStart" in body ) next.dayStart = Number( body.dayStart );
+  if ( "dayEnd" in body ) next.dayEnd = Number( body.dayEnd );
+  if (
+    !Number.isInteger( next.dayStart ) || !Number.isInteger( next.dayEnd ) ||
+    next.dayStart < 0 || next.dayStart > 23 || next.dayEnd < 1 || next.dayEnd > 24
+  ) {
+    bad( "Day start and end must be whole hours between 12 AM and 12 AM." );
+  }
+  if ( next.dayEnd <= next.dayStart ) {
+    bad( "The day must end after it starts." );
+  }
+  if ( body.colors && typeof body.colors === "object" ) {
+    next.colors = { ...current.colors };
+    for ( const key of [ "available", "blocked" ] ) {
+      if ( key in body.colors ) {
+        const color =
+          normalizeColor( body.colors[ key ] );
+        if ( !color ) bad( `Please choose a colour for ${ key } time.` );
+        next.colors[ key ] = color;
+      }
+    }
+  }
+  if ( body.labels && typeof body.labels === "object" ) {
+    next.labels = { ...current.labels };
+    for ( const key of [ "available", "blocked" ] ) {
+      if ( key in body.labels ) next.labels[ key ] = text( body.labels[ key ], SETTINGS_LIMITS.label, `a name for ${ key } time` );
+    }
+    for ( const key of [ "person", "people" ] ) {
+      if ( key in body.labels ) next.labels[ key ] = text( body.labels[ key ], SETTINGS_LIMITS.noun, `a word for ${ key === "person" ? "one person" : "several people" }` );
+    }
+  }
+  if ( "notificationEmail" in body ) {
+    const email =
+      String( body.notificationEmail || "" ).trim();
+    if ( email && ( email.length > SETTINGS_LIMITS.email || !EMAIL_PATTERN.test( email ) ) ) {
+      bad( "That notification email address does not look right." );
+    }
+    next.notificationEmail = email;
+  }
+  return next;
+}
+
+/*
+  The settings in force for the request being handled. A function
+  instance serves one request at a time, so this is set once at the
+  top of the handler and read by the helpers below without every
+  validator having to carry it.
+*/
+let activeSettings =
+  settingsFrom( null );
+
+let activeConfig =
+  configFrom( activeSettings );
+
+function useSettings(
+  stored
+) {
+  activeSettings =
+    settingsFrom( stored );
+  activeConfig =
+    configFrom( activeSettings );
+}
+
+function getConfig() {
+  return activeConfig;
+}
+
+
 
 
 /*
@@ -2063,7 +2372,7 @@ async function rememberCustomColor(
   if (
     !color ||
     PALETTE_HEXES.has( color ) ||
-    Object.values( DEFAULT_COLORS ).includes( color )
+    Object.values( defaultColors() ).includes( color )
   ) {
     return;
   }
@@ -3389,14 +3698,19 @@ const HEX_COLOR =
   /^#[0-9a-f]{6}$/;
 
 /*
-  The colour a block has when it has none: the red and green every
-  visitor sees. Painting a block that exact colour is painting it
-  nothing, and is stored that way.
+  The colour a block has when it has none: the two defaults from the
+  settings, red and green unless the admin chose otherwise. Painting a
+  block that exact colour is painting it nothing, and is stored that
+  way.
 */
-const DEFAULT_COLORS = {
-  BLOCKED: "#b42318",
-  AVAILABLE: "#2f7d4a"
-};
+function defaultColors() {
+  return {
+    BLOCKED:
+      activeSettings.colors.blocked,
+    AVAILABLE:
+      activeSettings.colors.available
+  };
+}
 
 /*
   The basic palette the client offers; anything else is "custom".
@@ -3410,7 +3724,9 @@ const PALETTE_HEXES =
 function defaultColorFor(
   type
 ) {
-  return DEFAULT_COLORS[ type ] || DEFAULT_COLORS.BLOCKED;
+  const colors =
+    defaultColors();
+  return colors[ type ] || colors.BLOCKED;
 }
 
 /*
@@ -5227,13 +5543,12 @@ function normalizeLocalDateTime(
 */
 
 function currentMinuteKey() {
-
   const parts =
     new Intl.DateTimeFormat(
       "en-CA",
       {
         timeZone:
-          TIMEZONE_ID,
+          activeSettings.timezoneId,
 
         year:
           "numeric",
@@ -5560,7 +5875,10 @@ export {
   normalizeSchedule,
   resolveOccurrenceColor,
   applyColorScope,
-  dropWeekday
+  dropWeekday,
+  settingsFrom,
+  configFrom,
+  validateSettings
 };
 
 

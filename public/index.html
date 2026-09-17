@@ -218,6 +218,14 @@
         </button>
 
         <button
+          id="settingsBtn"
+          class="text-btn hidden"
+          title="Title, hours, time zone, colors, wording, notifications"
+        >
+          Settings
+        </button>
+
+        <button
           id="exitAdminBtn"
           class="text-btn"
         >
@@ -270,7 +278,10 @@
             0
           </span>
 
-          <span class="week-summary-label">
+          <span
+            id="summaryPeopleLabel"
+            class="week-summary-label"
+          >
             students
           </span>
 
@@ -393,17 +404,13 @@
         <span>
 
           <i class="legend-swatch available"></i>
-
-          Available
-
+          <span id="legendAvailable">Available</span>
         </span>
 
         <span>
 
           <i class="legend-swatch blocked"></i>
-
-          Blocked Session
-
+          <span id="legendBlocked">Blocked Session</span>
         </span>
 
       </div>
@@ -1162,6 +1169,182 @@
 
   <!-- EVENT EDITOR -->
 
+  <!-- SETTINGS -->
+
+  <div
+    id="settingsModal"
+    class="modal-backdrop hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settingsTitle"
+  >
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="settingsTitle">
+          Settings
+        </h2>
+        <button
+          class="close-btn"
+          data-close="settingsModal"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <label class="field">
+        <span>
+          Calendar title
+        </span>
+        <input
+          id="settingTitle"
+          type="text"
+          maxlength="80"
+        >
+      </label>
+
+      <label class="field">
+        <span>
+          Display name
+          <small>as in "___ last updated the schedule"</small>
+        </span>
+        <input
+          id="settingDisplayName"
+          type="text"
+          maxlength="40"
+        >
+      </label>
+
+      <label class="field">
+        <span>
+          Time zone
+        </span>
+        <select id="settingTimezone"></select>
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>
+            Day starts
+          </span>
+          <select id="settingDayStart"></select>
+        </label>
+        <label class="field">
+          <span>
+            Day ends
+          </span>
+          <select id="settingDayEnd"></select>
+        </label>
+      </div>
+
+      <div class="field">
+        <span>
+          Default color for open time
+          <small>what visitors see</small>
+        </span>
+        <div
+          id="settingAvailableColor"
+          class="color-row"
+          role="group"
+        ></div>
+      </div>
+
+      <div class="field">
+        <span>
+          Default color for booked time
+        </span>
+        <div
+          id="settingBlockedColor"
+          class="color-row"
+          role="group"
+        ></div>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>
+            Open time is called
+          </span>
+          <input
+            id="settingLabelAvailable"
+            type="text"
+            maxlength="30"
+            placeholder="Available"
+          >
+        </label>
+        <label class="field">
+          <span>
+            Booked time is called
+          </span>
+          <input
+            id="settingLabelBlocked"
+            type="text"
+            maxlength="30"
+            placeholder="Blocked Session"
+          >
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>
+            One person is a
+          </span>
+          <input
+            id="settingLabelPerson"
+            type="text"
+            maxlength="20"
+            placeholder="student"
+          >
+        </label>
+        <label class="field">
+          <span>
+            Several are
+          </span>
+          <input
+            id="settingLabelPeople"
+            type="text"
+            maxlength="20"
+            placeholder="students"
+          >
+        </label>
+      </div>
+
+      <label class="field">
+        <span>
+          Notification email
+          <small>where new session requests are sent; leave empty for none</small>
+        </span>
+        <input
+          id="settingNotificationEmail"
+          type="email"
+          maxlength="120"
+          placeholder="you@example.com"
+        >
+      </label>
+
+      <div
+        id="settingsError"
+        class="form-error"
+      ></div>
+
+      <div class="modal-actions">
+        <button
+          class="btn secondary"
+          data-close="settingsModal"
+        >
+          Cancel
+        </button>
+        <button
+          id="saveSettingsBtn"
+          class="btn primary"
+        >
+          Save settings
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div
     id="eventModal"
     class="modal-backdrop hidden"
@@ -1218,7 +1401,10 @@
             Select One
           </option>
 
-          <option value="AVAILABLE">
+          <option
+            id="eventTypeAvailableOption"
+            value="AVAILABLE"
+          >
             Available
           </option>
 
@@ -1814,7 +2000,10 @@
             Session Requests
           </h2>
 
-          <div class="blocked-drawer-subtitle">
+          <div
+            id="requestsSubtitle"
+            class="blocked-drawer-subtitle"
+          >
             Submitted by students, waiting on you
           </div>
 

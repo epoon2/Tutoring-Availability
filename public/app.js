@@ -21,6 +21,12 @@
     customColors:
       [],
 
+    /*
+      The two default colours being edited in the settings dialog.
+    */
+    settingsColors:
+      null,
+
     weekStart:
       startOfWeek(
         new Date()
@@ -662,6 +668,16 @@
       .addEventListener(
         'click',
         openHistory
+      );
+    $('settingsBtn')
+      .addEventListener(
+        'click',
+        openSettings
+      );
+    $('saveSettingsBtn')
+      .addEventListener(
+        'click',
+        saveSettings
       );
 
 
@@ -2938,8 +2954,7 @@
           {}
         )
       };
-
-
+      applyConfigStyling();
       if (
         state.isAdmin &&
         data.mode !== 'admin' &&
@@ -3116,8 +3131,12 @@
         'hidden',
         !state.isAdmin
       );
-
-
+    $('settingsBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
+      );
     $('signOutBtn')
       .classList
       .toggle(
@@ -4926,19 +4945,9 @@
       state.isAdmin
         ? (
             event.title ||
-            (
-              event.type ===
-              'BLOCKED'
-                ? 'Blocked Session'
-                : 'Available'
-            )
+            labelFor( event.type )
           )
-        : (
-            event.type ===
-            'BLOCKED'
-              ? 'Blocked Session'
-              : 'Available'
-          );
+        : labelFor( event.type );
 
 
     const titleElement =
@@ -5416,19 +5425,9 @@
               state.isAdmin
                 ? (
                     event.title ||
-                    (
-                      event.type ===
-                      'BLOCKED'
-                        ? 'Blocked Session'
-                        : 'Available'
-                    )
+                    labelFor( event.type )
                   )
-                : (
-                    event.type ===
-                    'BLOCKED'
-                      ? 'Blocked Session'
-                      : 'Available'
-                  );
+                : labelFor( event.type );
 
 
             meta.className =
@@ -5450,10 +5449,7 @@
 
 
             right.textContent =
-              event.type ===
-              'BLOCKED'
-                ? 'Blocked'
-                : 'Open';
+              labelFor( event.type );
 
 
             left.append(
@@ -5911,7 +5907,7 @@
 
       title.textContent =
         event.title ||
-        'Blocked Session';
+        labelFor( 'BLOCKED' );
 
 
       const time =
@@ -6436,12 +6432,7 @@
               ' ' +
               (
                 event.title ||
-                (
-                  event.type ===
-                  'BLOCKED'
-                    ? 'Blocked'
-                    : 'Available'
-                )
+                labelFor( event.type )
               );
 
             chip.title =
@@ -6823,17 +6814,12 @@
           const blocked =
             event.type ===
             'BLOCKED';
-
-
+          const shades =
+            exportShades( event );
           ctx.fillStyle =
-            blocked
-              ? '#fee4e2'
-              : '#e7f5ec';
-
+            shades.tint;
           ctx.strokeStyle =
-            blocked
-              ? '#f5aaa3'
-              : '#b9dfc6';
+            shades.border;
 
           roundRectPath(
             ctx,
@@ -6849,18 +6835,13 @@
 
 
           ctx.fillStyle =
-            blocked
-              ? '#b42318'
-              : '#2f7d4a';
-
+            shades.ink;
           ctx.font = font( 11, '700' );
           ctx.fillText(
             clipCanvasText(
               ctx,
               event.title ||
-              ( blocked
-                ? 'Blocked Session'
-                : 'Available' ),
+              labelFor( blocked ? 'BLOCKED' : 'AVAILABLE' ),
               COL_W - 16
             ),
             x + 9,
@@ -7203,11 +7184,10 @@
               26 +
               index * 19;
 
+            const shades =
+              exportShades( event );
             ctx.fillStyle =
-              blocked
-                ? '#fee4e2'
-                : '#e7f5ec';
-
+              shades.tint;
             roundRectPath(
               ctx,
               x + 4,
@@ -7220,10 +7200,7 @@
             ctx.fill();
 
             ctx.fillStyle =
-              blocked
-                ? '#b42318'
-                : '#2f7d4a';
-
+              shades.ink;
             ctx.font = font( 9.5, '600' );
             ctx.fillText(
               clipCanvasText(
@@ -7232,9 +7209,7 @@
                 ' ' +
                 (
                   event.title ||
-                  ( blocked
-                    ? 'Blocked'
-                    : 'Available' )
+                  labelFor( blocked ? 'BLOCKED' : 'AVAILABLE' )
                 ),
                 COL_W - 16
               ),
@@ -7923,9 +7898,7 @@
     const name =
       copied.title ||
       copied.studentName ||
-      ( copied.type === 'AVAILABLE'
-        ? 'Available'
-        : 'Blocked' );
+      labelFor( copied.type );
 
 
     return name.length > 24
@@ -11746,7 +11719,7 @@
         overlapping.map(
           (event) => ({
             title:
-              'Blocked Session',
+              labelFor( 'BLOCKED' ),
 
             start:
               event.start,
@@ -11800,7 +11773,7 @@
         windows.map(
           (event) => ({
             title:
-              'Available',
+              labelFor( 'AVAILABLE' ),
 
             start:
               event.start,
@@ -12965,7 +12938,289 @@
 
 
   /* =========================================================
-     BLOCK COLOURS (ADMIN)
+     SETTINGS (ADMIN)
+  ========================================================= */
+
+  /*
+    The calendar's own settings - title, name, time zone, hours, the
+    two default colours and the words for open and booked time - come
+    with every load as state.config and are applied here: the colours
+    become the page's variables, the words replace the built-in ones.
+  */
+
+  const BUILT_IN_COLORS = {
+    AVAILABLE:
+      '#2f7d4a',
+    BLOCKED:
+      '#b42318'
+  };
+
+  function labelFor(
+    type
+  ) {
+    const labels =
+      state.config.labels || {};
+    return type === 'AVAILABLE'
+      ? ( labels.available || 'Available' )
+      : ( labels.blocked || 'Blocked Session' );
+  }
+
+  function peopleWord(
+    count
+  ) {
+    const labels =
+      state.config.labels || {};
+    return count === 1
+      ? ( labels.person || 'student' )
+      : ( labels.people || 'students' );
+  }
+
+  function applyConfigStyling() {
+    const colors =
+      state.config.colors || {};
+    const root =
+      document.documentElement.style;
+    const paint =
+      (prefix, hex) => {
+        const shades =
+          cardShades(
+            normalizeHex( hex ) ||
+            BUILT_IN_COLORS[ prefix === 'available' ? 'AVAILABLE' : 'BLOCKED' ]
+          );
+        root.setProperty( '--' + prefix, shades.ink );
+        root.setProperty( '--' + prefix + '-bg', shades.tint );
+        root.setProperty( '--' + prefix + '-border', shades.border );
+      };
+    paint( 'available', colors.available );
+    paint( 'blocked', colors.blocked );
+    const setText =
+      (id, text) => {
+        const element =
+          $(id);
+        if ( element ) {
+          element.textContent =
+            text;
+        }
+      };
+    setText( 'legendAvailable', labelFor( 'AVAILABLE' ) );
+    setText( 'legendBlocked', labelFor( 'BLOCKED' ) );
+    setText( 'eventTypeAvailableOption', labelFor( 'AVAILABLE' ) );
+    setText( 'summaryPeopleLabel', peopleWord( 2 ) );
+    setText( 'requestsSubtitle', 'Submitted by ' + peopleWord( 2 ) + ', waiting on you' );
+  }
+
+  /*
+    The dialog. Hours are whole hours; the time zone list is the
+    browser's own where it has one, else a short list plus whatever
+    the calendar is set to now.
+  */
+
+  const FALLBACK_TIMEZONES = [
+    'America/Los_Angeles', 'America/Denver', 'America/Chicago', 'America/New_York',
+    'America/Anchorage', 'Pacific/Honolulu', 'America/Toronto', 'America/Vancouver',
+    'America/Mexico_City', 'America/Sao_Paulo', 'Europe/London', 'Europe/Paris',
+    'Europe/Berlin', 'Europe/Madrid', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Singapore',
+    'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul', 'Australia/Sydney', 'Pacific/Auckland'
+  ];
+
+  function timezoneChoices() {
+    try {
+      const all =
+        Intl.supportedValuesOf( 'timeZone' );
+      if ( Array.isArray( all ) && all.length ) {
+        return all;
+      }
+    } catch {}
+    return FALLBACK_TIMEZONES;
+  }
+
+  function fillHourSelect(
+    select,
+    from,
+    to
+  ) {
+    select.innerHTML = '';
+    for ( let hour = from; hour <= to; hour++ ) {
+      const option =
+        document.createElement( 'option' );
+      option.value =
+        String( hour );
+      option.textContent =
+        hour === 24
+          ? '12 AM (midnight)'
+          : formatMinutes( hour * 60 );
+      select.appendChild( option );
+    }
+  }
+
+  async function openSettings() {
+    endAction();
+    $('settingsError').textContent = '';
+    let settings;
+    try {
+      settings =
+        ( await api( '/settings' ) ).settings;
+    } catch (error) {
+      setStatus( error.message );
+      return;
+    }
+    $('settingTitle').value =
+      settings.title || '';
+    $('settingDisplayName').value =
+      settings.displayName || '';
+    const zones =
+      timezoneChoices();
+    const zoneSelect =
+      $('settingTimezone');
+    zoneSelect.innerHTML = '';
+    const list =
+      zones.includes( settings.timezoneId )
+        ? zones
+        : [ settings.timezoneId, ...zones ];
+    list.forEach(
+      (zone) => {
+        const option =
+          document.createElement( 'option' );
+        option.value = zone;
+        option.textContent =
+          zone.replace( /_/g, ' ' );
+        zoneSelect.appendChild( option );
+      }
+    );
+    zoneSelect.value =
+      settings.timezoneId;
+    fillHourSelect( $('settingDayStart'), 0, 23 );
+    fillHourSelect( $('settingDayEnd'), 1, 24 );
+    $('settingDayStart').value =
+      String( settings.dayStart );
+    $('settingDayEnd').value =
+      String( settings.dayEnd );
+    state.settingsColors = {
+      available:
+        normalizeHex( settings.colors && settings.colors.available ) || BUILT_IN_COLORS.AVAILABLE,
+      blocked:
+        normalizeHex( settings.colors && settings.colors.blocked ) || BUILT_IN_COLORS.BLOCKED
+    };
+    /*
+      The two default colours use the same swatch row as a block;
+      here "Default" means the built-in green or red.
+    */
+    renderColorSwatches(
+      $('settingAvailableColor'),
+      {
+        selected:
+          state.settingsColors.available === BUILT_IN_COLORS.AVAILABLE
+            ? null
+            : state.settingsColors.available,
+        defaultColor:
+          BUILT_IN_COLORS.AVAILABLE,
+        onPick:
+          (hex) => {
+            state.settingsColors.available =
+              hex || BUILT_IN_COLORS.AVAILABLE;
+          }
+      }
+    );
+    renderColorSwatches(
+      $('settingBlockedColor'),
+      {
+        selected:
+          state.settingsColors.blocked === BUILT_IN_COLORS.BLOCKED
+            ? null
+            : state.settingsColors.blocked,
+        defaultColor:
+          BUILT_IN_COLORS.BLOCKED,
+        onPick:
+          (hex) => {
+            state.settingsColors.blocked =
+              hex || BUILT_IN_COLORS.BLOCKED;
+          }
+      }
+    );
+    const labels =
+      settings.labels || {};
+    $('settingLabelAvailable').value =
+      labels.available || '';
+    $('settingLabelBlocked').value =
+      labels.blocked || '';
+    $('settingLabelPerson').value =
+      labels.person || '';
+    $('settingLabelPeople').value =
+      labels.people || '';
+    $('settingNotificationEmail').value =
+      settings.notificationEmail || '';
+    openModal( 'settingsModal' );
+    $('settingTitle').focus();
+  }
+
+  async function saveSettings() {
+    $('settingsError').textContent = '';
+    const body = {
+      title:
+        $('settingTitle').value,
+      displayName:
+        $('settingDisplayName').value,
+      timezoneId:
+        $('settingTimezone').value,
+      dayStart:
+        Number( $('settingDayStart').value ),
+      dayEnd:
+        Number( $('settingDayEnd').value ),
+      colors:
+        { ...state.settingsColors },
+      labels: {
+        available:
+          $('settingLabelAvailable').value,
+        blocked:
+          $('settingLabelBlocked').value,
+        person:
+          $('settingLabelPerson').value,
+        people:
+          $('settingLabelPeople').value
+      },
+      notificationEmail:
+        $('settingNotificationEmail').value
+    };
+    if ( body.dayEnd <= body.dayStart ) {
+      $('settingsError').textContent =
+        'The day must end after it starts.';
+      return;
+    }
+    $('saveSettingsBtn').disabled = true;
+    try {
+      const data =
+        await api(
+          '/settings',
+          {
+            method:
+              'PUT',
+            body:
+              JSON.stringify( body )
+          }
+        );
+      state.config = {
+        ...state.config,
+        ...( data.config || {} )
+      };
+      applyConfigStyling();
+      closeModal( 'settingsModal' );
+      await loadWeek();
+      setStatus(
+        data.sync && data.sync.google === 'failed'
+          ? 'Settings saved. Google Calendar could not be updated: ' + ( data.sync.error || 'unknown error' )
+          : 'Settings saved.'
+      );
+    } catch (error) {
+      $('settingsError').textContent =
+        error.message ||
+        'The settings could not be saved.';
+    } finally {
+      $('saveSettingsBtn').disabled = false;
+    }
+  }
+
+  /* =========================================================
+     BLOCK COLORS (ADMIN)
   ========================================================= */
 
   /*
@@ -12999,9 +13254,13 @@
   function defaultColorFor(
     type
   ) {
-    return type === 'AVAILABLE'
-      ? '#2f7d4a'
-      : '#b42318';
+    const colors =
+      state.config.colors || {};
+    return normalizeHex(
+      type === 'AVAILABLE'
+        ? colors.available
+        : colors.blocked
+    ) || BUILT_IN_COLORS[ type === 'AVAILABLE' ? 'AVAILABLE' : 'BLOCKED' ];
   }
 
   function normalizeHex(
@@ -13143,6 +13402,19 @@
       (error) => {
         setStatus( error.message );
       }
+    );
+  }
+
+  /*
+    The shades the screenshot export draws a block in: its own colour
+    in admin mode, else the type's default from the settings.
+  */
+  function exportShades(
+    event
+  ) {
+    return cardShades(
+      ( state.isAdmin && normalizeHex( event.color ) ) ||
+      defaultColorFor( event.type )
     );
   }
 
@@ -14818,7 +15090,7 @@
 
       title.textContent =
         conflict.title ||
-        'Blocked Session';
+        labelFor( 'BLOCKED' );
 
 
       const time =

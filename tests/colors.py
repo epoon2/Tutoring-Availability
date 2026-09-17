@@ -270,7 +270,9 @@ async def main():
         tinted = await page.evaluate("document.querySelectorAll('.event-card.tinted').length")
         check("the public view has no tinted cards", tinted == 0, str(tinted))
         body = await page.evaluate("fetch('/api/events?start=2020-01-01&end=2030-01-01').then(r => r.text())")
-        check("and the public API never mentions color", "color" not in body)
+        import json as _json
+        pub = _json.loads(body)
+        check("and the public API carries no block colors or presets - only the two defaults", "color" not in _json.dumps(pub["events"]) and "customColors" not in pub and "colors" in pub["config"])
         await page.click("#adminBtn"); await page.wait_for_timeout(700)
 
         # ---- delete All Mondays

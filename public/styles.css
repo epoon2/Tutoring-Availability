@@ -2692,3 +2692,20 @@ body:not(.view-week).list-view .calendar {
   background: var(--dot, var(--blocked));
   border-radius: 50%;
 }
+
+
+/* -----------------------------
+   SETTINGS
+----------------------------- */
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+@media (max-width: 520px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
