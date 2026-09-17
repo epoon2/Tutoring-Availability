@@ -221,34 +221,12 @@
               <span id="profileMenuMode">Admin mode</span>
             </div>
             <button
-              id="backToAdminBtn"
-              class="menu-item hidden"
-              role="menuitem"
-            >
-              Back to admin
-            </button>
-            <button
-              id="exitAdminBtn"
-              class="menu-item"
-              role="menuitem"
-            >
-              View as visitor
-            </button>
-            <button
               id="settingsBtn"
               class="menu-item hidden"
               role="menuitem"
               title="Title, display name, hours, time zone, colors, wording, notifications"
             >
               Settings
-            </button>
-            <button
-              id="historyBtn"
-              class="menu-item hidden"
-              role="menuitem"
-              title="Every version of the schedule, newest first - restore any of them"
-            >
-              Version history
             </button>
             <button
               id="signOutBtn"
@@ -302,7 +280,13 @@
         >
           Redo
         </button>
-
+        <button
+          id="historyBtn"
+          class="text-btn hidden"
+          title="Every version of the schedule, newest first - restore any of them"
+        >
+          Version history
+        </button>
       </div>
     </section>
 
@@ -470,13 +454,31 @@
         </span>
 
         <span>
-
           <i class="legend-swatch blocked"></i>
           <span id="legendBlocked">Blocked Session</span>
         </span>
-
       </div>
-
+      <div
+        id="modeSwitch"
+        class="view-switch mode-switch hidden"
+        role="group"
+        aria-label="Admin or public view"
+      >
+        <button
+          id="backToAdminBtn"
+          class="btn secondary small"
+          aria-pressed="true"
+        >
+          Admin view
+        </button>
+        <button
+          id="exitAdminBtn"
+          class="btn secondary small"
+          aria-pressed="false"
+        >
+          Public view
+        </button>
+      </div>
     </section>
 
 

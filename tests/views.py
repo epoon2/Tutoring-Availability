@@ -73,7 +73,11 @@ async def main():
         await page.wait_for_timeout(800)
         cards = await page.locator(".event-card").count()
         check("stepping day by day reaches the session", cards == 1, f"cards={cards}")
-        await page.locator(".event-card").first.click(button="right")
+        # scroll first and let the scroll event pass - the menu closes on scroll
+        await page.evaluate("document.querySelector('.event-card').scrollIntoView({ block: 'center' })")
+        await page.wait_for_timeout(300)
+        await page.evaluate("""() => { const card = document.querySelector('.event-card');
+            card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 400, clientY: 400 })); }""")
         await page.wait_for_timeout(300)
         items = await page.evaluate(
             "[...document.querySelectorAll('.context-menu-item')].map(i => i.textContent.trim())")

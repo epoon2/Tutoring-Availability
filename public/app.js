@@ -626,8 +626,9 @@
       .addEventListener(
         'click',
         () => {
-          closeProfileMenu();
-          $('adminBtn').click();
+          if ( !state.isAdmin ) {
+            $('adminBtn').click();
+          }
         }
       );
     $('profileBtn')
@@ -665,7 +666,7 @@
     /*
       Any choice closes the menu; so does a click anywhere else.
     */
-    [ 'exitAdminBtn', 'settingsBtn', 'historyBtn' ]
+    [ 'settingsBtn' ]
       .forEach(
         (id) => {
           $(id)
@@ -691,7 +692,11 @@
     $('exitAdminBtn')
       .addEventListener(
         'click',
-        exitAdmin
+        () => {
+          if ( state.isAdmin ) {
+            exitAdmin();
+          }
+        }
       );
 
 
@@ -3247,19 +3252,21 @@
         'hidden',
         !signedIn
       );
-    $('exitAdminBtn')
+    /*
+      The Admin view / Public view switch sits on the calendar toolbar
+      whenever there is a way back: in admin mode, or on a remembered
+      device looking at the public view.
+    */
+    $('modeSwitch')
       .classList
       .toggle(
         'hidden',
-        !state.isAdmin
+        !( state.isAdmin || Boolean( state.adminToken ) )
       );
     $('backToAdminBtn')
-      .classList
-      .toggle(
-        'hidden',
-        state.isAdmin ||
-        !state.adminToken
-      );
+      .setAttribute( 'aria-pressed', state.isAdmin ? 'true' : 'false' );
+    $('exitAdminBtn')
+      .setAttribute( 'aria-pressed', state.isAdmin ? 'false' : 'true' );
     $('signOutBtn')
       .classList
       .toggle(
@@ -3270,7 +3277,7 @@
       .textContent =
         state.isAdmin
           ? 'Admin mode'
-          : 'Viewing as a visitor';
+          : 'Public view';
     renderProfileChip();
     if ( !signedIn ) {
       closeProfileMenu();

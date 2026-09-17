@@ -2996,3 +2996,28 @@ body:not(.view-week).list-view .calendar {
   font-size: 18px;
   line-height: 1;
 }
+
+
+/*
+  Admin view / Public view, on the toolbar for anyone signed in.
+*/
+.mode-switch {
+  margin-left: 4px;
+}
+
+/*
+  The toolbar wraps as a whole rather than squeezing its buttons and
+  the week label onto several lines each.
+*/
+.calendar-toolbar {
+  flex-wrap: wrap;
+}
+
+.calendar-toolbar .btn {
+  white-space: nowrap;
+}
+
+.calendar-toolbar h2 {
+  min-width: 170px;
+  white-space: nowrap;
+}
