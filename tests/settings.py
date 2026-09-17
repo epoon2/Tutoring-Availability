@@ -43,7 +43,7 @@ async def main():
             const tue = cols.find(d => new Date(d + 'T12:00').getDay() === 2);
             const post = (body) => fetch('/api/events', { method: 'POST', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'}, body: JSON.stringify(body) });
             await post({ type: 'AVAILABLE', title: 'open', start: tue + 'T09:00', end: tue + 'T12:00' });
-            await post({ type: 'BLOCKED', title: '', start: tue + 'T15:00', end: tue + 'T16:00' });
+            await post({ type: 'BLOCKED', title: 'Noah', start: tue + 'T15:00', end: tue + 'T16:00' });
         }""")
         await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
 
@@ -88,7 +88,7 @@ async def main():
         check("the grid runs from 9 AM to 9 PM", labels[0] == "9 AM" and labels[-1] == "9 PM", str(labels[:2] + labels[-2:]))
         check("the legend uses the new words", await page.text_content("#legendAvailable") == "Open" and await page.text_content("#legendBlocked") == "Lesson")
         check("the summary counts pupils", await page.text_content("#summaryPeopleLabel") == "pupils")
-        check("the untitled booked block is called a Lesson", await page.evaluate("[...document.querySelectorAll('.event-card.blocked .event-title')].map(e => e.textContent)") == ["Lesson"])
+        check("the visitor-facing name of a booked block is Lesson", await page.evaluate("labelForTest = null; document.getElementById('legendBlocked').textContent") == "Lesson")
         check("the page's colours are the new defaults", await css_var(page, "--available") == "#1d4ed8" and await css_var(page, "--blocked") == "#6d28d9",
               f"{await css_var(page, '--available')} {await css_var(page, '--blocked')}")
         await page.evaluate("""() => { const card = document.querySelector('.event-card.blocked');

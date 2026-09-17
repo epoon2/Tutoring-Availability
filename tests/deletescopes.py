@@ -84,7 +84,7 @@ async def main():
             const post = (body) => fetch('/api/events', { method: 'POST',
                 headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
                 body: JSON.stringify(body) });
-            await post({ id: 'series-1', type: 'BLOCKED', title: 'Maya - Algebra II',
+            await post({ type: 'BLOCKED', title: 'Maya - Algebra II',
                 start: anchor + 'T16:00', end: anchor + 'T17:00',
                 recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4], endType: 'NEVER' } });
             await post({ type: 'BLOCKED', title: 'One-off',
@@ -186,10 +186,10 @@ async def main():
             "  const post = (body) => fetch('/api/events', { method: 'POST',"
             "    headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},"
             "    body: JSON.stringify(body) });"
-            "  await post({ id: 'wed-open', type: 'AVAILABLE', title: 'Open',"
+            "  await post({ type: 'AVAILABLE', title: 'Open',"
             "    start: wed + 'T09:00', end: wed + 'T12:00',"
             "    recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [3], endType: 'NEVER' } });"
-            "  await post({ id: 'wed-session', type: 'BLOCKED', title: 'Noah - Geometry',"
+            "  await post({ type: 'BLOCKED', title: 'Noah - Geometry',"
             "    start: wed + 'T10:00', end: wed + 'T11:00',"
             "    recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [3], endType: 'NEVER' } });"
             "}", wed)

@@ -85,7 +85,7 @@ async def main():
         await page.evaluate("""async (anchor) => {
             await fetch('/api/events', { method: 'POST',
                 headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
-                body: JSON.stringify({ id: 'series-1', type: 'BLOCKED', title: 'Maya - Algebra II',
+                body: JSON.stringify({ type: 'BLOCKED', title: 'Maya - Algebra II',
                     start: anchor + 'T16:00', end: anchor + 'T17:00',
                     recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4],
                                   endType: 'NEVER' } }) });

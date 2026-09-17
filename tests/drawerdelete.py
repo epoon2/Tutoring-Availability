@@ -51,7 +51,7 @@ async def main():
             const nextTue = shift(tue, 7), nextThu = shift(tue, 9), afterTue = shift(tue, 14), afterThu = shift(tue, 16);
             await fetch('/api/events', { method: 'POST',
                 headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
-                body: JSON.stringify({ id: 'far-series', type: 'BLOCKED', title: 'Maya - Algebra II',
+                body: JSON.stringify({ type: 'BLOCKED', title: 'Maya - Algebra II',
                     start: nextTue + 'T16:00', end: nextTue + 'T17:00',
                     recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4], endType: 'NEVER' } }) });
             return { nextTue, nextThu, afterTue, afterThu, nextStart: shift(tue, 5), nextEnd: shift(tue, 11),

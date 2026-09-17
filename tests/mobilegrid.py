@@ -40,7 +40,7 @@ async def main():
                 body: JSON.stringify(body) });
             await post({ type: 'AVAILABLE', title: 'Open',
                 start: tue + 'T15:00', end: tue + 'T18:00' });
-            await post({ id: 'series-1', type: 'BLOCKED', title: 'Maya - Algebra II',
+            await post({ type: 'BLOCKED', title: 'Maya - Algebra II',
                 start: tue + 'T16:00', end: tue + 'T17:00',
                 recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4],
                               endType: 'NEVER' } });

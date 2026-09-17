@@ -96,7 +96,7 @@ async def main():
             const anchor = new Date(Date.UTC(y, m-1, d-7)).toISOString().slice(0,10);
             await fetch('/api/events', { method: 'POST',
                 headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
-                body: JSON.stringify({ id: 'series-1', type: 'BLOCKED', title: 'Noah - Geometry',
+                body: JSON.stringify({ type: 'BLOCKED', title: 'Noah - Geometry',
                     start: anchor + 'T16:00', end: anchor + 'T17:00',
                     recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4], endType: 'NEVER' } }) });
         }""")

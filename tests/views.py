@@ -33,7 +33,7 @@ async def main():
                 return new Date(Date.UTC(y, m-1, d+n)).toISOString().slice(0,10); };
             await fetch('/api/events', { method: 'POST',
                 headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
-                body: JSON.stringify({ id: 'series-1', type: 'BLOCKED', title: 'Maya - Algebra II',
+                body: JSON.stringify({ type: 'BLOCKED', title: 'Maya - Algebra II',
                     start: shift(tue, -7) + 'T16:00', end: shift(tue, -7) + 'T17:00',
                     recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2, 4],
                                   endType: 'NEVER' } }) });

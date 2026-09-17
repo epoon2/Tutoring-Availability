@@ -83,14 +83,29 @@ async def main():
             check("Dismiss hides it", not await visible(page, "#syncNotice"))
             await page.click("#googleSyncBtn"); await page.wait_for_timeout(600)
             text = await page.text_content("#syncNoticeText")
+            check("Sync now against a Google that still refuses says so, with the reason",
+                  await visible(page, "#syncNotice") and "did not finish" in text and "401" in text, text)
+            await page.evaluate("document.getElementById('exitAdminBtn').click()"); await page.wait_for_timeout(400)
+            check("leaving admin hides the notice and the button",
+                  not await visible(page, "#syncNotice") and not await visible(page, "#googleSyncBtn"))
+        finally:
+            server.terminate(); server.wait()
+
+        # ---- credentials present, Google accepting
+        server = start_server("ok")
+        try:
+            page = await (await b.new_context(viewport={"width": 1400, "height": 950})).new_page()
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            await login(page)
+            await save_session(page)
+            check("a save Google accepted shows no notice", not await visible(page, "#syncNotice"))
+            await page.click("#googleSyncBtn"); await page.wait_for_timeout(600)
+            text = await page.text_content("#syncNoticeText")
             check("Sync Google Calendar reports what it pushed",
                   await visible(page, "#syncNotice") and "1 session pushed" in text, text)
             check("a good result reads as good and hides Sync now",
                   await page.evaluate("document.getElementById('syncNotice').classList.contains('ok')")
                   and not await visible(page, "#syncNoticeRetryBtn"))
-            await page.evaluate("document.getElementById('exitAdminBtn').click()"); await page.wait_for_timeout(400)
-            check("leaving admin hides the notice and the button",
-                  not await visible(page, "#syncNotice") and not await visible(page, "#googleSyncBtn"))
         finally:
             server.terminate(); server.wait()
 

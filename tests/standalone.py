@@ -72,7 +72,7 @@ async def main():
         # from the third week; "this event only" on the first. One block left.
         await page.evaluate("""async (tue) => fetch('/api/events', { method: 'POST',
             headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
-            body: JSON.stringify({ id: 'maya', type: 'BLOCKED', title: 'Maya - Algebra II',
+            body: JSON.stringify({ type: 'BLOCKED', title: 'Maya - Algebra II',
                 start: tue + 'T16:00', end: tue + 'T17:00',
                 recurrence: { frequency: 'WEEKLY', interval: 1, weekdays: [2], endType: 'NEVER' } }) })""", d["tue"])
         await page.click("#nextWeekBtn"); await page.click("#nextWeekBtn"); await page.wait_for_timeout(800)
