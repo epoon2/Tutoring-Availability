@@ -24,6 +24,7 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
                '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png' };
 
 let events = [];
+let requests = [];
 let nextId = 1;
 
 // Custom colour presets, oldest first, as production keeps them.
@@ -114,7 +115,28 @@ createServer(async (req, res) => {
       return json(res, 200, { ok: true, mode: 'admin',
         ...(body.remember === true ? { token: TEST_TOKEN, expiresAt: new Date(Date.now() + 90 * 86400000).toISOString() } : {}) });
     }
-    if (route === '/requests') return json(res, 200, { requests: [] });
+    if (route === '/requests' && req.method === 'POST') {
+      // the public request form; the same required fields as production
+      if (!body.name || !body.subject || !body.format || !body.start || !body.end) return json(res, 400, { error: 'Please fill in the form.' });
+      if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return json(res, 400, { error: 'Please enter an email address the tutor can reply to.' });
+      const request = { id: 'r' + (nextId++), name: body.name, email: String(body.email).toLowerCase(),
+        ...(body.phone ? { phone: body.phone } : {}), ...(body.guardian ? { guardian: body.guardian } : {}),
+        subject: body.subject, format: body.format, recurrence: body.recurrence || null, start: body.start, end: body.end, createdAt: new Date().toISOString() };
+      requests.push(request);
+      if (FAKE_MAIL !== 'off' && settings().notificationEmail) sentMail.push({ to: settings().notificationEmail, replyTo: request.email, request: request.id });
+      return json(res, 201, { id: request.id });
+    }
+    if (route === '/requests' && req.method === 'GET') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      return json(res, 200, { requests });
+    }
+    if (route.startsWith('/requests/') && req.method === 'DELETE') {
+      if (!isAdmin(req)) return json(res, 401, { error: 'Incorrect admin password.' });
+      const id = decodeURIComponent(route.slice('/requests/'.length));
+      requests = requests.filter(r => r.id !== id);
+      return json(res, 200, { ok: true });
+    }
+    if (route === '/sentmail') return json(res, 200, { sentMail });
     if (route.startsWith('/events') && req.method === 'GET') {
       const admin = isAdmin(req) ? 'admin' : 'public';
       const params = url.searchParams;

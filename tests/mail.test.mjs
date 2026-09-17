@@ -24,7 +24,7 @@ const req = async (method, path, body, admin = true) => {
   return { status: res.status, data: await res.json().catch(() => ({})) };
 };
 const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-const request = (over = {}) => ({ name: 'Maya Chen', subject: 'Algebra II', format: 'Online', start: `${nextWeek}T16:00`, end: `${nextWeek}T17:00`, ...over });
+const request = (over = {}) => ({ name: 'Maya Chen', email: 'Maya.Chen@Example.com', phone: '(555) 555-1234', guardian: 'Lin Chen', subject: 'Algebra II', format: 'Online', start: `${nextWeek}T16:00`, end: `${nextWeek}T17:00`, ...over });
 
 // ---- a fake Brevo
 const received = [];
@@ -78,6 +78,19 @@ ok('one email went to Brevo with the key, from the verified sender, to the notif
   && received[0].body.sender.email === 'ethan@example.com' && received[0].body.sender.name === "Ethan's Tutoring Availability"
   && received[0].body.to[0].email === 'ethan@example.com', JSON.stringify(received[0]));
 ok('with the request in it and the site link', received[0].body.textContent.includes('Maya Chen') && received[0].body.textContent.includes('http://localhost/'), received[0].body.textContent);
+ok('the contact details are in it and replies go to the requester', received[0].body.textContent.includes('Guardian: Lin Chen')
+  && received[0].body.textContent.includes('maya.chen@example.com') && received[0].body.textContent.includes('(555) 555-1234')
+  && received[0].body.replyTo.email === 'maya.chen@example.com' && received[0].body.htmlContent.includes('mailto:maya.chen@example.com'), JSON.stringify(received[0].body.replyTo));
+let listed = (await req('GET', '/requests')).data.requests;
+ok('the stored request carries the contact, email lower-cased', listed.at(-1).email === 'maya.chen@example.com' && listed.at(-1).phone === '(555) 555-1234' && listed.at(-1).guardian === 'Lin Chen');
+r = await req('POST', '/requests', request({ email: 'not-an-email' }), false);
+ok('a request without a usable email is refused', r.status === 400 && /email/.test(r.data.error), JSON.stringify(r.data));
+r = await req('POST', '/requests', request({ phone: 'call me' }), false);
+ok('and so is a phone number that is not one', r.status === 400 && /phone/.test(r.data.error), JSON.stringify(r.data));
+r = await req('POST', '/requests', request({ phone: '', guardian: '' }), false);
+ok('phone and guardian are optional', r.status === 201);
+listed = (await req('GET', '/requests')).data.requests;
+ok('and absent when not given', !('phone' in listed.at(-1)) && !('guardian' in listed.at(-1)));
 r = await req('GET', '/events?start=2026-09-13&end=2026-09-19');
 ok('the admin load shows mail configured with no error', r.data.mail.configured && r.data.mail.address === 'ethan@example.com' && r.data.mail.lastError === null);
 const pub = await req('GET', '/events?start=2026-09-13&end=2026-09-19', null, false);
@@ -86,7 +99,7 @@ ok('the public load says nothing about mail', !('mail' in pub.data));
 // ---- a failure never fails the request, and is remembered
 mode = 'fail';
 r = await req('POST', '/requests', request({ name: 'Noah' }), false);
-ok('a request still lands when Brevo refuses', r.status === 201 && received.length === 2);
+ok('a request still lands when Brevo refuses', r.status === 201 && received.length === 3);
 r = await req('GET', '/events?start=2026-09-13&end=2026-09-19');
 ok('the failure is remembered for the banner', r.data.mail.lastError && /Brevo 401/.test(r.data.mail.lastError.message), JSON.stringify(r.data.mail));
 r = await req('POST', '/settings/testmail');

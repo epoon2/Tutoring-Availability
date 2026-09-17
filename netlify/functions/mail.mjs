@@ -41,13 +41,14 @@ export function mailConfigured(env = process.env) {
   Send one message. Throws with a readable reason on any failure, so
   the caller decides what to do with it.
 */
-export async function sendMail({ to, subject, text, html, fromName }, env = process.env) {
+export async function sendMail({ to, subject, text, html, fromName, replyTo }, env = process.env) {
   const settings = mailSettings(env);
   if (!settings) throw new Error("Email is not configured (BREVO_API_KEY and NOTIFY_FROM_EMAIL are needed).");
   if (!to) throw new Error("No address to send to.");
   const body = {
     sender: { name: fromName || "Availability", email: settings.from },
     to: [{ email: to }],
+    ...(replyTo ? { replyTo: { email: replyTo } } : {}),
     subject,
     textContent: text,
     ...(html ? { htmlContent: html } : {})
@@ -102,12 +103,16 @@ export function requestNotification({ request, config, siteUrl }) {
     `A ${noun} has requested a session on ${title}.`,
     "",
     `Name:     ${request.name}`,
+    ...(request.guardian ? [`Guardian: ${request.guardian}`] : []),
+    ...(request.email ? [`Email:    ${request.email}`] : []),
+    ...(request.phone ? [`Phone:    ${request.phone}`] : []),
     `Subject:  ${request.subject}`,
     `Format:   ${request.format}`,
     `When:     ${when}`,
     ...(request.recurrence ? [`Repeats:  ${describeRecurrence(request.recurrence)}`] : []),
     "",
     siteUrl ? `Review it under Requests: ${siteUrl}` : "Review it under Requests on the admin page.",
+    ...(request.email ? [`Reply to this email to answer ${request.name} directly.`] : []),
     "",
     `Sent by ${title}. You can change or turn off these emails in Settings.`
   ];
@@ -117,10 +122,15 @@ export function requestNotification({ request, config, siteUrl }) {
     `<div style="font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111827">`,
     `<p>A ${escape(noun)} has requested a session on <strong>${escape(title)}</strong>.</p>`,
     `<table style="border-collapse:collapse">`,
-    row("Name", request.name), row("Subject", request.subject), row("Format", request.format), row("When", when),
+    row("Name", request.name),
+    request.guardian ? row("Guardian", request.guardian) : "",
+    request.email ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7280">Email</td><td style="padding:4px 0"><a href="mailto:${escape(request.email)}">${escape(request.email)}</a></td></tr>` : "",
+    request.phone ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7280">Phone</td><td style="padding:4px 0"><a href="tel:${escape(request.phone.replace(/[^0-9+]/g, ""))}">${escape(request.phone)}</a></td></tr>` : "",
+    row("Subject", request.subject), row("Format", request.format), row("When", when),
     request.recurrence ? row("Repeats", describeRecurrence(request.recurrence)) : "",
     `</table>`,
     siteUrl ? `<p><a href="${escape(siteUrl)}" style="color:#2f56d9">Review it under Requests</a></p>` : `<p>Review it under Requests on the admin page.</p>`,
+    request.email ? `<p>Reply to this email to answer ${escape(request.name)} directly.</p>` : "",
     `<p style="color:#6b7280;font-size:13px">Sent by ${escape(title)}. You can change or turn off these emails in Settings.</p>`,
     `</div>`
   ].join("");

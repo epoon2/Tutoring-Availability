@@ -554,8 +554,52 @@
           required
           placeholder="e.g. John"
         >
-
       </label>
+
+      <!-- CONTACT -->
+
+      <label class="field">
+        <span>
+          Email
+          <small>so the tutor can get back to you</small>
+        </span>
+        <input
+          id="requestEmail"
+          type="email"
+          maxlength="120"
+          required
+          autocomplete="email"
+          placeholder="you@example.com"
+        >
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>
+            Phone
+            <small>optional</small>
+          </span>
+          <input
+            id="requestPhone"
+            type="tel"
+            maxlength="40"
+            autocomplete="tel"
+            placeholder="(555) 555-1234"
+          >
+        </label>
+        <label class="field">
+          <span>
+            Parent / guardian
+            <small>optional</small>
+          </span>
+          <input
+            id="requestGuardian"
+            type="text"
+            maxlength="80"
+            placeholder="Name"
+          >
+        </label>
+      </div>
 
 
 

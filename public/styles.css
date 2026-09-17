@@ -2733,7 +2733,25 @@ body:not(.view-week).list-view .calendar {
   color: var(--blocked);
 }
 
-.btn.small {
-  padding: 7px 11px;
+
+/*
+  A request's contact line: guardian, email, phone, each a link where
+  it can be one.
+*/
+.request-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  color: var(--muted);
   font-size: 13px;
+}
+
+.request-contact a {
+  color: var(--accent, #2f56d9);
+  text-decoration: none;
+}
+
+.request-contact a:hover {
+  text-decoration: underline;
 }

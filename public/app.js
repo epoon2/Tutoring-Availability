@@ -11969,27 +11969,42 @@
     }
 
 
+    const email =
+      $('requestEmail')
+        .value
+        .trim();
+    if (
+      !email ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( email )
+    ) {
+      $('requestError')
+        .textContent =
+          'Please enter an email address the tutor can reply to.';
+      $('requestEmail')
+        .focus();
+      return;
+    }
+    const phone =
+      $('requestPhone')
+        .value
+        .trim();
+    const guardian =
+      $('requestGuardian')
+        .value
+        .trim();
     const subject =
       $('requestSubject')
         .value
         .trim();
-
-
     if (
       !subject
     ) {
-
       $('requestError')
         .textContent =
           'Please enter the subject.';
-
-
       $('requestSubject')
         .focus();
-
-
       return;
-
     }
 
 
@@ -12142,15 +12157,13 @@
           body:
             JSON.stringify({
               name,
-
+              email,
+              phone,
+              guardian,
               subject,
-
               format,
-
               recurrence,
-
               start,
-
               end
             })
         }
@@ -12467,6 +12480,10 @@
         describeRequest(
           request
         );
+      const contact =
+        renderRequestContact(
+          request
+        );
 
 
       const actions =
@@ -12535,10 +12552,9 @@
         title,
         time,
         meta,
+        contact,
         actions
       );
-
-
       list.appendChild(
         item
       );
@@ -12692,6 +12708,50 @@
 
 
 
+  /*
+    How to reach the requester: email and phone as links that open
+    the mail app or dialler, the guardian's name beside them. Seen
+    only in the admin's list.
+  */
+  function renderRequestContact(
+    request
+  ) {
+    const line =
+      document.createElement( 'div' );
+    line.className =
+      'request-contact';
+    if ( request.guardian ) {
+      const who =
+        document.createElement( 'span' );
+      who.textContent =
+        'Parent/guardian: ' + request.guardian;
+      line.appendChild( who );
+    }
+    if ( request.email ) {
+      const mail =
+        document.createElement( 'a' );
+      mail.href =
+        'mailto:' + request.email;
+      mail.textContent =
+        request.email;
+      line.appendChild( mail );
+    }
+    if ( request.phone ) {
+      const tel =
+        document.createElement( 'a' );
+      tel.href =
+        'tel:' + request.phone.replace( /[^0-9+]/g, '' );
+      tel.textContent =
+        request.phone;
+      line.appendChild( tel );
+    }
+    if ( !line.childNodes.length ) {
+      line.textContent =
+        'No contact details given.';
+    }
+    return line;
+  }
+
   function describeRequest(
     request
   ) {
@@ -12729,17 +12789,23 @@
 
 
     openEventModal({
-
       type:
         'BLOCKED',
-
       title:
         buildSessionTitle(
           request
         ),
-
       notes:
-        request.subject,
+        [
+          request.subject,
+          request.guardian
+            ? 'Parent/guardian: ' + request.guardian
+            : '',
+          request.email || '',
+          request.phone || ''
+        ]
+          .filter( Boolean )
+          .join( '\n' ),
 
       start:
         request.start,

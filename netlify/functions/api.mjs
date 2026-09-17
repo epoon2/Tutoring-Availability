@@ -2238,6 +2238,8 @@ async function notifyNewRequest(
       to,
       fromName:
         activeConfig.portalTitle,
+      replyTo:
+        request.email,
       ...message
     });
     if ( activeRecord.lastMailError ) {
@@ -4498,22 +4500,35 @@ function validateRequest(
       : null;
 
 
+  /*
+    How to reach them: an email is required, since it is what the
+    admin answers with; a phone and a parent or guardian are offered
+    but not demanded. All three are seen only by the admin.
+  */
+  const email =
+    String( request.email || "" ).trim().toLowerCase();
+  if ( !email || email.length > 120 || !EMAIL_PATTERN.test( email ) ) {
+    bad( "Please enter an email address the tutor can reply to." );
+  }
+  const phone =
+    String( request.phone || "" ).trim().slice( 0, 40 );
+  if ( phone && !/^[0-9+()\-.\s]{5,40}$/.test( phone ) ) {
+    bad( "That phone number does not look right." );
+  }
+  const guardian =
+    String( request.guardian || "" ).trim().slice( 0, 80 );
   return {
     id:
       crypto.randomUUID(),
-
     name,
-
+    email,
+    ...( phone ? { phone } : {} ),
+    ...( guardian ? { guardian } : {} ),
     subject,
-
     format,
-
     recurrence,
-
     start,
-
     end,
-
     createdAt:
       new Date()
         .toISOString()
