@@ -109,7 +109,10 @@ ok('a failing test send reports the reason', r.status === 502 && /Brevo 401/.tes
 mode = 'ok';
 r = await req('POST', '/settings/testmail');
 ok('a test send succeeds and names the address', r.status === 200 && r.data.ok && r.data.to === 'ethan@example.com', JSON.stringify(r.data));
-ok('the test email names the calendar', received.at(-1).body.subject === "Test from Ethan's Tutoring Availability");
+ok('the test email is a sample request, marked as a test, for next Tuesday at four',
+  received.at(-1).body.subject.startsWith("[Test] New session request from John Doe - Tue, ") && received.at(-1).body.subject.includes('4:00 PM - 5:00 PM')
+  && received.at(-1).body.textContent.includes('Jane Doe') && received.at(-1).body.textContent.includes('john.doe@example.com')
+  && received.at(-1).body.replyTo.email === 'john.doe@example.com', received.at(-1).body.subject);
 r = await req('GET', '/events?start=2026-09-13&end=2026-09-19');
 ok('and the remembered failure is gone', r.data.mail.lastError === null);
 r = await req('POST', '/settings/testmail', null, false);

@@ -402,17 +402,35 @@ export default async (req) => {
       if ( !to ) {
         fail( "Enter and save a notification email first.", 400 );
       }
+      /*
+        The test reads like a real notification, with a made-up
+        request in it, so what arrives is what a real one will look
+        like - only the subject line says it is a test.
+      */
+      const sample =
+        sampleRequest();
+      const message =
+        requestNotification({
+          request:
+            sample,
+          config:
+            activeConfig,
+          siteUrl:
+            url.origin + "/"
+        });
       try {
         await sendMail({
           to,
           fromName:
             activeConfig.portalTitle,
+          replyTo:
+            sample.email,
           subject:
-            `Test from ${ activeConfig.portalTitle }`,
+            `[Test] ${ message.subject }`,
           text:
-            `This is a test. New session requests on ${ activeConfig.portalTitle } will be sent to this address.`,
+            `This is a test from ${ activeConfig.portalTitle }. A real request will look like this:\n\n` + message.text,
           html:
-            `<p>This is a test. New session requests on <strong>${ activeConfig.portalTitle.replace( /[&<>]/g, "" ) }</strong> will be sent to this address.</p>`
+            `<p style="color:#6b7280">This is a test from ${ activeConfig.portalTitle.replace( /[&<>]/g, "" ) }. A real request will look like this:</p>` + message.html
         });
       } catch ( error ) {
         await rememberMailOutcome( error );
@@ -2130,7 +2148,7 @@ function validateSettings(
       if ( key in body.labels ) next.labels[ key ] = text( body.labels[ key ], SETTINGS_LIMITS.label, `a name for ${ key } time` );
     }
     for ( const key of [ "person", "people" ] ) {
-      if ( key in body.labels ) next.labels[ key ] = text( body.labels[ key ], SETTINGS_LIMITS.noun, `a word for ${ key === "person" ? "one person" : "several people" }` );
+      if ( key in body.labels ) next.labels[ key ] = text( body.labels[ key ], SETTINGS_LIMITS.noun, `a word for what the summary counts (${ key === "person" ? "one" : "several" })` );
     }
   }
   if ( "notificationEmail" in body ) {
@@ -2210,6 +2228,45 @@ async function rememberMailOutcome(
   }
   await writeSettings( next );
   useSettings( next );
+}
+
+/*
+  A made-up request for the test email: a named student and guardian,
+  next Tuesday at four in the calendar's own clock.
+*/
+function sampleRequest() {
+  const todayKey =
+    currentMinuteKey();
+  const today =
+    minuteKeyToLocalDateTime( todayKey ).slice( 0, 10 );
+  const weekday =
+    new Date( today + "T12:00:00Z" ).getUTCDay();
+  const daysAhead =
+    ( ( 2 - weekday + 7 ) % 7 ) || 7;
+  const date =
+    addDaysToDate( today, daysAhead );
+  return {
+    id:
+      "test",
+    name:
+      "John Doe",
+    email:
+      "john.doe@example.com",
+    phone:
+      "(555) 555-0123",
+    guardian:
+      "Jane Doe",
+    subject:
+      "Algebra II",
+    format:
+      "Online",
+    recurrence:
+      null,
+    start:
+      date + "T16:00",
+    end:
+      date + "T17:00"
+  };
 }
 
 /*

@@ -15016,9 +15016,9 @@
           ? (
               event.recurrence
                 ? 'Edit recurring event'
-                : 'Edit time'
+                : 'Edit event'
             )
-          : 'Add time';
+          : 'Add event';
 
 
     $('eventId')

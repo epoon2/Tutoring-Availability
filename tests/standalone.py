@@ -101,10 +101,10 @@ async def main():
         await click_button(page, "Cancel")
         check("cancelled: still there", await cards_on(page, d["tue1"]) == 1)
 
-        # the editor agrees: it is "Edit time", and its Delete is the plain kind
+        # the editor agrees: it is "Edit event", and its Delete is the plain kind
         await page.locator(f'.day-column[data-date="{d["tue1"]}"] .event-card').click(); await page.wait_for_timeout(400)
         title = await page.text_content("#eventModalTitle")
-        check("the editor opens it as a one-time session", title.strip() == "Edit time", title)
+        check("the editor opens it as a one-time session", title.strip() == "Edit event", title)
         await page.click("#deleteEventBtn")
         dlg = await dialog(page)
         check("the editor's Delete is a plain confirmation too", dlg["radios"] == 0, str(dlg))
