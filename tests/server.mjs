@@ -129,10 +129,16 @@ createServer(async (req, res) => {
     res.end(Buffer.from(await response.arrayBuffer()));
     return;
   }
-  // static
+  // static; a single-segment path with no file behind it is a calendar
+  // address and gets calendar.html, as the Netlify redirect does
   let path = url.pathname === '/' ? '/index.html' : url.pathname;
-  const file = normalize(join(ROOT, path));
+  let file = normalize(join(ROOT, path));
   if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
+  try {
+    await readFile(file);
+  } catch {
+    if (/^\/[a-z0-9-]+$/i.test(path)) file = join(ROOT, 'calendar.html');
+  }
   try {
     const data = await readFile(file);
     res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });

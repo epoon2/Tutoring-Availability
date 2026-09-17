@@ -225,6 +225,7 @@ export default async (req) => {
 
 
     if (
+      route === "/site" ||
       route === "/signup" ||
       route === "/login" ||
       route === "/me" ||
@@ -441,7 +442,10 @@ export default async (req) => {
             await currentSlug( store ),
           claimed:
             Boolean( activeRecord.ownerId ) ||
-            activeCalendar.id !== MAIN_CALENDAR_ID
+            activeCalendar.id !== MAIN_CALENDAR_ID,
+          live:
+            activeCalendar.id === MAIN_CALENDAR_ID ||
+            Boolean( activeRecord.live )
         },
 
         session:
@@ -2164,6 +2168,7 @@ export default async (req) => {
                             (or, with no email, the older admin-password
                             login for the first calendar)
     GET  /me                the account behind a session
+    GET  /site              what the home page shows before sign-in
     POST /verify            the code from the confirmation email
     POST /resend            another confirmation email
     POST /forgot            a password-reset email, if the address exists
@@ -2183,11 +2188,32 @@ async function handleAccountRoute(
   url,
   store
 ) {
-  if ( req.method !== "POST" && route !== "/me" ) {
+  if ( req.method !== "POST" && route !== "/me" && route !== "/site" ) {
     return null;
   }
   const origin =
     url.origin;
+
+  /*
+    What the home page needs before anyone is signed in: the site's
+    name, whether the first calendar still waits to be claimed, and
+    whether email works here.
+  */
+  if ( route === "/site" ) {
+    if ( req.method !== "GET" ) {
+      return null;
+    }
+    return json({
+      name:
+        siteName( url ),
+      claimed:
+        Boolean( activeRecord.ownerId ),
+      mail:
+        mailConfigured(),
+      mainSlug:
+        await ensureMainSlug( store )
+    });
+  }
   const address =
     clientAddress( req );
   const readBody =
@@ -2528,10 +2554,27 @@ function describeWait(
 }
 
 
+/*
+  What the site calls itself in emails and on the home page: SITE_NAME
+  if set, else the host made readable - ethan-calendar.netlify.app
+  becomes "Ethan Calendar".
+*/
 function siteName(
   url
 ) {
-  return process.env.SITE_NAME || url.host;
+  if ( process.env.SITE_NAME ) {
+    return process.env.SITE_NAME;
+  }
+  const host =
+    url.hostname.replace( /\.netlify\.app$/, "" ).replace( /^www\./, "" );
+  if ( /^(localhost|127\.0\.0\.1|\d+(\.\d+){3})$/.test( host ) ) {
+    return "Calendar";
+  }
+  return host
+    .split( /[-.]/ )
+    .filter( Boolean )
+    .map( (part) => part.charAt( 0 ).toUpperCase() + part.slice( 1 ) )
+    .join( " " );
 }
 
 

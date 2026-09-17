@@ -10,6 +10,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8990
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -28,7 +29,7 @@ async def main():
         page = await ctx.new_page()
         errs = []
         page.on("pageerror", lambda e: errs.append(str(e)))
-        await page.goto(BASE, wait_until="networkidle")
+        await page.goto(CAL, wait_until="networkidle")
         light_bg = await bg(page)
         check("a light device starts light, nothing chosen", await theme_attr(page) is None and await page.text_content("#themeIcon") == "☾")
 
@@ -60,7 +61,7 @@ async def main():
         await page.evaluate("localStorage.removeItem('theme')")
         dark_ctx = await b.new_context(viewport={"width": 1300, "height": 900}, color_scheme="dark")
         dark_page = await dark_ctx.new_page()
-        await dark_page.goto(BASE, wait_until="networkidle")
+        await dark_page.goto(CAL, wait_until="networkidle")
         check("a dark device starts dark with nothing chosen", await theme_attr(dark_page) is None and await bg(dark_page) == dark_bg and await dark_page.text_content("#themeIcon") == "☀")
         await dark_page.click("#themeBtn"); await dark_page.wait_for_timeout(300)
         check("and can be switched to light explicitly", await theme_attr(dark_page) == "light" and await bg(dark_page) == light_bg)

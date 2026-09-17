@@ -9,6 +9,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8946
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -29,7 +30,7 @@ async def main():
 
         # Seed on a desktop-sized page, and check desktop never sees the toggle.
         seed = await (await b.new_context(viewport={"width": 1400, "height": 950})).new_page()
-        await seed.goto(BASE, wait_until="networkidle")
+        await seed.goto(CAL, wait_until="networkidle")
         await seed.click("#adminBtn"); await seed.fill("#adminPasswordInput", "t")
         await seed.click("#loginSubmitBtn"); await seed.wait_for_timeout(700)
         await seed.evaluate("""async () => {
@@ -57,7 +58,7 @@ async def main():
         errs = []
         phone.on("pageerror", lambda e: errs.append(str(e)))
         phone.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
-        await phone.goto(BASE, wait_until="networkidle")
+        await phone.goto(CAL, wait_until="networkidle")
         await phone.wait_for_timeout(700)
 
         st = await view_state(phone)

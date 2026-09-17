@@ -10,13 +10,14 @@ from playwright.async_api import async_playwright
 
 PORT = 8984
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
     print(("  PASS  " if cond else "  FAIL  ") + name + (f"   {extra}" if extra and not cond else ""))
 
 async def login(page):
-    await page.goto(BASE, wait_until="networkidle")
+    await page.goto(CAL, wait_until="networkidle")
     await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
     await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
 

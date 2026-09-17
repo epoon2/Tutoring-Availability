@@ -10,6 +10,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8975
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -33,7 +34,7 @@ async def main():
         page.on("pageerror", lambda e: errs.append(str(e)))
 
         # ---- without the box: a reload asks again
-        await page.goto(BASE, wait_until="networkidle")
+        await page.goto(CAL, wait_until="networkidle")
         await page.click("#adminBtn")
         check("the login offers to keep the device signed in, ticked by default",
               await page.evaluate("document.getElementById('rememberMeInput').checked"))

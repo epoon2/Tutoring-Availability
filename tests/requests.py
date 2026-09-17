@@ -11,6 +11,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8985
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -24,7 +25,7 @@ async def main():
         page.on("pageerror", lambda e: errs.append(str(e)))
 
         # the tutor sets a notification address (so the stub records a "sent" email)
-        await page.goto(BASE, wait_until="networkidle")
+        await page.goto(CAL, wait_until="networkidle")
         await page.evaluate("fetch('/api/settings', { method: 'PUT', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'}, body: JSON.stringify({ notificationEmail: 'ethan@example.com' }) })")
         await page.wait_for_timeout(200)
 

@@ -9,6 +9,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8948
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -23,7 +24,7 @@ async def main():
         page.on("pageerror", lambda e: errs.append(str(e)))
         page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
 
-        await page.goto(BASE, wait_until="networkidle")
+        await page.goto(CAL, wait_until="networkidle")
         await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
         await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
         await page.evaluate("""async () => {
@@ -58,7 +59,7 @@ async def main():
         pub = await (await b.new_context(viewport={"width": 390, "height": 844},
                                           accept_downloads=True)).new_page()
         pub.on("pageerror", lambda e: errs.append(str(e)))
-        await pub.goto(BASE, wait_until="networkidle")
+        await pub.goto(CAL, wait_until="networkidle")
         await pub.wait_for_timeout(700)
         async with pub.expect_download() as dl_info:
             await pub.click("#saveWeekBtn")

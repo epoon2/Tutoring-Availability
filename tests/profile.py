@@ -11,6 +11,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8986
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -28,7 +29,7 @@ async def main():
         page = await (await b.new_context(viewport={"width": 1300, "height": 900})).new_page()
         errs = []
         page.on("pageerror", lambda e: errs.append(str(e)))
-        await page.goto(BASE, wait_until="networkidle")
+        await page.goto(CAL, wait_until="networkidle")
 
         check("a visitor sees Log in, no chip", not await hidden(page, "#adminBtn") and (await page.text_content("#adminBtn")).strip() == "Log in" and await hidden(page, "#profileMenu"))
         check("the banner carries Undo, Redo and Version history", await page.evaluate("[...document.querySelectorAll('.admin-banner-actions button')].map(b => b.id)") == ["undoBtn", "redoBtn", "historyBtn"])

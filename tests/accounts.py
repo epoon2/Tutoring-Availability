@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Accounts, end to end: the home page, sign-up, the unconfirmed
+calendar, the confirmation link, log in from a calendar page, visiting
+someone else's calendar while signed in, taking over the first calendar
+with the admin password, and the page for an address with no calendar.
+
+    python3 tests/accounts.py
+"""
+import asyncio, json, os, re, subprocess, sys, time, urllib.request
+from playwright.async_api import async_playwright
+
+PORT = 8993
+BASE = f"http://127.0.0.1:{PORT}"
+oks, fails = [], []
+def check(name, cond, extra=""):
+    (oks if cond else fails).append(name)
+    print(("  PASS  " if cond else "  FAIL  ") + name + (f"   {extra}" if extra and not cond else ""))
+
+async def hidden(page, sel):
+    return await page.evaluate(f"document.querySelector('{sel}').classList.contains('hidden')")
+
+def sent_mail():
+    return json.load(urllib.request.urlopen(f"{BASE}/api/sentmail"))["sentMail"]
+
+async def main():
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch()
+        ctx = await b.new_context(viewport={"width": 1300, "height": 900})
+        page = await ctx.new_page()
+        errs = []
+        page.on("pageerror", lambda e: errs.append(str(e)))
+
+        # ---- the home page
+        await page.goto(BASE + "/", wait_until="networkidle"); await page.wait_for_timeout(300)
+        check("the home page opens on Log in", not await hidden(page, "#loginPanel") and await hidden(page, "#signupPanel"))
+        check("and offers to take over the first calendar, which nobody owns yet", not await hidden(page, "#claimRow"))
+        check("the footer points to the first calendar's address", "/ethan" in (await page.text_content("#footNote")))
+
+        # ---- sign up
+        await page.click("#tabSignup"); await page.wait_for_timeout(100)
+        await page.fill("#signupName", "Maya Chen")
+        check("the address follows the name", await page.input_value("#signupSlug") == "maya-chen")
+        await page.fill("#signupEmail", "maya@example.com")
+        await page.fill("#signupPassword", "maya-pass-1")
+        await page.click("#signupSubmit"); await page.wait_for_timeout(800)
+        check("sign-up says a confirmation email went out and where the calendar is",
+              not await hidden(page, "#welcomePanel") and "maya@example.com" in (await page.text_content("#welcomeText")) and "/maya-chen" in (await page.text_content("#welcomeText")))
+        mail = sent_mail()
+        check("the email carries a confirmation link to the home page", len(mail) == 1 and mail[0]["to"] == "maya@example.com" and "/?verify=" in mail[0]["text"])
+        link = re.search(r"http://\S+\?verify=\S+", mail[0]["text"]).group(0)
+
+        await page.click("#welcomeOpen"); await page.wait_for_load_state("networkidle"); await page.wait_for_timeout(800)
+        check("Open my calendar lands on /maya-chen in admin mode", page.url.endswith("/maya-chen") and not await hidden(page, "#adminBanner"))
+        check("with a fresh title and the chip", await page.text_content("#portalTitle") == "Maya Chen's Calendar" and await page.text_content("#profileName") == "Maya Chen")
+        check("and a notice that the email is not confirmed", not await hidden(page, "#verifyNotice") and "maya@example.com" in (await page.text_content("#verifyNoticeText")))
+
+        # ---- the calendar is not public until confirmed
+        visitor = await (await b.new_context(viewport={"width": 1300, "height": 900})).new_page()
+        await visitor.goto(BASE + "/maya-chen", wait_until="networkidle"); await visitor.wait_for_timeout(500)
+        check("a visitor is told the calendar is not published yet", await visitor.evaluate("document.body.classList.contains('calendar-missing')") and "not published" in (await visitor.text_content("#missingTitle")))
+
+        # ---- the confirmation link, on another device
+        confirm = await (await b.new_context(viewport={"width": 1300, "height": 900})).new_page()
+        await confirm.goto(link, wait_until="networkidle"); await confirm.wait_for_timeout(1500)
+        check("the link confirms the email and goes to the calendar, signed in", confirm.url.endswith("/maya-chen") and not await hidden(confirm, "#adminBanner"))
+        await visitor.reload(wait_until="networkidle"); await visitor.wait_for_timeout(500)
+        check("now the visitor sees it", not await visitor.evaluate("document.body.classList.contains('calendar-missing')") and await visitor.text_content("#portalTitle") == "Maya Chen's Calendar")
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
+        check("and the notice is gone on the first device", await hidden(page, "#verifyNotice"))
+
+        # ---- the address in Settings
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+        check("Settings shows the address and the link to share", await page.input_value("#settingSlug") == "maya-chen" and (await page.text_content("#shareLink")).endswith("/maya-chen"))
+        await page.fill("#settingSlug", "maya")
+        await page.click("#saveSettingsBtn"); await page.wait_for_timeout(900)
+        check("a new address moves the page there", page.url.endswith("/maya") and not await hidden(page, "#adminBanner"))
+        await visitor.goto(BASE + "/maya-chen", wait_until="networkidle"); await visitor.wait_for_timeout(400)
+        check("and the old one is free", await visitor.evaluate("document.body.classList.contains('calendar-missing')"))
+
+        # ---- sign out, log in from the calendar page
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#signOutBtn"); await page.wait_for_timeout(600)
+        check("Sign out shows the visitor page with Log in", not await hidden(page, "#adminBtn") and await hidden(page, "#profileMenu"))
+        await page.click("#adminBtn"); await page.wait_for_timeout(200)
+        check("Log in asks for email and password, no admin-password option", not await hidden(page, "#accountLoginFields") and await hidden(page, "#legacyLoginLink"))
+        await page.fill("#loginEmailInput", "maya@example.com"); await page.fill("#loginPasswordInput", "wrong-pass")
+        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(500)
+        check("a wrong password is refused", "do not match" in (await page.text_content("#loginError")))
+        await page.fill("#loginPasswordInput", "maya-pass-1")
+        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(800)
+        check("the right one opens admin mode", await hidden(page, "#loginModal") and not await hidden(page, "#adminBanner"))
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
+        check("and a reload stays signed in", not await hidden(page, "#adminBanner"))
+
+        # ---- the home page sends a signed-in person to their calendar
+        await page.goto(BASE + "/", wait_until="networkidle"); await page.wait_for_timeout(800)
+        check("the home page goes straight to the calendar when signed in", page.url.endswith("/maya"))
+
+        # ---- someone else's calendar
+        await page.goto(BASE + "/ethan", wait_until="networkidle"); await page.wait_for_timeout(600)
+        check("on another calendar a signed-in person is a visitor", await hidden(page, "#adminBanner") and await hidden(page, "#modeSwitch") and await hidden(page, "#adminBtn"))
+        check("with the chip showing their own name", await page.text_content("#profileName") == "Maya Chen")
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        check("and a way home in the menu", not await hidden(page, "#myCalendarLink") and (await page.get_attribute("#myCalendarLink", "href")) == "/maya" and await hidden(page, "#settingsBtn"))
+        await page.click("#portalTitle")
+
+        # ---- the first calendar: the admin password still works until it is claimed
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#signOutBtn"); await page.wait_for_timeout(600)
+        await page.click("#adminBtn"); await page.wait_for_timeout(200)
+        check("on the unclaimed first calendar the dialog opens on the admin password, with the account way offered", not await hidden(page, "#legacyLoginFields") and not await hidden(page, "#legacyLoginLink"))
+        await page.fill("#adminPasswordInput", "t"); await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
+        check("and the password opens it", not await hidden(page, "#adminBanner"))
+        await page.evaluate("""fetch('/api/events', { method: 'POST', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
+            body: JSON.stringify({ type: 'BLOCKED', title: 'Noah', start: '2031-01-08T15:00', end: '2031-01-08T16:00' }) })""")
+        await page.wait_for_timeout(300)
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#signOutBtn"); await page.wait_for_timeout(600)
+
+        # ---- taking it over
+        await page.goto(BASE + "/?signup", wait_until="networkidle"); await page.wait_for_timeout(300)
+        check("?signup opens the sign-up form", not await hidden(page, "#signupPanel"))
+        await page.fill("#signupName", "Ethan"); await page.fill("#signupEmail", "ethan@example.com"); await page.fill("#signupPassword", "ethan-pass-1")
+        await page.check("#claimMain"); await page.wait_for_timeout(100)
+        check("ticking the box asks for the admin password", not await hidden(page, "#claimField") and await page.text_content("#signupSubmit") == "Take over my calendar")
+        await page.fill("#claimPassword", "wrong")
+        await page.click("#signupSubmit"); await page.wait_for_timeout(600)
+        check("a wrong admin password is refused", "Incorrect admin password" in (await page.text_content("#signupError")))
+        await page.fill("#claimPassword", "t")
+        await page.click("#signupSubmit"); await page.wait_for_timeout(800)
+        check("the right one takes the first calendar over", not await hidden(page, "#welcomePanel") and "/ethan" in (await page.text_content("#welcomeText")))
+        await page.click("#welcomeOpen"); await page.wait_for_load_state("networkidle"); await page.wait_for_timeout(800)
+        check("which opens at /ethan with everything it had", page.url.endswith("/ethan") and not await hidden(page, "#adminBanner")
+              and await page.evaluate("[...document.querySelectorAll('.event-card')].length") >= 0 and await page.text_content("#portalTitle") == "Ethan's Tutoring Availability")
+        events = await page.evaluate("fetch('/api/events?start=2031-01-04&end=2031-01-10&calendar=ethan', { headers: { 'x-session': JSON.parse(localStorage.getItem('calendarSession')).token } }).then(r => r.json()).then(d => d.events.map(e => e.title))")
+        check("including the block saved with the admin password", events == ["Noah"], str(events))
+        await page.goto(BASE + "/", wait_until="networkidle"); await page.wait_for_timeout(500)
+        await page.goto(BASE + "/?signup", wait_until="networkidle"); await page.wait_for_timeout(400)
+        check("once claimed, the take-over box is gone from sign-up", await hidden(page, "#claimRow"))
+
+        # ---- no calendar here
+        await visitor.goto(BASE + "/nobody-here", wait_until="networkidle"); await visitor.wait_for_timeout(400)
+        check("an unknown address says there is no calendar, with a way to the home page",
+              "no calendar" in (await visitor.text_content("#missingTitle")) and await visitor.get_attribute("#missingCalendar a", "href") == "/")
+
+        real = [e for e in errs if "fonts" not in e and "favicon" not in e]
+        check("no page errors", not real, str(real[:3]))
+        print(f"\n{len(oks)} passed, {len(fails)} failed")
+        await b.close()
+        return 1 if fails else 0
+
+def run():
+    subprocess.run(["node", "tests/install-shim.mjs"], check=True, stdout=subprocess.DEVNULL)
+    env = dict(os.environ, FAKE_MAIL="ok")
+    server = subprocess.Popen(["node", "tests/server.mjs", str(PORT)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env)
+    for _ in range(50):
+        try:
+            urllib.request.urlopen(f"{BASE}/index.html", timeout=1).read(); break
+        except Exception:
+            time.sleep(0.2)
+    else:
+        print("server failed:", server.stderr.read().decode()[:400]); return 1
+    try:
+        return asyncio.run(main())
+    finally:
+        server.terminate()
+
+sys.exit(run())

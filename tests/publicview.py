@@ -11,6 +11,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8944
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -26,7 +27,7 @@ async def main():
 
         # Seed as admin: last week's Tuesday gets availability with a
         # session inside it; this week's Tuesday gets availability too.
-        await page.goto(BASE, wait_until="networkidle")
+        await page.goto(CAL, wait_until="networkidle")
         await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
         await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
         await page.evaluate("""async () => {
@@ -50,7 +51,7 @@ async def main():
         pub = await (await b.new_context(viewport={"width": 1400, "height": 950})).new_page()
         pub.on("pageerror", lambda e: errs.append(str(e)))
         pub.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
-        await pub.goto(BASE, wait_until="networkidle")
+        await pub.goto(CAL, wait_until="networkidle")
         await pub.wait_for_timeout(700)
 
         cards_now = await pub.locator(".event-card").count()

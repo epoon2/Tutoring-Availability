@@ -3,66 +3,15 @@
 
 <head>
   <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  >
-
-  <meta
-    name="theme-color"
-    content="#ffffff"
-  >
-
-  <title>Ethan's Tutoring Availability</title>
-
-  <link
-    rel="manifest"
-    href="/manifest.webmanifest"
-  >
-
-  <link
-    rel="apple-touch-icon"
-    href="/apple-touch-icon.png"
-  >
-
-  <link
-    rel="icon"
-    href="/icon-192.png"
-  >
-
-  <!--
-    Added to the home screen, iOS launches this
-    without browser chrome. There is no address
-    bar to reload from in that mode, which the
-    Refresh button already covers.
-  -->
-
-  <meta
-    name="mobile-web-app-capable"
-    content="yes"
-  >
-
-  <meta
-    name="apple-mobile-web-app-capable"
-    content="yes"
-  >
-
-  <meta
-    name="apple-mobile-web-app-status-bar-style"
-    content="default"
-  >
-
-  <meta
-    name="apple-mobile-web-app-title"
-    content="Calendar"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>Calendar</title>
+  <link rel="icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script>
     /*
       The theme chosen on this device, applied before the first paint
-      so the page never flashes the other one. No choice means the
-      device's own preference, which the stylesheet reads itself.
+      so the page never flashes the other one.
     */
     try {
       var savedTheme = localStorage.getItem( 'theme' );
@@ -71,2306 +20,743 @@
       }
     } catch ( e ) {}
   </script>
-  <link
-    rel="stylesheet"
-    href="/styles.css"
-  >
-</head>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /*
+      THE HOME PAGE
 
+      What the site does, and the way in: log in, sign up, and the
+      two things an email link can bring someone here for - confirming
+      an address and choosing a new password.
+    */
+    .home {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .home-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .home-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 750;
+      font-size: 18px;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .home-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+
+    .home-top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .home-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 420px);
+      gap: 40px;
+      align-items: start;
+    }
+
+    .home-hero h1 {
+      margin: 8px 0 14px;
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .home-hero .lede {
+      margin: 0 0 24px;
+      font-size: 17px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .home-preview {
+      margin: 0 0 28px;
+      padding: 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px var(--shadow);
+    }
+
+    .home-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    .home-preview-day {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 120px;
+      padding: 6px;
+      background: var(--surface-2);
+      border-radius: 8px;
+    }
+
+    .home-preview-day small {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .home-preview-block {
+      flex: 0 0 auto;
+      padding: 5px 6px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 650;
+      color: #fff;
+    }
+
+    .home-preview-block.open {
+      background: #2f7d4a;
+    }
+
+    .home-preview-block.booked {
+      background: #b42318;
+    }
+
+    .home-preview-block.blue {
+      background: #1d4ed8;
+    }
+
+    .home-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .home-features li {
+      padding: 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .home-features strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .home-features span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .auth-card {
+      position: sticky;
+      top: 24px;
+      padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px var(--shadow);
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 18px;
+      padding: 4px;
+      background: var(--surface-2);
+      border-radius: 10px;
+    }
+
+    .auth-tabs button {
+      flex: 1;
+      padding: 8px;
+      background: transparent;
+      color: var(--muted);
+      border: 0;
+      border-radius: 8px;
+      font-weight: 650;
+    }
+
+    .auth-tabs button[aria-selected="true"] {
+      background: var(--card);
+      color: var(--text);
+      box-shadow: 0 1px 3px var(--shadow);
+    }
+
+    .auth-card h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .auth-card p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .auth-card .btn.primary {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .auth-links {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 12px 0 0;
+      font-size: 13px;
+    }
+
+    .auth-links a,
+    .auth-links button {
+      padding: 0;
+      background: none;
+      border: 0;
+      color: var(--accent);
+      font-size: 13px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .auth-links a:hover,
+    .auth-links button:hover {
+      text-decoration: underline;
+    }
+
+    .slug-field {
+      display: flex;
+      align-items: center;
+    }
+
+    .slug-prefix {
+      padding: 10px 6px 10px 11px;
+      background: var(--surface-2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-right: 0;
+      border-radius: 10px 0 0 10px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .field .slug-field input {
+      border-radius: 0 10px 10px 0;
+    }
+
+    .auth-ok {
+      padding: 12px 14px;
+      background: var(--ok-bg);
+      border: 1px solid var(--ok-border);
+      border-radius: 10px;
+      color: var(--ok-text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .auth-ok code {
+      word-break: break-all;
+    }
+
+    .auth-ok .btn {
+      margin-top: 10px;
+    }
+
+    .home-foot {
+      margin-top: 48px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .home-hero {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-card {
+        position: static;
+      }
+
+      .home-preview-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .home-preview-day:nth-child(n+4) {
+        display: none;
+      }
+    }
+  </style>
+</head>
 
 <body>
 
-  <div class="app-shell">
+  <div class="home">
 
-    <header class="topbar">
-
-      <div>
-
-        <h1 id="portalTitle">
-          Ethan's Tutoring Availability
-        </h1>
-
-        <div class="subline">
-
-          <span id="timezoneLabel">
-            Pacific Time (PT)
-          </span>
-
-          <span>•</span>
-
-          <span
-            id="updatedLabel"
-            title="When the schedule itself was last changed"
-          >
-            Loading…
-          </span>
-
-          <span>•</span>
-
-          <span
-            id="checkedLabel"
-            title="When this page last fetched the schedule from the server"
-          ></span>
-
-        </div>
-
-      </div>
-
-
-      <div class="header-actions">
-        <button
-          id="themeBtn"
-          class="icon-btn theme-btn"
-          type="button"
-          title="Switch between light and dark"
-          aria-label="Switch between light and dark"
-        >
-          <span
-            id="themeIcon"
-            aria-hidden="true"
-          >☾</span>
+    <header class="home-top">
+      <a class="home-brand" href="/">
+        <img src="/icon-192.png" alt="">
+        <span id="siteName">Calendar</span>
+      </a>
+      <div class="home-top-actions">
+        <button id="themeBtn" class="icon-btn theme-btn" type="button" title="Switch between light and dark" aria-label="Switch between light and dark">
+          <span id="themeIcon" aria-hidden="true">☾</span>
         </button>
-        <button
-          id="refreshBtn"
-          class="btn secondary"
-        >
-          Refresh
-        </button>
-
-        <button
-          id="requestBtn"
-          class="btn primary"
-        >
-          Request a session
-        </button>
-
-        <button
-          id="adminBtn"
-          class="btn secondary"
-        >
-          Log in
-        </button>
-
-        <button
-          id="requestsBtn"
-          class="btn secondary hidden"
-        >
-
-          Requests
-
-          <span
-            id="requestCount"
-            class="blocked-count"
-          >
-            0
-          </span>
-
-        </button>
-
-        <button
-          id="blockedSessionsBtn"
-          class="btn secondary hidden"
-        >
-          Blocked Sessions
-        </button>
-
-        <button
-          id="googleSyncBtn"
-          class="btn secondary hidden"
-          title="Push every booked session to Google Calendar again"
-        >
-          Sync Google Calendar
-        </button>
-
-        <button
-          id="addBtn"
-          class="btn primary hidden"
-        >
-          + Add event
-        </button>
-
-        <!-- PROFILE (SIGNED IN) -->
-
-        <div
-          id="profileMenu"
-          class="profile hidden"
-        >
-          <button
-            id="profileBtn"
-            class="profile-chip"
-            aria-haspopup="menu"
-            aria-expanded="false"
-            title="Account"
-          >
-            <span
-              id="profileInitial"
-              class="profile-initial"
-            >E</span>
-            <span
-              id="profileName"
-              class="profile-name"
-            >Ethan</span>
-          </button>
-          <div
-            id="profileDropdown"
-            class="profile-dropdown hidden"
-            role="menu"
-          >
-            <div class="profile-dropdown-head">
-              <strong id="profileMenuName">Ethan</strong>
-              <span id="profileMenuMode">Admin mode</span>
-            </div>
-            <button
-              id="settingsBtn"
-              class="menu-item hidden"
-              role="menuitem"
-              title="Title, display name, hours, time zone, colors, wording, notifications"
-            >
-              Settings
-            </button>
-            <button
-              id="signOutBtn"
-              class="menu-item hidden"
-              role="menuitem"
-              title="Sign out on this device"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
+        <button id="topLoginBtn" class="btn secondary" type="button">Log in</button>
+        <button id="topSignupBtn" class="btn primary" type="button">Sign up</button>
       </div>
     </header>
 
-
-    <section
-      id="adminBanner"
-      class="admin-banner hidden"
-    >
-
-      <div>
-
-        <strong>
-          Admin mode
-        </strong>
-
-        <span>
-          Click a session to edit it; click anywhere else to add one.
-          Right-click for copy, duplicate and delete.
-          Drag any block to move it.
-        </span>
-
-      </div>
-
-      <div class="admin-banner-actions">
-
-        <button
-          id="undoBtn"
-          class="text-btn hidden"
-          title="Undo (Ctrl+Z)"
-          disabled
-        >
-          Undo
-        </button>
-
-        <button
-          id="redoBtn"
-          class="text-btn hidden"
-          title="Redo (Ctrl+Shift+Z)"
-          disabled
-        >
-          Redo
-        </button>
-        <button
-          id="historyBtn"
-          class="text-btn hidden"
-          title="Every version of the schedule, newest first - restore any of them"
-        >
-          Version history
-        </button>
-      </div>
-    </section>
-
-
-    <!-- WEEK SUMMARY (ADMIN) -->
-
-    <section
-      id="weekSummary"
-      class="week-summary hidden"
-    >
-
-      <div class="week-summary-totals">
-
-        <div class="week-summary-stat">
-
-          <span
-            id="summaryHours"
-            class="week-summary-number"
-          >
-            0
-          </span>
-
-          <span class="week-summary-label">
-            hours blocked this week
-          </span>
-
-        </div>
-
-        <div class="week-summary-stat">
-
-          <span
-            id="summaryStudents"
-            class="week-summary-number"
-          >
-            0
-          </span>
-
-          <span
-            id="summaryPeopleLabel"
-            class="week-summary-label"
-          >
-            students
-          </span>
-
-        </div>
-
-        <button
-          id="summaryToggle"
-          class="text-btn"
-          type="button"
-          aria-expanded="false"
-          aria-controls="summaryList"
-        >
-          <span id="summaryToggleLabel">Show each student</span>
-        </button>
-
-      </div>
-
-      <ul
-        id="summaryList"
-        class="week-summary-list hidden"
-      >
-      </ul>
-
-    </section>
-
-
-    <section class="calendar-toolbar">
-
-      <button
-        id="prevWeekBtn"
-        class="icon-btn"
-        aria-label="Previous week"
-      >
-        ‹
-      </button>
-
-      <button
-        id="todayBtn"
-        class="btn secondary small"
-      >
-        Today
-      </button>
-
-      <button
-        id="nextWeekBtn"
-        class="icon-btn"
-        aria-label="Next week"
-      >
-        ›
-      </button>
-
-      <div
-        class="view-toggle"
-        role="group"
-        aria-label="Calendar layout"
-      >
-
-        <button
-          id="viewGridBtn"
-          class="btn secondary small"
-          aria-pressed="true"
-        >
-          Grid
-        </button>
-
-        <button
-          id="viewListBtn"
-          class="btn secondary small"
-          aria-pressed="false"
-        >
-          List
-        </button>
-
-      </div>
-
-      <div
-        class="view-switch"
-        role="group"
-        aria-label="Calendar view"
-      >
-
-        <button
-          id="viewDayBtn"
-          class="btn secondary small"
-          aria-pressed="false"
-        >
-          Day
-        </button>
-
-        <button
-          id="viewWeekBtn"
-          class="btn secondary small"
-          aria-pressed="true"
-        >
-          Week
-        </button>
-
-        <button
-          id="viewMonthBtn"
-          class="btn secondary small"
-          aria-pressed="false"
-        >
-          Month
-        </button>
-
-      </div>
-
-      <button
-        id="saveWeekBtn"
-        class="btn secondary small"
-      >
-        Screenshot weekly schedule
-      </button>
-
-      <h2 id="weekLabel"></h2>
-
-
-      <div class="legend">
-
-        <span>
-
-          <i class="legend-swatch available"></i>
-          <span id="legendAvailable">Available</span>
-        </span>
-
-        <span>
-          <i class="legend-swatch blocked"></i>
-          <span id="legendBlocked">Blocked Session</span>
-        </span>
-      </div>
-      <div
-        id="modeSwitch"
-        class="view-switch mode-switch hidden"
-        role="group"
-        aria-label="Admin or public view"
-      >
-        <button
-          id="backToAdminBtn"
-          class="btn secondary small"
-          aria-pressed="true"
-        >
-          Admin view
-        </button>
-        <button
-          id="exitAdminBtn"
-          class="btn secondary small"
-          aria-pressed="false"
-        >
-          Public view
-        </button>
-      </div>
-    </section>
-
-
-    <div
-      id="status"
-      class="status"
-      aria-live="polite"
-    ></div>
-
-
-    <!-- EMAIL NOTICE (ADMIN) -->
-
-    <div
-      id="mailNotice"
-      class="sync-notice hidden"
-      role="status"
-    >
-      <span id="mailNoticeText"></span>
-      <button
-        id="mailNoticeSettingsBtn"
-        class="text-btn"
-      >
-        Open Settings
-      </button>
-      <button
-        id="mailNoticeCloseBtn"
-        class="text-btn"
-        aria-label="Dismiss"
-      >
-        Dismiss
-      </button>
-    </div>
-
-    <!-- GOOGLE SYNC NOTICE (ADMIN) -->
-
-    <div
-      id="syncNotice"
-      class="sync-notice hidden"
-      role="status"
-    >
-
-      <span id="syncNoticeText"></span>
-
-      <button
-        id="syncNoticeRetryBtn"
-        class="text-btn"
-      >
-        Sync now
-      </button>
-
-      <button
-        id="syncNoticeCloseBtn"
-        class="text-btn"
-        aria-label="Dismiss"
-      >
-        Dismiss
-      </button>
-
-    </div>
-
-
-    <div
-      id="calendar"
-      class="calendar"
-    ></div>
-
-
-    <div
-      id="agenda"
-      class="agenda"
-    ></div>
-
-
-    <section class="help-box">
-
-      <strong>
-        Public view:
-      </strong>
-
-      Upcoming available times and anonymized blocked sessions are shown.
-      Times that have already passed are hidden, and private event names
-      and notes are never shown.
-
-    </section>
-
-  </div>
-
-
-
-  <!-- SESSION REQUEST (PUBLIC) -->
-
-  <div
-    id="requestModal"
-    class="modal-backdrop hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="requestModalTitle"
-  >
-
-    <div class="modal-card">
-
-      <div class="modal-header">
-
-        <h2 id="requestModalTitle">
-          Request a session
-        </h2>
-
-        <button
-          class="close-btn"
-          data-close="requestModal"
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <p
-        id="requestIntro"
-        class="request-intro"
-      >
-        Ask for a time that works for you. Nothing is booked until
-        it is confirmed.
-      </p>
-
-
-      <!-- NAME -->
-
-      <label class="field">
-
-        <span>
-          Your name
-        </span>
-
-        <input
-          id="requestName"
-          type="text"
-          maxlength="80"
-          required
-          placeholder="e.g. John"
-        >
-      </label>
-
-      <!-- CONTACT -->
-
-      <label class="field">
-        <span>
-          Email
-          <small id="requestEmailHint">so you can be reached about it</small>
-        </span>
-        <input
-          id="requestEmail"
-          type="email"
-          maxlength="120"
-          required
-          autocomplete="email"
-          placeholder="you@example.com"
-        >
-      </label>
-
-      <div class="field-row">
-        <label class="field">
-          <span>
-            Phone
-            <small>optional</small>
-          </span>
-          <input
-            id="requestPhone"
-            type="tel"
-            maxlength="40"
-            autocomplete="tel"
-            placeholder="(555) 555-1234"
-          >
-        </label>
-        <label class="field">
-          <span>
-            Parent / guardian
-            <small>optional</small>
-          </span>
-          <input
-            id="requestGuardian"
-            type="text"
-            maxlength="80"
-            placeholder="Name"
-          >
-        </label>
-      </div>
-
-
-
-      <!-- START AND END -->
-
-      <div class="two-col">
-
-        <div class="field">
-
-          <span>
-            Starts
-          </span>
-
-          <div class="datetime-field">
-
-            <input
-              id="requestStartDate"
-              type="date"
-              class="datetime-date"
-              min="2000-01-01"
-              max="2099-12-31"
-              aria-label="Start date"
-            >
-
-            <div
-                class="datetime-time"
-                data-time-control="requestStart"
-              >
-
-                <input
-                  id="requestStartHour"
-                  class="time-seg time-seg-hour"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="Start time hour"
-                >
-
-                <span class="time-sep">:</span>
-
-                <input
-                  id="requestStartMinute"
-                  class="time-seg time-seg-minute"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="Start time minute"
-                >
-
-                <input
-                  id="requestStartMeridiem"
-                  class="time-seg time-seg-meridiem"
-                  type="text"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="Start time AM or PM"
-                >
-
-                <button
-                  id="requestStartWheel"
-                  class="time-wheel-button"
-                  type="button"
-                  tabindex="-1"
-                  aria-label="Choose start time from a list"
-                >
-                  <span aria-hidden="true">&#9662;</span>
-                </button>
-
-                <input
-                  id="requestStartTime"
-                  type="hidden"
-                >
-
-              </div>
-
+    <main class="home-hero">
+
+      <section>
+        <h1>Share when you're free, at a link of your own.</h1>
+        <p class="lede">
+          A weekly calendar of your open and booked time. Visitors see what is
+          open, ask for a session with their contact details, and you get an
+          email. Everything else - hours, colors, wording, time zone - is yours
+          to set.
+        </p>
+
+        <div class="home-preview" aria-hidden="true">
+          <div class="home-preview-grid">
+            <div class="home-preview-day"><small>Mon</small><span class="home-preview-block open">Available 4–7 PM</span></div>
+            <div class="home-preview-day"><small>Tue</small><span class="home-preview-block booked">Booked</span><span class="home-preview-block open">Available 6–8 PM</span></div>
+            <div class="home-preview-day"><small>Wed</small><span class="home-preview-block blue">Booked</span></div>
+            <div class="home-preview-day"><small>Thu</small><span class="home-preview-block open">Available 3–6 PM</span><span class="home-preview-block booked">Booked</span></div>
+            <div class="home-preview-day"><small>Fri</small><span class="home-preview-block open">Available all day</span></div>
           </div>
-
-          <input
-            id="requestStart"
-            type="hidden"
-            data-recurrence-start
-          >
-
         </div>
 
+        <ul class="home-features">
+          <li><strong>Your own address</strong><span>Your calendar lives at <code id="exampleUrl">this site/you</code>. Send the link to anyone; they need no account.</span></li>
+          <li><strong>Requests, with contact details</strong><span>A visitor picks an open time and leaves a name, email, phone and guardian. You approve or decline.</span></li>
+          <li><strong>Email when someone asks</strong><span>Every request lands in your inbox, with a reply-to so you can answer in one click.</span></li>
+          <li><strong>Google Calendar</strong><span>Booked sessions mirror to a Google calendar you choose, and a feed keeps any other calendar in step.</span></li>
+          <li><strong>Make it yours</strong><span>Colors for every block, the words for open and booked time, the hours in your day, your time zone.</span></li>
+          <li><strong>Light and dark, phone and desktop</strong><span>A week on a wide screen, a day on a phone, and a theme that follows the device.</span></li>
+        </ul>
+      </section>
 
-        <div class="field">
+      <aside class="auth-card" id="authCard">
 
-          <span>
-            Ends
-          </span>
-
-          <div class="datetime-field">
-
-            <input
-              id="requestEndDate"
-              type="date"
-              class="datetime-date"
-              min="2000-01-01"
-              max="2099-12-31"
-              aria-label="End date"
-            >
-
-            <div
-                class="datetime-time"
-                data-time-control="requestEnd"
-              >
-
-                <input
-                  id="requestEndHour"
-                  class="time-seg time-seg-hour"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="End time hour"
-                >
-
-                <span class="time-sep">:</span>
-
-                <input
-                  id="requestEndMinute"
-                  class="time-seg time-seg-minute"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="End time minute"
-                >
-
-                <input
-                  id="requestEndMeridiem"
-                  class="time-seg time-seg-meridiem"
-                  type="text"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="End time AM or PM"
-                >
-
-                <button
-                  id="requestEndWheel"
-                  class="time-wheel-button"
-                  type="button"
-                  tabindex="-1"
-                  aria-label="Choose end time from a list"
-                >
-                  <span aria-hidden="true">&#9662;</span>
-                </button>
-
-                <input
-                  id="requestEndTime"
-                  type="hidden"
-                >
-
-              </div>
-
-          </div>
-
-          <input
-            id="requestEnd"
-            type="hidden"
-          >
-
+        <div class="auth-tabs" id="authTabs" role="tablist">
+          <button type="button" id="tabLogin" role="tab" aria-selected="true">Log in</button>
+          <button type="button" id="tabSignup" role="tab" aria-selected="false">Sign up</button>
         </div>
 
-      </div>
-
-
-
-      <!-- REPEAT AND FORMAT -->
-
-      <div class="two-col">
-
-        <label class="field">
-
-          <span>
-            Repeat
-          </span>
-
-          <select
-            id="requestRepeatType"
-            data-repeat-type
-          >
-
-            <option value="NONE">
-              Does not repeat
-            </option>
-
-            <option value="WEEKLY">
-              Weekly
-            </option>
-
-          </select>
-
-        </label>
-
-
-        <label class="field">
-
-          <span>
-            Format
-          </span>
-
-          <select
-            id="requestFormat"
-            class="placeholder-select"
-            required
-          >
-
-            <option
-              value=""
-              disabled
-              selected
-              hidden
-            >
-              Select One
-            </option>
-
-            <option value="ONLINE">
-              Online
-            </option>
-
-            <option value="IN_PERSON">
-              In-Person
-            </option>
-
-          </select>
-
-        </label>
-
-      </div>
-
-
-
-      <!-- RECURRENCE OPTIONS -->
-
-      <div
-        id="requestRecurrencePanel"
-        class="recurrence-panel hidden"
-      >
-
-        <div class="repeat-every-row">
-
-          <span>
-            Repeat every
-          </span>
-
-          <input
-            id="requestRepeatInterval"
-            type="number"
-            min="1"
-            max="52"
-            value="1"
-            data-repeat-interval
-          >
-
-          <span>
-            week(s)
-          </span>
-
-        </div>
-
-
-        <div class="recurrence-section">
-
-          <div class="recurrence-label">
-            Repeat on
-          </div>
-
-
-          <div
-            id="requestWeekdayPicker"
-            class="weekday-picker"
-          >
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="0"
-              title="Sunday"
-            >
-              S
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="1"
-              title="Monday"
-            >
-              M
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="2"
-              title="Tuesday"
-            >
-              T
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="3"
-              title="Wednesday"
-            >
-              W
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="4"
-              title="Thursday"
-            >
-              T
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="5"
-              title="Friday"
-            >
-              F
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="6"
-              title="Saturday"
-            >
-              S
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div class="recurrence-section">
-
-          <div class="recurrence-label">
-            Ends
-          </div>
-
-
-          <label class="recurrence-end-row">
-
-            <input
-              type="radio"
-              name="requestRepeatEndType"
-              value="NEVER"
-              data-repeat-end
-              checked
-            >
-
-            <span>
-              Never
-            </span>
-
+        <!-- LOG IN -->
+        <form id="loginPanel" class="auth-panel" novalidate>
+          <label class="field">
+            <span>Email</span>
+            <input id="loginEmail" type="email" autocomplete="username" placeholder="you@example.com" required>
           </label>
-
-
-          <label class="recurrence-end-row">
-
-            <input
-              type="radio"
-              name="requestRepeatEndType"
-              value="ON"
-              data-repeat-end
-            >
-
-            <span>
-              On
-            </span>
-
-            <input
-              id="requestRepeatEndDate"
-              type="date"
-              data-repeat-end-date
-              disabled
-            >
-
+          <label class="field">
+            <span>Password</span>
+            <input id="loginPassword" type="password" autocomplete="current-password" required>
           </label>
-
-
-          <label class="recurrence-end-row">
-
-            <input
-              type="radio"
-              name="requestRepeatEndType"
-              value="COUNT"
-              data-repeat-end
-            >
-
-            <span>
-              After
-            </span>
-
-            <input
-              id="requestRepeatCount"
-              type="number"
-              min="1"
-              max="999"
-              value="10"
-              data-repeat-count
-              disabled
-            >
-
-            <span>
-              occurrences
-            </span>
-
+          <label class="checkbox-row">
+            <input id="loginRemember" type="checkbox" checked>
+            <span>Keep me signed in on this device</span>
           </label>
-
-        </div>
-
-      </div>
-
-
-      <!-- SUBJECT -->
-
-      <label class="field">
-
-        <span>
-          Subject
-        </span>
-
-        <input
-          id="requestSubject"
-          type="text"
-          maxlength="80"
-          required
-          placeholder="e.g. AP Physics C"
-        >
-
-      </label>
-
-
-
-      <!-- INLINE AVAILABILITY WARNING -->
-
-      <div
-        id="requestWarning"
-        class="conflict-warning hidden"
-      >
-
-        <div class="conflict-warning-header">
-
-          <div class="conflict-warning-icon">
-            !
-          </div>
-
-          <div>
-
-            <div
-              id="requestWarningTitle"
-              class="conflict-warning-title"
-            >
-              Outside available hours
-            </div>
-
-            <div
-              id="requestWarningSummary"
-              class="conflict-warning-summary"
-            ></div>
-
-          </div>
-
-        </div>
-
-
-        <div
-          id="requestWarningList"
-          class="conflict-warning-list"
-        ></div>
-
-
-        <div
-          id="requestWarningFooter"
-          class="conflict-warning-footer"
-        >
-          You can still send this request. It will be confirmed
-          if the time works.
-        </div>
-
-      </div>
-
-
-
-      <!-- NORMAL VALIDATION ERROR -->
-
-      <div
-        id="requestError"
-        class="form-error"
-      ></div>
-
-
-
-      <!-- ACTION BUTTONS -->
-
-      <div class="modal-actions">
-
-        <button
-          class="btn secondary"
-          data-close="requestModal"
-        >
-          Cancel
-        </button>
-
-
-        <button
-          id="sendRequestAnywayBtn"
-          class="btn warning hidden"
-        >
-          Send Anyway
-        </button>
-
-
-        <button
-          id="sendRequestBtn"
-          class="btn primary"
-        >
-          Send request
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-
-  <!-- ADMIN LOGIN -->
-
-  <div
-    id="loginModal"
-    class="modal-backdrop hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="loginTitle"
-  >
-
-    <div class="modal-card small-modal">
-
-      <div class="modal-header">
-
-        <h2 id="loginTitle">
-          Admin access
-        </h2>
-
-        <button
-          class="close-btn"
-          data-close="loginModal"
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <label class="field">
-
-        <span>
-          Password
-        </span>
-
-        <input
-          id="adminPasswordInput"
-          type="password"
-          autocomplete="current-password"
-          placeholder="Admin password"
-        >
-
-      </label>
-
-
-      <label class="checkbox-row">
-
-        <input
-          id="rememberMeInput"
-          type="checkbox"
-          checked
-        >
-
-        <span>
-          Keep me signed in on this device
-          <small>for 90 days, or until the admin password changes</small>
-        </span>
-
-      </label>
-
-
-      <div
-        id="loginError"
-        class="form-error"
-      ></div>
-
-
-      <div class="modal-actions">
-
-        <button
-          class="btn secondary"
-          data-close="loginModal"
-        >
-          Cancel
-        </button>
-
-        <button
-          id="loginSubmitBtn"
-          class="btn primary"
-        >
-          Enter admin mode
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-
-  <!-- EVENT EDITOR -->
-
-  <!-- SETTINGS -->
-
-  <div
-    id="settingsModal"
-    class="modal-backdrop hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="settingsTitle"
-  >
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2 id="settingsTitle">
-          Settings
-        </h2>
-        <button
-          class="close-btn"
-          data-close="settingsModal"
-          aria-label="Close"
-        >
-          ×
-        </button>
-      </div>
-
-      <label class="field">
-        <span>
-          Calendar title
-        </span>
-        <input
-          id="settingTitle"
-          type="text"
-          maxlength="80"
-        >
-      </label>
-
-      <label class="field">
-        <span>
-          Display name
-          <small>as in "___ last updated the schedule"</small>
-        </span>
-        <input
-          id="settingDisplayName"
-          type="text"
-          maxlength="40"
-        >
-      </label>
-
-      <label class="field">
-        <span>
-          Time zone
-        </span>
-        <select id="settingTimezone"></select>
-      </label>
-
-      <div class="field-row">
-        <label class="field">
-          <span>
-            Day starts
-          </span>
-          <select id="settingDayStart"></select>
-        </label>
-        <label class="field">
-          <span>
-            Day ends
-          </span>
-          <select id="settingDayEnd"></select>
-        </label>
-      </div>
-
-      <div class="field">
-        <span>
-          Default color for open time
-          <small>what visitors see</small>
-        </span>
-        <div
-          id="settingAvailableColor"
-          class="color-row"
-          role="group"
-        ></div>
-      </div>
-
-      <div class="field">
-        <span>
-          Default color for booked time
-        </span>
-        <div
-          id="settingBlockedColor"
-          class="color-row"
-          role="group"
-        ></div>
-      </div>
-
-      <div class="field-row">
-        <label class="field">
-          <span>
-            Open time is called
-          </span>
-          <input
-            id="settingLabelAvailable"
-            type="text"
-            maxlength="30"
-            placeholder="Available"
-          >
-        </label>
-        <label class="field">
-          <span>
-            Booked time is called
-          </span>
-          <input
-            id="settingLabelBlocked"
-            type="text"
-            maxlength="30"
-            placeholder="Blocked Session"
-          >
-        </label>
-      </div>
-
-      <div class="field-row">
-        <label class="field">
-          <span>
-            The summary counts
-            <small>one</small>
-          </span>
-          <input
-            id="settingLabelPerson"
-            type="text"
-            maxlength="20"
-            placeholder="event"
-          >
-        </label>
-        <label class="field">
-          <span>
-            &nbsp;
-            <small>several</small>
-          </span>
-          <input
-            id="settingLabelPeople"
-            type="text"
-            maxlength="20"
-            placeholder="events"
-          >
-        </label>
-      </div>
-
-      <label class="field">
-        <span>
-          Notification email
-          <small>where new session requests are sent; leave empty for none</small>
-        </span>
-        <input
-          id="settingNotificationEmail"
-          type="email"
-          maxlength="120"
-          placeholder="you@example.com"
-        >
-      </label>
-
-      <div class="mail-test-row">
-        <span
-          id="mailStatusText"
-          class="mail-status"
-        ></span>
-        <button
-          id="testMailBtn"
-          class="btn secondary small"
-          type="button"
-        >
-          Send a test email
-        </button>
-      </div>
-
-      <div
-        id="settingsError"
-        class="form-error"
-      ></div>
-
-      <div class="modal-actions">
-        <button
-          class="btn secondary"
-          data-close="settingsModal"
-        >
-          Cancel
-        </button>
-        <button
-          id="saveSettingsBtn"
-          class="btn primary"
-        >
-          Save settings
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div
-    id="eventModal"
-    class="modal-backdrop hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="eventModalTitle"
-  >
-
-    <div class="modal-card">
-
-      <div class="modal-header">
-
-        <h2 id="eventModalTitle">
-          Add event
-        </h2>
-
-        <button
-          class="close-btn"
-          data-close="eventModal"
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <input
-        id="eventId"
-        type="hidden"
-      >
-
-
-      <!-- TYPE -->
-
-      <label class="field">
-
-        <span>
-          Type
-        </span>
-
-        <select
-          id="eventType"
-          class="placeholder-select"
-          required
-        >
-
-          <option
-            value=""
-            disabled
-            selected
-            hidden
-          >
-            Select One
-          </option>
-
-          <option
-            id="eventTypeAvailableOption"
-            value="AVAILABLE"
-          >
-            Available
-          </option>
-
-          <option value="BLOCKED">
-            Blocked / private event
-          </option>
-
-        </select>
-
-      </label>
-
-
-
-      <!-- START AND END -->
-
-      <div class="two-col">
-
-        <div class="field">
-
-          <span>
-            Starts
-          </span>
-
-          <div class="datetime-field">
-
-            <input
-              id="eventStartDate"
-              type="date"
-              class="datetime-date"
-              min="2000-01-01"
-              max="2099-12-31"
-              aria-label="Start date"
-            >
-
-            <div
-                class="datetime-time"
-                data-time-control="eventStart"
-              >
-
-                <input
-                  id="eventStartHour"
-                  class="time-seg time-seg-hour"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="Start time hour"
-                >
-
-                <span class="time-sep">:</span>
-
-                <input
-                  id="eventStartMinute"
-                  class="time-seg time-seg-minute"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="Start time minute"
-                >
-
-                <input
-                  id="eventStartMeridiem"
-                  class="time-seg time-seg-meridiem"
-                  type="text"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="Start time AM or PM"
-                >
-
-                <button
-                  id="eventStartWheel"
-                  class="time-wheel-button"
-                  type="button"
-                  tabindex="-1"
-                  aria-label="Choose start time from a list"
-                >
-                  <span aria-hidden="true">&#9662;</span>
-                </button>
-
-                <input
-                  id="eventStartTime"
-                  type="hidden"
-                >
-
-              </div>
-
-          </div>
-
-          <input
-            id="eventStart"
-            type="hidden"
-            data-recurrence-start
-          >
-
-        </div>
-
-
-        <div class="field">
-
-          <span>
-            Ends
-          </span>
-
-          <div class="datetime-field">
-
-            <input
-              id="eventEndDate"
-              type="date"
-              class="datetime-date"
-              min="2000-01-01"
-              max="2099-12-31"
-              aria-label="End date"
-            >
-
-            <div
-                class="datetime-time"
-                data-time-control="eventEnd"
-              >
-
-                <input
-                  id="eventEndHour"
-                  class="time-seg time-seg-hour"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="End time hour"
-                >
-
-                <span class="time-sep">:</span>
-
-                <input
-                  id="eventEndMinute"
-                  class="time-seg time-seg-minute"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="End time minute"
-                >
-
-                <input
-                  id="eventEndMeridiem"
-                  class="time-seg time-seg-meridiem"
-                  type="text"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="--"
-                  aria-label="End time AM or PM"
-                >
-
-                <button
-                  id="eventEndWheel"
-                  class="time-wheel-button"
-                  type="button"
-                  tabindex="-1"
-                  aria-label="Choose end time from a list"
-                >
-                  <span aria-hidden="true">&#9662;</span>
-                </button>
-
-                <input
-                  id="eventEndTime"
-                  type="hidden"
-                >
-
-              </div>
-
-          </div>
-
-          <input
-            id="eventEnd"
-            type="hidden"
-          >
-
-        </div>
-
-      </div>
-
-
-
-      <!-- REPEAT -->
-
-      <label class="field">
-
-        <span>
-          Repeat
-        </span>
-
-        <select
-          id="repeatType"
-          data-repeat-type
-        >
-
-          <option value="NONE">
-            Does not repeat
-          </option>
-
-          <option value="WEEKLY">
-            Weekly
-          </option>
-
-        </select>
-
-      </label>
-
-
-
-      <!-- RECURRENCE OPTIONS -->
-
-      <div
-        id="recurrencePanel"
-        class="recurrence-panel hidden"
-      >
-
-        <div class="repeat-every-row">
-
-          <span>
-            Repeat every
-          </span>
-
-          <input
-            id="repeatInterval"
-            type="number"
-            min="1"
-            max="52"
-            value="1"
-            data-repeat-interval
-          >
-
-          <span>
-            week(s)
-          </span>
-
-        </div>
-
-
-        <div class="recurrence-section">
-
-          <div class="recurrence-label">
-            Repeat on
-          </div>
-
-
-          <div
-            id="weekdayPicker"
-            class="weekday-picker"
-          >
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="0"
-              title="Sunday"
-            >
-              S
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="1"
-              title="Monday"
-            >
-              M
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="2"
-              title="Tuesday"
-            >
-              T
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="3"
-              title="Wednesday"
-            >
-              W
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="4"
-              title="Thursday"
-            >
-              T
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="5"
-              title="Friday"
-            >
-              F
-            </button>
-
-            <button
-              type="button"
-              class="weekday-btn"
-              data-day="6"
-              title="Saturday"
-            >
-              S
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div class="recurrence-section">
-
-          <div class="recurrence-label">
-            Ends
-          </div>
-
-
-          <label class="recurrence-end-row">
-
-            <input
-              type="radio"
-              name="repeatEndType"
-              value="NEVER"
-              data-repeat-end
-              checked
-            >
-
-            <span>
-              Never
-            </span>
-
+          <div id="loginError" class="form-error"></div>
+          <button id="loginSubmit" class="btn primary" type="submit">Log in</button>
+          <p class="auth-links">
+            <button type="button" id="forgotLink">Forgot your password?</button>
+            <button type="button" id="toSignupLink">Create an account</button>
+          </p>
+        </form>
+
+        <!-- SIGN UP -->
+        <form id="signupPanel" class="auth-panel hidden" novalidate>
+          <label class="field">
+            <span>Your name <small>shown on the calendar</small></span>
+            <input id="signupName" type="text" autocomplete="name" maxlength="40" placeholder="Ethan" required>
           </label>
-
-
-          <label class="recurrence-end-row">
-
-            <input
-              type="radio"
-              name="repeatEndType"
-              value="ON"
-              data-repeat-end
-            >
-
-            <span>
-              On
-            </span>
-
-            <input
-              id="repeatEndDate"
-              type="date"
-              data-repeat-end-date
-              disabled
-            >
-
+          <label class="field">
+            <span>Email</span>
+            <input id="signupEmail" type="email" autocomplete="username" placeholder="you@example.com" required>
           </label>
-
-
-          <label class="recurrence-end-row">
-
-            <input
-              type="radio"
-              name="repeatEndType"
-              value="COUNT"
-              data-repeat-end
-            >
-
-            <span>
-              After
-            </span>
-
-            <input
-              id="repeatCount"
-              type="number"
-              min="1"
-              max="999"
-              value="10"
-              data-repeat-count
-              disabled
-            >
-
-            <span>
-              occurrences
-            </span>
-
+          <label class="field">
+            <span>Password <small>8 characters or more</small></span>
+            <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required>
           </label>
-
-        </div>
-
-      </div>
-
-
-
-      <!-- TITLE -->
-
-      <label class="field">
-
-        <span>
-
-          Title
-
-          <small>
-            (admin only)
-          </small>
-
-        </span>
-
-        <input
-          id="eventTitle"
-          type="text"
-          maxlength="100"
-          required
-          placeholder="e.g. Maya - Algebra II, Class, Work"
-        >
-
-      </label>
-
-
-
-      <!-- COLOUR -->
-
-      <div class="field">
-
-        <span>
-
-          Color
-
-          <small>
-            (admin only — visitors always see red and green)
-          </small>
-
-        </span>
-
-        <div
-          id="eventColorRow"
-          class="color-row"
-          role="group"
-          aria-label="Color"
-        ></div>
-
-      </div>
-
-      <!-- NOTES -->
-
-      <label class="field">
-
-        <span>
-
-          Notes
-
-          <small>
-            (admin only)
-          </small>
-
-        </span>
-
-        <textarea
-          id="eventNotes"
-          rows="3"
-          maxlength="500"
-          placeholder="Optional"
-        ></textarea>
-
-      </label>
-
-
-
-      <!-- INLINE SCHEDULE CONFLICT -->
-
-      <div
-        id="conflictWarning"
-        class="conflict-warning hidden"
-      >
-
-        <div class="conflict-warning-header">
-
-          <div class="conflict-warning-icon">
-            !
-          </div>
-
-          <div>
-
-            <div class="conflict-warning-title">
-              Schedule conflict
-            </div>
-
-            <div
-              id="conflictWarningSummary"
-              class="conflict-warning-summary"
-            ></div>
-
-          </div>
-
-        </div>
-
-
-        <div
-          id="conflictWarningList"
-          class="conflict-warning-list"
-        ></div>
-
-
-        <div class="conflict-warning-footer">
-          You can still save this event if the overlap is intentional.
-        </div>
-
-      </div>
-
-
-
-      <!-- NORMAL VALIDATION ERROR -->
-
-      <div
-        id="eventError"
-        class="form-error"
-      ></div>
-
-
-
-      <!-- ACTION BUTTONS -->
-
-      <div class="modal-actions split">
-
-        <button
-          id="deleteEventBtn"
-          class="btn danger hidden"
-        >
-          Delete
-        </button>
-
-
-        <div class="right-actions">
-
-          <button
-            class="btn secondary"
-            data-close="eventModal"
-          >
-            Cancel
-          </button>
-
-
-          <button
-            id="saveAnywayBtn"
-            class="btn warning hidden"
-          >
-            Save Anyway
-          </button>
-
-
-          <button
-            id="saveEventBtn"
-            class="btn primary"
-          >
-            Save
-          </button>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-
-  <!-- SESSION REQUEST REVIEW (ADMIN) -->
-
-  <div
-    id="requestDrawerBackdrop"
-    class="drawer-backdrop hidden"
-  >
-
-    <aside class="blocked-drawer">
-
-      <div class="blocked-drawer-header">
-
-        <div>
-
-          <h2>
-            Session Requests
-          </h2>
-
-          <div
-            id="requestsSubtitle"
-            class="blocked-drawer-subtitle"
-          >
-            Submitted by students, waiting on you
-          </div>
-
-        </div>
-
-        <button
-          id="closeRequestDrawerBtn"
-          class="close-btn"
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <div
-        id="requestListStatus"
-        class="status"
-      ></div>
-
-
-      <div
-        id="requestList"
-        class="blocked-session-list"
-      ></div>
-
-    </aside>
-
-  </div>
-
-
-
-  <!-- BLOCKED SESSION ADMIN PANEL -->
-
-  <!-- HISTORY DRAWER (ADMIN) -->
-
-  <div
-    id="historyDrawerBackdrop"
-    class="drawer-backdrop hidden"
-  >
-
-    <aside
-      id="historyDrawer"
-      class="blocked-drawer history-drawer"
-    >
-
-      <div class="blocked-drawer-header">
-
-        <div>
-
-          <h2>
-            Version history
-          </h2>
-
-          <div class="blocked-drawer-subtitle">
-            The schedule at every save, newest first. Restore any version to make it the current one again; what came after stays in the list.
-          </div>
-
-        </div>
-
-        <button
-          id="closeHistoryDrawerBtn"
-          class="close-btn"
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <div
-        id="historyStatus"
-        class="status"
-      ></div>
-
-
-      <div
-        id="historyList"
-        class="history-list"
-      ></div>
-
-
-    </aside>
-
-  </div>
-
-
-  <div
-    id="blockedDrawerBackdrop"
-    class="drawer-backdrop hidden"
-  >
-
-    <aside
-      id="blockedDrawer"
-      class="blocked-drawer"
-    >
-
-      <div class="blocked-drawer-header">
-
-        <div>
-
-          <h2>
-            Blocked Sessions
-          </h2>
-
-          <div class="blocked-drawer-subtitle">
-            Past and upcoming blocked events
-          </div>
-
-        </div>
-
-        <button
-          id="closeBlockedDrawerBtn"
-          class="close-btn"
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <div
-        id="blockedListStatus"
-        class="status"
-      ></div>
-
-
-      <div class="blocked-list-columns">
-
-
-        <!-- PAST -->
-
-        <section class="blocked-list-column">
-
-          <div class="blocked-list-heading">
-
-            <div>
-
-              <h3>
-                Past
-              </h3>
-
-              <span>
-                Most recent first
-              </span>
-
-            </div>
-
-            <span
-              id="pastBlockedCount"
-              class="blocked-count"
-            >
-              0
+          <label class="field">
+            <span>Calendar address <small>you can change it later</small></span>
+            <span class="slug-field">
+              <span class="slug-prefix" id="signupSlugPrefix">/</span>
+              <input id="signupSlug" type="text" maxlength="30" autocomplete="off" spellcheck="false" placeholder="ethan">
             </span>
+          </label>
+          <label class="checkbox-row hidden" id="claimRow">
+            <input id="claimMain" type="checkbox">
+            <span>This site already has a calendar and it is mine <small>take it over with the admin password</small></span>
+          </label>
+          <label class="field hidden" id="claimField">
+            <span>Admin password</span>
+            <input id="claimPassword" type="password" autocomplete="off">
+          </label>
+          <div id="signupError" class="form-error"></div>
+          <button id="signupSubmit" class="btn primary" type="submit">Create my calendar</button>
+          <p class="auth-links">
+            <span></span>
+            <button type="button" id="toLoginLink">I already have an account</button>
+          </p>
+        </form>
 
+        <!-- FORGOT -->
+        <form id="forgotPanel" class="auth-panel hidden" novalidate>
+          <h2>Reset your password</h2>
+          <p>Enter your email and we will send a link to choose a new one.</p>
+          <label class="field">
+            <span>Email</span>
+            <input id="forgotEmail" type="email" autocomplete="username" required>
+          </label>
+          <div id="forgotError" class="form-error"></div>
+          <div id="forgotDone" class="auth-ok hidden"></div>
+          <button id="forgotSubmit" class="btn primary" type="submit">Send the link</button>
+          <p class="auth-links">
+            <span></span>
+            <button type="button" id="forgotBackLink">Back to log in</button>
+          </p>
+        </form>
+
+        <!-- RESET (from the email link) -->
+        <form id="resetPanel" class="auth-panel hidden" novalidate>
+          <h2>Choose a new password</h2>
+          <label class="field">
+            <span>New password <small>8 characters or more</small></span>
+            <input id="resetPassword" type="password" autocomplete="new-password" minlength="8" required>
+          </label>
+          <div id="resetError" class="form-error"></div>
+          <button id="resetSubmit" class="btn primary" type="submit">Save and log in</button>
+        </form>
+
+        <!-- VERIFYING (from the email link) -->
+        <div id="verifyPanel" class="auth-panel hidden">
+          <h2>Confirming your email…</h2>
+          <p id="verifyText">One moment.</p>
+          <div id="verifyError" class="form-error"></div>
+          <p class="auth-links hidden" id="verifyLinks">
+            <span></span>
+            <button type="button" id="verifyBackLink">Log in</button>
+          </p>
+        </div>
+
+        <!-- AFTER SIGN-UP -->
+        <div id="welcomePanel" class="auth-panel hidden">
+          <h2>Your calendar is ready</h2>
+          <div class="auth-ok">
+            <span id="welcomeText"></span>
+            <br>
+            <a id="welcomeOpen" class="btn primary" href="/">Open my calendar</a>
           </div>
+          <p class="auth-links">
+            <span id="welcomeStatus"></span>
+            <button type="button" id="welcomeResend" class="hidden">Send the email again</button>
+          </p>
+        </div>
 
-          <div
-            id="pastBlockedList"
-            class="blocked-session-list"
-          ></div>
+      </aside>
 
-        </section>
+    </main>
 
-
-
-        <!-- UPCOMING -->
-
-        <section class="blocked-list-column">
-
-          <div class="blocked-list-heading">
-
-            <div>
-
-              <h3>
-                Upcoming
-              </h3>
-
-              <span id="upcomingBlockedRange">
-                Soonest first
-              </span>
-
-            </div>
-
-            <span
-              id="upcomingBlockedCount"
-              class="blocked-count"
-            >
-              0
-            </span>
-
-          </div>
-
-          <div
-            id="upcomingBlockedList"
-            class="blocked-session-list"
-          ></div>
-
-        </section>
-
-      </div>
-
-    </aside>
+    <footer class="home-foot">
+      <span id="footNote"></span>
+    </footer>
 
   </div>
 
+  <script src="/session.js"></script>
+  <script>
+    (function () {
 
-  <script
-    src="/app.js"
-    defer
-  ></script>
+      var $ = function (id) { return document.getElementById(id); };
+      var params = new URLSearchParams(window.location.search);
+      var site = { name: 'Calendar', claimed: true, mail: true };
+
+      /* ---------- theme, the same as on the calendar ---------- */
+
+      function renderThemeButton() {
+        var chosen = document.documentElement.getAttribute('data-theme');
+        var dark = chosen ? chosen === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        $('themeIcon').textContent = dark ? '☀' : '☾';
+      }
+      $('themeBtn').addEventListener('click', function () {
+        var chosen = document.documentElement.getAttribute('data-theme');
+        var dark = chosen ? chosen === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var next = dark ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+        renderThemeButton();
+      });
+      renderThemeButton();
+
+      /* ---------- panels ---------- */
+
+      var PANELS = ['loginPanel', 'signupPanel', 'forgotPanel', 'resetPanel', 'verifyPanel', 'welcomePanel'];
+
+      function show(panel) {
+        PANELS.forEach(function (id) { $(id).classList.toggle('hidden', id !== panel); });
+        var tabbed = panel === 'loginPanel' || panel === 'signupPanel';
+        $('authTabs').classList.toggle('hidden', !tabbed);
+        $('tabLogin').setAttribute('aria-selected', panel === 'loginPanel' ? 'true' : 'false');
+        $('tabSignup').setAttribute('aria-selected', panel === 'signupPanel' ? 'true' : 'false');
+        var first = $(panel).querySelector('input');
+        if (first) setTimeout(function () { first.focus(); }, 30);
+      }
+
+      function scrollToCard() {
+        $('authCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      $('tabLogin').addEventListener('click', function () { show('loginPanel'); });
+      $('tabSignup').addEventListener('click', function () { show('signupPanel'); });
+      $('topLoginBtn').addEventListener('click', function () { show('loginPanel'); scrollToCard(); });
+      $('topSignupBtn').addEventListener('click', function () { show('signupPanel'); scrollToCard(); });
+      $('toSignupLink').addEventListener('click', function () { show('signupPanel'); });
+      $('toLoginLink').addEventListener('click', function () { show('loginPanel'); });
+      $('forgotLink').addEventListener('click', function () { show('forgotPanel'); });
+      $('forgotBackLink').addEventListener('click', function () { show('loginPanel'); });
+      $('verifyBackLink').addEventListener('click', function () { show('loginPanel'); });
+
+      /* ---------- the API ---------- */
+
+      function call(path, body, session) {
+        var headers = { 'Content-Type': 'application/json' };
+        if (session) headers['x-session'] = session.token;
+        return fetch('/api' + path, {
+          method: body === undefined ? 'GET' : 'POST',
+          headers: headers,
+          body: body === undefined ? undefined : JSON.stringify(body),
+          cache: 'no-store'
+        }).then(function (response) {
+          return response.json().catch(function () { return {}; }).then(function (data) {
+            if (!response.ok) {
+              var error = new Error(data.error || ('Request failed (' + response.status + ')'));
+              error.status = response.status;
+              throw error;
+            }
+            return data;
+          });
+        });
+      }
+
+      function busy(button, on) {
+        button.disabled = on;
+      }
+
+      /*
+        A session in hand: keep it, and go to the account's calendar.
+      */
+      function arrive(data, remember) {
+        window.CalendarSession.save({ token: data.token, expiresAt: data.expiresAt, slug: data.account.slug }, remember !== false);
+        window.location.href = '/' + data.account.slug;
+      }
+
+      /* ---------- log in ---------- */
+
+      $('loginPanel').addEventListener('submit', function (event) {
+        event.preventDefault();
+        $('loginError').textContent = '';
+        var email = $('loginEmail').value.trim();
+        var password = $('loginPassword').value;
+        if (!email || !password) { $('loginError').textContent = 'Please enter your email and password.'; return; }
+        busy($('loginSubmit'), true);
+        call('/login', { email: email, password: password }).then(function (data) {
+          arrive(data, $('loginRemember').checked);
+        }).catch(function (error) {
+          $('loginError').textContent = error.message;
+          busy($('loginSubmit'), false);
+        });
+      });
+
+      /* ---------- sign up ---------- */
+
+      function slugify(text) {
+        return String(text || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+      }
+
+      var slugTouched = false;
+      $('signupName').addEventListener('input', function () {
+        if (!slugTouched) $('signupSlug').value = slugify($('signupName').value);
+      });
+      $('signupSlug').addEventListener('input', function () {
+        slugTouched = $('signupSlug').value !== '';
+      });
+      $('claimMain').addEventListener('change', function () {
+        $('claimField').classList.toggle('hidden', !$('claimMain').checked);
+        $('signupSubmit').textContent = $('claimMain').checked ? 'Take over my calendar' : 'Create my calendar';
+      });
+
+      $('signupPanel').addEventListener('submit', function (event) {
+        event.preventDefault();
+        $('signupError').textContent = '';
+        var body = {
+          displayName: $('signupName').value.trim(),
+          email: $('signupEmail').value.trim(),
+          password: $('signupPassword').value,
+          slug: $('signupSlug').value.trim().toLowerCase()
+        };
+        if (!body.displayName) { $('signupError').textContent = 'Please enter your name.'; return; }
+        if (!body.email) { $('signupError').textContent = 'Please enter your email.'; return; }
+        if (body.password.length < 8) { $('signupError').textContent = 'Use at least 8 characters for the password.'; return; }
+        if ($('claimMain').checked) {
+          body.adminPassword = $('claimPassword').value;
+          if (!body.adminPassword) { $('signupError').textContent = 'Enter the admin password to take over the calendar.'; return; }
+          delete body.slug;
+        }
+        busy($('signupSubmit'), true);
+        call('/signup', body).then(function (data) {
+          var session = { token: data.token, expiresAt: data.expiresAt, slug: data.account.slug };
+          window.CalendarSession.save(session, true);
+          if (data.verification === 'off' || data.account.verified) {
+            window.location.href = '/' + data.account.slug;
+            return;
+          }
+          currentSession = session;
+          $('welcomeText').innerHTML = (data.verification === 'sent'
+            ? 'We sent a confirmation link to <strong>' + escapeHtml(data.account.email) + '</strong>. Your calendar is at <code>' + escapeHtml(data.account.url) + '</code>. You can set it up now; it goes public once you confirm your email.'
+            : 'Your calendar is at <code>' + escapeHtml(data.account.url) + '</code>. The confirmation email could not be sent right now; you can ask for it again from your calendar.');
+          $('welcomeOpen').href = '/' + data.account.slug;
+          $('welcomeResend').classList.remove('hidden');
+          show('welcomePanel');
+        }).catch(function (error) {
+          $('signupError').textContent = error.message;
+        }).then(function () {
+          busy($('signupSubmit'), false);
+        });
+      });
+
+      var currentSession = null;
+      $('welcomeResend').addEventListener('click', function () {
+        $('welcomeStatus').textContent = 'Sending…';
+        call('/resend', {}, currentSession).then(function (data) {
+          $('welcomeStatus').textContent = data.verification === 'sent' ? 'Sent. Check your inbox.' : data.verification === 'done' ? 'Already confirmed.' : 'It could not be sent right now.';
+        }).catch(function (error) {
+          $('welcomeStatus').textContent = error.message;
+        });
+      });
+
+      /* ---------- forgot / reset ---------- */
+
+      $('forgotPanel').addEventListener('submit', function (event) {
+        event.preventDefault();
+        $('forgotError').textContent = '';
+        var email = $('forgotEmail').value.trim();
+        if (!email) { $('forgotError').textContent = 'Please enter your email.'; return; }
+        busy($('forgotSubmit'), true);
+        call('/forgot', { email: email }).then(function (data) {
+          $('forgotDone').textContent = data.message;
+          $('forgotDone').classList.remove('hidden');
+          $('forgotSubmit').classList.add('hidden');
+        }).catch(function (error) {
+          $('forgotError').textContent = error.message;
+          busy($('forgotSubmit'), false);
+        });
+      });
+
+      $('resetPanel').addEventListener('submit', function (event) {
+        event.preventDefault();
+        $('resetError').textContent = '';
+        var password = $('resetPassword').value;
+        if (password.length < 8) { $('resetError').textContent = 'Use at least 8 characters.'; return; }
+        busy($('resetSubmit'), true);
+        call('/reset', { token: params.get('reset'), password: password }).then(function (data) {
+          arrive(data, true);
+        }).catch(function (error) {
+          $('resetError').textContent = error.message;
+          busy($('resetSubmit'), false);
+        });
+      });
+
+      /* ---------- verify ---------- */
+
+      function verify(token) {
+        show('verifyPanel');
+        call('/verify', { token: token }).then(function (data) {
+          $('verifyPanel').querySelector('h2').textContent = 'Email confirmed';
+          $('verifyText').textContent = 'Your calendar is public now. Taking you there…';
+          window.CalendarSession.save({ token: data.token, expiresAt: data.expiresAt, slug: data.account.slug }, true);
+          setTimeout(function () { window.location.href = '/' + data.account.slug; }, 800);
+        }).catch(function (error) {
+          $('verifyPanel').querySelector('h2').textContent = 'That link did not work';
+          $('verifyText').textContent = '';
+          $('verifyError').textContent = error.message;
+          $('verifyLinks').classList.remove('hidden');
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+      }
+
+      /* ---------- start ---------- */
+
+      call('/site').then(function (data) {
+        site = data;
+        document.title = data.name;
+        $('siteName').textContent = data.name;
+        $('exampleUrl').textContent = window.location.host + '/you';
+        $('signupSlugPrefix').textContent = window.location.host + '/';
+        $('claimRow').classList.toggle('hidden', data.claimed);
+        $('footNote').textContent = data.claimed || !data.mainSlug ? '' : 'Looking for the calendar that was here before? It is at /' + data.mainSlug + '.';
+      }).catch(function () {});
+
+      if (params.has('verify')) {
+        verify(params.get('verify'));
+        return;
+      }
+      if (params.has('reset')) {
+        show('resetPanel');
+        return;
+      }
+      if (params.has('signup')) {
+        show('signupPanel');
+        return;
+      }
+      if (params.has('forgot')) {
+        show('forgotPanel');
+        return;
+      }
+
+      /*
+        Already signed in: straight to the calendar. The session is
+        checked first, so a stale one lands here rather than in a loop.
+      */
+      var session = window.CalendarSession.read();
+      if (session) {
+        call('/me', undefined, session).then(function (data) {
+          window.location.replace('/' + data.account.slug);
+        }).catch(function (error) {
+          if (error.status === 401) window.CalendarSession.clear();
+          show('loginPanel');
+        });
+      } else {
+        show('loginPanel');
+      }
+
+    })();
+  </script>
 
 </body>
+
 </html>

@@ -3021,3 +3021,111 @@ body:not(.view-week).list-view .calendar {
   min-width: 170px;
   white-space: nowrap;
 }
+
+
+/* -----------------------------
+   ACCOUNTS: LOGIN, ADDRESS, MISSING CALENDAR
+----------------------------- */
+
+.login-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -4px 0 12px;
+  font-size: 13px;
+}
+
+.login-links a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.login-links a:hover {
+  text-decoration: underline;
+}
+
+.login-switch {
+  display: block;
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 13px;
+}
+
+.slug-field,
+.field > .slug-field {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.slug-prefix {
+  padding: 10px 6px 10px 11px;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.field .slug-field input {
+  border-radius: 0 10px 10px 0;
+}
+
+.share-row,
+.field > .share-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.share-row code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.missing-calendar {
+  display: none;
+  max-width: 520px;
+  margin: 48px auto;
+  padding: 28px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.missing-calendar h2 {
+  margin: 0 0 8px;
+}
+
+.missing-calendar p {
+  margin: 0 0 18px;
+  color: var(--muted);
+}
+
+body.calendar-missing .missing-calendar {
+  display: block;
+}
+
+body.calendar-missing .calendar-toolbar,
+body.calendar-missing .week-summary,
+body.calendar-missing #calendar,
+body.calendar-missing #agenda,
+body.calendar-missing .help-box,
+body.calendar-missing .legend,
+body.calendar-missing .subline,
+body.calendar-missing .header-actions {
+  display: none !important;
+}

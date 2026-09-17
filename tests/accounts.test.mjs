@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { getStore } from '@netlify/blobs';
 
 process.env.ADMIN_PASSWORD = 'admin-pw';
-process.env.SITE_NAME = 'Test Calendar';
+process.env.SITE_NAME = 'Test Calendar';   // else the host would be read as "Site Test"
 
 // a fake Brevo that keeps every message
 const sent = [];

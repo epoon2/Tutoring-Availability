@@ -10,6 +10,7 @@ from playwright.async_api import async_playwright
 
 PORT = 8951
 BASE = f"http://127.0.0.1:{PORT}"
+CAL = f"{BASE}/ethan"          # the first calendar, at its address
 oks, fails = [], []
 def check(name, cond, extra=""):
     (oks if cond else fails).append(name)
@@ -29,7 +30,7 @@ def start_server(fake_google):
     print("server failed:", server.stderr.read().decode()[:400]); sys.exit(1)
 
 async def login(page):
-    await page.goto(BASE, wait_until="networkidle")
+    await page.goto(CAL, wait_until="networkidle")
     await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
     await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
 

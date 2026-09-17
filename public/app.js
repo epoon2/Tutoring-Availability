@@ -47,6 +47,27 @@
     isAdmin:
       false,
 
+    /*
+      The signed-in account, if any: the session token this device
+      holds, and what the server said about the account. The calendar
+      on screen is named by the address in the page's own URL.
+    */
+    session:
+      null,
+
+    account:
+      null,
+
+    calendarSlug:
+      slugFromLocation(),
+
+    /*
+      What the server said about the calendar itself: its address,
+      and whether an account owns it yet.
+    */
+    calendar:
+      null,
+
 
     /*
       Which segmented time control has its
@@ -197,6 +218,8 @@
     bindButtons();
 
     resumeRememberedDevice();
+
+    installManifest();
 
     loadWeek();
 
@@ -608,6 +631,18 @@
           }
 
 
+          if ( ownsThisCalendar() ) {
+
+            state.isAdmin =
+              true;
+
+            loadWeek();
+
+            return;
+
+          }
+
+
           openAdminLogin();
 
         }
@@ -620,6 +655,44 @@
         () => {
           closeProfileMenu();
           signOut();
+        }
+      );
+    $('legacyLoginLink')
+      .addEventListener(
+        'click',
+        () => {
+          setLoginMode( state.loginMode === 'legacy' ? 'account' : 'legacy' );
+          setTimeout(
+            () => {
+              $( state.loginMode === 'legacy' ? 'adminPasswordInput' : 'loginEmailInput' ).focus();
+            },
+            30
+          );
+        }
+      );
+    $('resendVerifyBtn')
+      .addEventListener(
+        'click',
+        resendVerification
+      );
+    $('settingSlug')
+      .addEventListener(
+        'input',
+        () => {
+          renderShareLink( $('settingSlug').value.trim().toLowerCase() );
+        }
+      );
+    $('copyShareLinkBtn')
+      .addEventListener(
+        'click',
+        async () => {
+          try {
+            await navigator.clipboard.writeText( $('shareLink').textContent );
+            $('copyShareLinkBtn').textContent = 'Copied';
+            setTimeout( () => { $('copyShareLinkBtn').textContent = 'Copy'; }, 1500 );
+          } catch (e) {
+            setStatus( 'Copy the link by selecting it.' );
+          }
         }
       );
     $('backToAdminBtn')
@@ -1163,12 +1236,36 @@
 
     } else if (
       state.isAdmin &&
+      state.session
+    ) {
+
+      headers.set(
+        'x-session',
+        state.session.token
+      );
+
+    } else if (
+      state.isAdmin &&
       state.adminToken
     ) {
 
       headers.set(
         'x-admin-token',
         state.adminToken
+      );
+
+    } else if (
+      state.session
+    ) {
+
+      /*
+        A visitor who is signed in elsewhere: the server tells the
+        page whose account this is, so the chip can offer the way to
+        their own calendar.
+      */
+      headers.set(
+        'x-session',
+        state.session.token
       );
 
     }
@@ -1244,6 +1341,18 @@
 
       }
 
+    }
+
+
+    /*
+      Every request names the calendar the page is showing; with no
+      address in the URL it is the first calendar.
+    */
+    if ( state.calendarSlug ) {
+      path +=
+        ( path.includes( '?' ) ? '&' : '?' ) +
+        'calendar=' +
+        encodeURIComponent( state.calendarSlug );
     }
 
 
@@ -3023,15 +3132,40 @@
         );
 
 
-      const data =
-        await api(
-          `/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
-        );
+      let data;
+      try {
+        data =
+          await api(
+            `/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+          );
+      } catch (error) {
+        if (
+          error.status === 404 &&
+          error.data &&
+          ( error.data.missing || error.data.unpublished )
+        ) {
+          showMissingCalendar( error.data );
+          return;
+        }
+        throw error;
+      }
 
 
       state.events =
         data.events ||
         [];
+
+
+      state.calendar =
+        data.calendar ||
+        state.calendar;
+      if ( data.session === 'invalid' ) {
+        forgetSession();
+      }
+      state.account =
+        data.account ||
+        null;
+      renderVerifyNotice();
 
 
       /*
@@ -3061,6 +3195,22 @@
       ) {
 
         forgetDevice();
+
+      }
+
+
+      /*
+        Signed in, but this is somebody else's calendar: a visitor
+        here, with a way to their own.
+      */
+      if (
+        state.isAdmin &&
+        data.mode !== 'admin' &&
+        state.session
+      ) {
+
+        state.isAdmin =
+          false;
 
       }
 
@@ -3245,7 +3395,8 @@
     */
     const signedIn =
       state.isAdmin ||
-      Boolean( state.adminToken );
+      Boolean( state.adminToken ) ||
+      Boolean( state.session );
     $('profileMenu')
       .classList
       .toggle(
@@ -3255,14 +3406,24 @@
     /*
       The Admin view / Public view switch sits on the calendar toolbar
       whenever there is a way back: in admin mode, or on a remembered
-      device looking at the public view.
+      device looking at the public view of its own calendar.
     */
     $('modeSwitch')
       .classList
       .toggle(
         'hidden',
-        !( state.isAdmin || Boolean( state.adminToken ) )
+        !( state.isAdmin || Boolean( state.adminToken ) || ownsThisCalendar() )
       );
+    $('myCalendarLink')
+      .classList
+      .toggle(
+        'hidden',
+        !( state.session && state.account && !ownsThisCalendar() )
+      );
+    if ( state.account ) {
+      $('myCalendarLink').href =
+        '/' + state.account.slug;
+    }
     $('backToAdminBtn')
       .setAttribute( 'aria-pressed', state.isAdmin ? 'true' : 'false' );
     $('exitAdminBtn')
@@ -3277,7 +3438,9 @@
       .textContent =
         state.isAdmin
           ? 'Admin mode'
-          : 'Public view';
+          : ( ownsThisCalendar() || state.adminToken || !state.account )
+            ? 'Public view'
+            : "Someone else's calendar";
     renderProfileChip();
     if ( !signedIn ) {
       closeProfileMenu();
@@ -3313,8 +3476,7 @@
       .classList
       .toggle(
         'hidden',
-        state.isAdmin ||
-        Boolean( state.adminToken )
+        signedIn
       );
     $('requestBtn')
       .classList
@@ -3330,7 +3492,11 @@
   */
   function renderProfileChip() {
     const name =
-      ( state.config.tutorName || 'Admin' ).trim() || 'Admin';
+      (
+        ( state.account && !ownsThisCalendar() )
+          ? state.account.displayName
+          : state.config.tutorName || 'Admin'
+      ).trim() || 'Admin';
     $('profileInitial').textContent =
       name.charAt( 0 ).toUpperCase();
     $('profileName').textContent =
@@ -13004,6 +13170,25 @@
     $('adminPasswordInput')
       .value =
         '';
+    $('loginEmailInput')
+      .value =
+        '';
+    $('loginPasswordInput')
+      .value =
+        '';
+
+
+    /*
+      An account signs in with its email. The first calendar, until
+      an account claims it, still opens with the site's admin
+      password, so the dialog offers that way too.
+    */
+    const legacyPossible =
+      Boolean( state.calendar && !state.calendar.claimed );
+    $('legacyLoginLink')
+      .classList
+      .toggle( 'hidden', !legacyPossible );
+    setLoginMode( legacyPossible ? 'legacy' : 'account' );
 
 
     openModal(
@@ -13014,7 +13199,7 @@
     setTimeout(
       () => {
 
-        $('adminPasswordInput')
+        $( legacyPossible ? 'adminPasswordInput' : 'loginEmailInput' )
           .focus();
 
       },
@@ -13024,8 +13209,43 @@
   }
 
 
+  function setLoginMode(
+    mode
+  ) {
+    state.loginMode =
+      mode;
+    const legacy =
+      mode === 'legacy';
+    $('accountLoginFields')
+      .classList
+      .toggle( 'hidden', legacy );
+    $('legacyLoginFields')
+      .classList
+      .toggle( 'hidden', !legacy );
+    $('loginTitle')
+      .textContent =
+        legacy ? 'Admin access' : 'Log in';
+    $('loginSubmitBtn')
+      .textContent =
+        legacy ? 'Enter admin mode' : 'Log in';
+    $('legacyLoginLink')
+      .textContent =
+        legacy ? 'Log in with an account instead' : 'Use the admin password instead';
+    $('loginError')
+      .textContent =
+        '';
+  }
+
+
 
   async function submitAdminLogin() {
+
+    if ( state.loginMode !== 'legacy' ) {
+
+      return submitAccountLogin();
+
+    }
+
 
     const password =
       $('adminPasswordInput')
@@ -13129,6 +13349,232 @@
 
 
   /*
+    Sign in with an account. The session comes back with the account,
+    including the address of its calendar: this one, or another.
+  */
+
+  async function submitAccountLogin() {
+
+    const email =
+      $('loginEmailInput').value.trim();
+    const password =
+      $('loginPasswordInput').value;
+    const remember =
+      $('rememberMeInput').checked;
+
+    $('loginError').textContent = '';
+    if ( !email || !password ) {
+      $('loginError').textContent =
+        'Please enter your email and password.';
+      return;
+    }
+    $('loginSubmitBtn').disabled = true;
+
+    try {
+
+      const result =
+        await fetch(
+          '/api/login',
+          {
+            method:
+              'POST',
+            headers:
+              { 'Content-Type': 'application/json' },
+            body:
+              JSON.stringify({ email, password }),
+            cache:
+              'no-store'
+          }
+        );
+      const data =
+        await result.json().catch( () => ({}) );
+      if ( !result.ok ) {
+        throw new Error( data.error || `Request failed (${ result.status })` );
+      }
+
+      state.session =
+        { token: data.token, expiresAt: data.expiresAt, slug: data.account.slug };
+      state.account =
+        data.account;
+      window.CalendarSession.save( state.session, remember );
+      forgetDevice();
+
+      closeModal( 'loginModal' );
+
+      /*
+        The account's own calendar opens in admin mode; any other
+        stays as it was, with the chip now offering the way home.
+      */
+      const here =
+        state.calendar ? state.calendar.slug : null;
+      state.isAdmin =
+        here === data.account.slug;
+      await loadWeek();
+
+    } catch (error) {
+
+      $('loginError').textContent =
+        error.message;
+
+    } finally {
+
+      $('loginSubmitBtn').disabled = false;
+
+    }
+
+  }
+
+
+  function ownsThisCalendar() {
+    return Boolean(
+      state.session &&
+      state.account &&
+      state.calendar &&
+      state.account.slug === state.calendar.slug
+    );
+  }
+
+
+  function forgetSession() {
+    state.session =
+      null;
+    state.account =
+      null;
+    window.CalendarSession.clear();
+  }
+
+
+  /*
+    Added to a home screen, the app should open on this calendar, not
+    the home page: the manifest is written for the address in hand.
+  */
+  function installManifest() {
+    if ( !state.calendarSlug ) {
+      return;
+    }
+    const link =
+      document.querySelector( 'link[rel="manifest"]' );
+    if ( !link ) {
+      return;
+    }
+    const manifest = {
+      name:
+        'Calendar',
+      short_name:
+        'Calendar',
+      start_url:
+        '/' + state.calendarSlug,
+      scope:
+        '/',
+      display:
+        'standalone',
+      background_color:
+        '#f6f7fb',
+      theme_color:
+        '#ffffff',
+      icons: [
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+      ]
+    };
+    link.href =
+      'data:application/manifest+json,' +
+      encodeURIComponent( JSON.stringify( manifest ) );
+  }
+
+
+  /*
+    The address in the page's own URL: /ethan names the calendar
+    "ethan"; the page itself, or no path, means the first calendar.
+  */
+  function slugFromLocation() {
+    const path =
+      window.location.pathname
+        .replace( /^\/+|\/+$/g, '' )
+        .toLowerCase();
+    if (
+      !path ||
+      path === 'index.html' ||
+      path === 'calendar.html'
+    ) {
+      return '';
+    }
+    return path;
+  }
+
+
+  /*
+    No calendar at this address, or one that is not published yet:
+    the page says so in place of the grid.
+  */
+  function showMissingCalendar(
+    reason
+  ) {
+    document.body.classList.add( 'calendar-missing' );
+    $('missingTitle').textContent =
+      reason.unpublished
+        ? 'This calendar is not published yet'
+        : 'There is no calendar at this address';
+    $('missingText').textContent =
+      reason.unpublished
+        ? 'Its owner still has to confirm their email. Check back soon.'
+        : 'Check the link you were given, or start a calendar of your own.';
+    $('portalTitle').textContent =
+      'Calendar';
+    document.title =
+      'Calendar';
+    $('updatedLabel').textContent =
+      '';
+    setStatus( '' );
+  }
+
+
+  /*
+    The owner has not confirmed their email yet: the calendar is not
+    public until they do, and the banner says so.
+  */
+  function renderVerifyNotice() {
+    const show =
+      state.isAdmin &&
+      state.account &&
+      !state.account.verified &&
+      ownsThisCalendar() &&
+      state.calendar &&
+      state.calendar.claimed;
+    $('verifyNotice')
+      .classList
+      .toggle( 'hidden', !show );
+    if ( show ) {
+      $('verifyNoticeText').textContent =
+        state.calendar.live
+          ? `Confirm your email (${ state.account.email }) so you can reset your password if you ever forget it.`
+          : `Confirm your email (${ state.account.email }) to publish this calendar. Until then only you can see it.`;
+    }
+  }
+
+
+  async function resendVerification() {
+    $('resendVerifyBtn').disabled = true;
+    try {
+      const data =
+        await api( '/resend', { method: 'POST' } );
+      setStatus(
+        data.verification === 'sent'
+          ? 'Confirmation email sent. Check your inbox.'
+          : data.verification === 'done'
+            ? 'Your email is already confirmed.'
+            : 'The email could not be sent right now. Please try again later.'
+      );
+    } catch (error) {
+      setStatus( error.message );
+    } finally {
+      $('resendVerifyBtn').disabled = false;
+    }
+  }
+
+
+  /*
     Public view steps out of admin mode for this page but keeps the
     device signed in, so Admin comes straight back without asking.
     Sign out forgets the device.
@@ -13155,6 +13601,7 @@
   async function signOut() {
 
     forgetDevice();
+    forgetSession();
 
 
     await exitAdmin();
@@ -13301,11 +13748,19 @@
     }
   }
 
+  function renderShareLink(
+    slug
+  ) {
+    $('shareLink').textContent =
+      window.location.origin + '/' + ( slug || '' );
+  }
+
   async function openSettings() {
     endAction();
     $('settingsError').textContent = '';
     let settings;
     let mail;
+    let slug;
     try {
       const data =
         await api( '/settings' );
@@ -13313,6 +13768,8 @@
         data.settings;
       mail =
         data.mail;
+      slug =
+        data.slug;
     } catch (error) {
       setStatus( error.message );
       return;
@@ -13321,6 +13778,11 @@
       mail,
       settings.notificationEmail
     );
+    $('settingSlug').value =
+      slug || '';
+    $('settingSlugPrefix').textContent =
+      window.location.host + '/';
+    renderShareLink( slug );
     $('settingTitle').value =
       settings.title || '';
     $('settingDisplayName').value =
@@ -13559,7 +14021,9 @@
           $('settingLabelPeople').value
       },
       notificationEmail:
-        $('settingNotificationEmail').value
+        $('settingNotificationEmail').value,
+      slug:
+        $('settingSlug').value.trim().toLowerCase()
     };
     if ( body.dayEnd <= body.dayStart ) {
       $('settingsError').textContent =
@@ -13584,6 +14048,27 @@
       };
       applyConfigStyling();
       closeModal( 'settingsModal' );
+      /*
+        A new address: the page moves there without reloading, and the
+        session remembers it.
+      */
+      if ( data.slug && data.slug !== state.calendarSlug ) {
+        state.calendarSlug =
+          data.slug;
+        if ( state.calendar ) {
+          state.calendar.slug =
+            data.slug;
+        }
+        if ( state.account ) {
+          state.account.slug =
+            data.slug;
+        }
+        if ( state.session ) {
+          state.session.slug =
+            data.slug;
+        }
+        window.history.replaceState( null, '', '/' + data.slug + window.location.search );
+      }
       await loadWeek();
       setStatus(
         data.sync && data.sync.google === 'failed'
@@ -14550,6 +15035,27 @@
   */
 
   function resumeRememberedDevice() {
+
+    /*
+      An account session opens in admin mode; if this turns out to be
+      someone else's calendar the first load steps back to visitor.
+    */
+    const session =
+      window.CalendarSession.read();
+
+
+    if ( session ) {
+
+      state.session =
+        session;
+
+      state.isAdmin =
+        true;
+
+      return;
+
+    }
+
 
     const token =
       rememberedDeviceToken();
