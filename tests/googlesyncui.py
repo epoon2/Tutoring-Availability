@@ -88,7 +88,7 @@ async def main():
             check("a good result reads as good and hides Sync now",
                   await page.evaluate("document.getElementById('syncNotice').classList.contains('ok')")
                   and not await visible(page, "#syncNoticeRetryBtn"))
-            await page.click("#exitAdminBtn"); await page.wait_for_timeout(400)
+            await page.evaluate("document.getElementById('exitAdminBtn').click()"); await page.wait_for_timeout(400)
             check("leaving admin hides the notice and the button",
                   not await visible(page, "#syncNotice") and not await visible(page, "#googleSyncBtn"))
         finally:

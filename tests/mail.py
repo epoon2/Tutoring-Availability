@@ -35,12 +35,12 @@ async def scenario(pw, mode):
         page.on("pageerror", lambda e: errs.append(str(e)))
         await login(page)
         if mode == "off":
-            await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(500)
             check("with no Brevo the dialog says so and the test button is off",
                   "not set up" in await page.text_content("#mailStatusText") and await page.evaluate("document.getElementById('testMailBtn').disabled"))
             check("no email notice on the page", await page.evaluate("document.getElementById('mailNotice').classList.contains('hidden')"))
         elif mode == "ok":
-            await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(500)
             check("with Brevo set up but no address, the dialog asks for one",
                   "Enter an address" in await page.text_content("#mailStatusText") and not await page.evaluate("document.getElementById('testMailBtn').disabled"))
             await page.fill("#settingNotificationEmail", "ethan@example.com")
@@ -48,10 +48,10 @@ async def scenario(pw, mode):
             status = await page.text_content("#mailStatusText")
             check("Send a test email saves the typed address and reports success", "Test email sent to ethan@example.com" in status, status)
             await page.click("#settingsModal [data-close]"); await page.wait_for_timeout(200)
-            await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(500)
             check("reopening shows where requests go", "emailed to ethan@example.com" in await page.text_content("#mailStatusText"), await page.text_content("#mailStatusText"))
         else:
-            await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+            await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(500)
             await page.fill("#settingNotificationEmail", "ethan@example.com")
             await page.click("#testMailBtn"); await page.wait_for_timeout(600)
             check("a failing test shows the reason in the dialog", "Brevo 401" in await page.text_content("#mailStatusText"), await page.text_content("#mailStatusText"))
@@ -61,7 +61,7 @@ async def scenario(pw, mode):
                   and "could not be sent" in await page.text_content("#mailNoticeText"), await page.text_content("#mailNoticeText"))
             await page.click("#mailNoticeCloseBtn"); await page.wait_for_timeout(200)
             check("Dismiss hides it", await page.evaluate("document.getElementById('mailNotice').classList.contains('hidden')"))
-            await page.click("#exitAdminBtn"); await page.wait_for_timeout(600)
+            await page.evaluate("document.getElementById('exitAdminBtn').click()"); await page.wait_for_timeout(600)
             check("the public page never shows it", await page.evaluate("document.getElementById('mailNotice').classList.contains('hidden')"))
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
         check(f"no page errors ({mode})", not real, str(real[:3]))

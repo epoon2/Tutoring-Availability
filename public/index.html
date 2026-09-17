@@ -124,7 +124,7 @@
           id="adminBtn"
           class="btn secondary"
         >
-          Admin
+          Log in
         </button>
 
         <button
@@ -165,8 +165,78 @@
           + Add event
         </button>
 
-      </div>
+        <!-- PROFILE (SIGNED IN) -->
 
+        <div
+          id="profileMenu"
+          class="profile hidden"
+        >
+          <button
+            id="profileBtn"
+            class="profile-chip"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            title="Account"
+          >
+            <span
+              id="profileInitial"
+              class="profile-initial"
+            >E</span>
+            <span
+              id="profileName"
+              class="profile-name"
+            >Ethan</span>
+          </button>
+          <div
+            id="profileDropdown"
+            class="profile-dropdown hidden"
+            role="menu"
+          >
+            <div class="profile-dropdown-head">
+              <strong id="profileMenuName">Ethan</strong>
+              <span id="profileMenuMode">Admin mode</span>
+            </div>
+            <button
+              id="backToAdminBtn"
+              class="menu-item hidden"
+              role="menuitem"
+            >
+              Back to admin
+            </button>
+            <button
+              id="exitAdminBtn"
+              class="menu-item"
+              role="menuitem"
+            >
+              View as visitor
+            </button>
+            <button
+              id="settingsBtn"
+              class="menu-item hidden"
+              role="menuitem"
+              title="Title, display name, hours, time zone, colors, wording, notifications"
+            >
+              Settings
+            </button>
+            <button
+              id="historyBtn"
+              class="menu-item hidden"
+              role="menuitem"
+              title="Every version of the schedule, newest first - restore any of them"
+            >
+              Version history
+            </button>
+            <button
+              id="signOutBtn"
+              class="menu-item hidden"
+              role="menuitem"
+              title="Sign out on this device"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
     </header>
 
 
@@ -209,39 +279,7 @@
           Redo
         </button>
 
-        <button
-          id="historyBtn"
-          class="text-btn hidden"
-          title="Every version of the schedule, newest first - restore any of them"
-        >
-          Version history
-        </button>
-
-        <button
-          id="settingsBtn"
-          class="text-btn hidden"
-          title="Title, hours, time zone, colors, wording, notifications"
-        >
-          Settings
-        </button>
-
-        <button
-          id="exitAdminBtn"
-          class="text-btn"
-        >
-          Public view
-        </button>
-
-        <button
-          id="signOutBtn"
-          class="text-btn hidden"
-          title="Forget this device - the password will be asked for again"
-        >
-          Sign out
-        </button>
-
       </div>
-
     </section>
 
 

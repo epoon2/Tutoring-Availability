@@ -296,9 +296,8 @@
 
 
         closeContextMenu();
-
         closeTimeWheel();
-
+        closeProfileMenu();
       }
     );
 
@@ -618,8 +617,51 @@
     $('signOutBtn')
       .addEventListener(
         'click',
-        signOut
+        () => {
+          closeProfileMenu();
+          signOut();
+        }
       );
+    $('backToAdminBtn')
+      .addEventListener(
+        'click',
+        () => {
+          closeProfileMenu();
+          $('adminBtn').click();
+        }
+      );
+    $('profileBtn')
+      .addEventListener(
+        'click',
+        (clickEvent) => {
+          clickEvent.stopPropagation();
+          toggleProfileMenu();
+        }
+      );
+    /*
+      Any choice closes the menu; so does a click anywhere else.
+    */
+    [ 'exitAdminBtn', 'settingsBtn', 'historyBtn' ]
+      .forEach(
+        (id) => {
+          $(id)
+            .addEventListener(
+              'click',
+              closeProfileMenu
+            );
+        }
+      );
+    document.addEventListener(
+      'click',
+      (clickEvent) => {
+        if (
+          !clickEvent.target.closest ||
+          !clickEvent.target.closest( '#profileMenu' )
+        ) {
+          closeProfileMenu();
+        }
+      }
+    );
 
 
     $('exitAdminBtn')
@@ -2982,6 +3024,7 @@
         )
       };
       applyConfigStyling();
+      renderProfileChip();
       if (
         state.isAdmin &&
         data.mode !== 'admin' &&
@@ -3167,15 +3210,48 @@
         'hidden',
         !state.isAdmin
       );
+    /*
+      Signed in is either admin mode or a remembered device looking at
+      the visitor view; either way the chip stands in for the Log in
+      button, and its menu offers the way across.
+    */
+    const signedIn =
+      state.isAdmin ||
+      Boolean( state.adminToken );
+    $('profileMenu')
+      .classList
+      .toggle(
+        'hidden',
+        !signedIn
+      );
+    $('exitAdminBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !state.isAdmin
+      );
+    $('backToAdminBtn')
+      .classList
+      .toggle(
+        'hidden',
+        state.isAdmin ||
+        !state.adminToken
+      );
     $('signOutBtn')
       .classList
       .toggle(
         'hidden',
-        !(
-          state.isAdmin &&
-          state.adminToken
-        )
+        !signedIn
       );
+    $('profileMenuMode')
+      .textContent =
+        state.isAdmin
+          ? 'Admin mode'
+          : 'Viewing as a visitor';
+    renderProfileChip();
+    if ( !signedIn ) {
+      closeProfileMenu();
+    }
 
 
     if ( !state.isAdmin ) {
@@ -3207,17 +3283,50 @@
       .classList
       .toggle(
         'hidden',
-        state.isAdmin
+        state.isAdmin ||
+        Boolean( state.adminToken )
       );
-
-
     $('requestBtn')
       .classList
       .toggle(
         'hidden',
         state.isAdmin
       );
+  }
 
+  /*
+    The profile chip: the first letter of the display name in a
+    circle, the name beside it. Signed-in visitors and admins alike.
+  */
+  function renderProfileChip() {
+    const name =
+      ( state.config.tutorName || 'Admin' ).trim() || 'Admin';
+    $('profileInitial').textContent =
+      name.charAt( 0 ).toUpperCase();
+    $('profileName').textContent =
+      name;
+    $('profileMenuName').textContent =
+      name;
+  }
+
+  function toggleProfileMenu() {
+    const open =
+      $('profileDropdown')
+        .classList
+        .contains( 'hidden' );
+    $('profileDropdown')
+      .classList
+      .toggle( 'hidden', !open );
+    $('profileBtn')
+      .setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+  }
+
+  function closeProfileMenu() {
+    $('profileDropdown')
+      .classList
+      .add( 'hidden' );
+    $('profileBtn')
+      .setAttribute( 'aria-expanded', 'false' );
   }
 
 

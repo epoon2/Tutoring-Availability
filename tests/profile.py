@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""The profile chip and its menu: a visitor sees Log in; a signed-in
+admin sees a circle with the first letter of the display name and the
+name beside it; the menu switches between admin and visitor view
+without signing out, and offers Settings, Version history and Sign out.
+
+    python3 tests/profile.py
+"""
+import asyncio, subprocess, sys, time, urllib.request
+from playwright.async_api import async_playwright
+
+PORT = 8986
+BASE = f"http://127.0.0.1:{PORT}"
+oks, fails = [], []
+def check(name, cond, extra=""):
+    (oks if cond else fails).append(name)
+    print(("  PASS  " if cond else "  FAIL  ") + name + (f"   {extra}" if extra and not cond else ""))
+
+async def hidden(page, sel):
+    return await page.evaluate(f"document.querySelector('{sel}').classList.contains('hidden')")
+
+async def menu_items(page):
+    return await page.evaluate("[...document.querySelectorAll('#profileDropdown .menu-item')].filter(b => !b.classList.contains('hidden')).map(b => b.textContent.trim())")
+
+async def main():
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch()
+        page = await (await b.new_context(viewport={"width": 1300, "height": 900})).new_page()
+        errs = []
+        page.on("pageerror", lambda e: errs.append(str(e)))
+        await page.goto(BASE, wait_until="networkidle")
+
+        check("a visitor sees Log in, no chip", not await hidden(page, "#adminBtn") and (await page.text_content("#adminBtn")).strip() == "Log in" and await hidden(page, "#profileMenu"))
+        check("the banner only carries Undo and Redo now", await page.evaluate("[...document.querySelectorAll('.admin-banner-actions button')].map(b => b.id)") == ["undoBtn", "redoBtn"])
+
+        await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
+        await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
+        check("signed in, the chip replaces Log in", await hidden(page, "#adminBtn") and not await hidden(page, "#profileMenu"))
+        check("the chip shows the initial and the display name", await page.text_content("#profileInitial") == "E" and await page.text_content("#profileName") == "Ethan")
+        check("the menu is closed until clicked", await hidden(page, "#profileDropdown"))
+        await page.click("#profileBtn"); await page.wait_for_timeout(200)
+        check("clicking the chip opens the menu", not await hidden(page, "#profileDropdown") and await page.evaluate("document.getElementById('profileBtn').getAttribute('aria-expanded')") == "true")
+        check("in admin mode it offers View as visitor, Settings, Version history, Sign out",
+              await menu_items(page) == ["View as visitor", "Settings", "Version history", "Sign out"], str(await menu_items(page)))
+        check("and says so", await page.text_content("#profileMenuMode") == "Admin mode")
+        await page.click("#portalTitle"); await page.wait_for_timeout(200)
+        check("a click elsewhere closes it", await hidden(page, "#profileDropdown"))
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(100)
+        check("so does Escape", await hidden(page, "#profileDropdown"))
+
+        # ---- switch to the visitor view and back, without signing out
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#exitAdminBtn"); await page.wait_for_timeout(700)
+        check("View as visitor shows the public page", await hidden(page, "#adminBanner"))
+        check("but the chip stays, because the device is remembered", not await hidden(page, "#profileMenu") and await hidden(page, "#adminBtn"))
+        await page.click("#profileBtn"); await page.wait_for_timeout(200)
+        check("the menu now offers Back to admin and Sign out only", await menu_items(page) == ["Back to admin", "Sign out"], str(await menu_items(page)))
+        check("and says it is the visitor view", await page.text_content("#profileMenuMode") == "Viewing as a visitor")
+        await page.click("#backToAdminBtn"); await page.wait_for_timeout(700)
+        check("Back to admin returns without a password", not await hidden(page, "#adminBanner") and await hidden(page, "#loginModal"))
+
+        # ---- Settings changes the name on the chip
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+        check("Settings opens from the menu, menu closed", not await hidden(page, "#settingsModal") and await hidden(page, "#profileDropdown"))
+        await page.fill("#settingDisplayName", "Maya")
+        await page.click("#saveSettingsBtn"); await page.wait_for_timeout(900)
+        check("the chip follows the display name", await page.text_content("#profileInitial") == "M" and await page.text_content("#profileName") == "Maya")
+
+        # ---- Sign out
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#signOutBtn"); await page.wait_for_timeout(700)
+        check("Sign out returns to Log in", not await hidden(page, "#adminBtn") and await hidden(page, "#profileMenu") and await hidden(page, "#adminBanner"))
+
+        # ---- a password-only session (box unticked) still gets the chip while in admin
+        await page.click("#adminBtn")
+        await page.evaluate("document.getElementById('rememberMeInput').checked = false")
+        await page.fill("#adminPasswordInput", "t"); await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
+        check("a session without a remembered device shows the chip in admin mode", not await hidden(page, "#profileMenu"))
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        check("its menu offers Sign out but no way back after View as visitor", await menu_items(page) == ["View as visitor", "Settings", "Version history", "Sign out"])
+        await page.click("#exitAdminBtn"); await page.wait_for_timeout(700)
+        check("View as visitor without a remembered device is a plain Log in again", not await hidden(page, "#adminBtn") and await hidden(page, "#profileMenu"))
+
+        real = [e for e in errs if "fonts" not in e and "favicon" not in e]
+        check("no page errors", not real, str(real[:3]))
+        print(f"\n{len(oks)} passed, {len(fails)} failed")
+        await b.close()
+        return 1 if fails else 0
+
+def run():
+    subprocess.run(["node", "tests/install-shim.mjs"], check=True, stdout=subprocess.DEVNULL)
+    server = subprocess.Popen(["node", "tests/server.mjs", str(PORT)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    for _ in range(50):
+        try:
+            urllib.request.urlopen(f"{BASE}/index.html", timeout=1).read(); break
+        except Exception:
+            time.sleep(0.2)
+    else:
+        print("server failed:", server.stderr.read().decode()[:400]); return 1
+    try:
+        return asyncio.run(main())
+    finally:
+        server.terminate()
+
+sys.exit(run())

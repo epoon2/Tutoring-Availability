@@ -48,7 +48,7 @@ async def main():
         await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
 
         # ---- the dialog opens with the current values
-        await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+        await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(500)
         check("the dialog opens filled in", await page.input_value("#settingTitle") == "Ethan's Tutoring Availability"
               and await page.input_value("#settingDisplayName") == "Ethan"
               and await page.evaluate("document.getElementById('settingTimezone').value") == "America/Los_Angeles"
@@ -101,14 +101,14 @@ async def main():
         await page.evaluate("[...document.querySelectorAll('.choice-modal button')].find(b => b.textContent.trim() === 'Cancel').click()")
         await page.wait_for_timeout(200)
         # ---- reopening shows what was saved
-        await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+        await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(500)
         check("reopening shows the saved values, email included", await page.input_value("#settingTitle") == "Maya's Piano Lessons"
               and await page.input_value("#settingNotificationEmail") == "maya@example.com"
               and await page.evaluate("document.querySelector('#settingBlockedColor .color-swatch.selected').title") == "Purple")
         await page.click("#settingsModal [data-close]"); await page.wait_for_timeout(200)
 
         # ---- the public page sees everything but the address
-        await page.click("#exitAdminBtn"); await page.wait_for_timeout(700)
+        await page.evaluate("document.getElementById('exitAdminBtn').click()"); await page.wait_for_timeout(700)
         check("visitors see the new title, hours, words and colours", await page.text_content("#portalTitle") == "Maya's Piano Lessons"
               and await page.text_content("#legendBlocked") == "Lesson" and await css_var(page, "--blocked") == "#6d28d9"
               and (await page.evaluate("[...document.querySelectorAll('.time-label')].map(l => l.textContent)"))[0] == "9 AM")
