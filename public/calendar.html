@@ -249,6 +249,14 @@
               Settings
             </button>
             <button
+              id="changePasswordBtn"
+              class="menu-item hidden"
+              role="menuitem"
+              data-i18n="change_password"
+            >
+              Change password
+            </button>
+            <button
               id="signOutBtn"
               class="menu-item hidden"
               role="menuitem"
@@ -1420,6 +1428,76 @@
   </div>
 
 
+
+  <!-- CHANGE PASSWORD -->
+
+  <div
+    id="passwordModal"
+    class="modal-backdrop hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="passwordTitle"
+  >
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h2 id="passwordTitle" data-i18n="cp_title">Change password</h2>
+        <button
+          class="close-btn"
+          data-close="passwordModal"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+      <label class="field">
+        <span data-i18n="cp_current">Current password</span>
+        <input
+          id="currentPasswordInput"
+          type="password"
+          autocomplete="current-password"
+        >
+      </label>
+      <label class="field">
+        <span>
+          <span data-i18n="cp_new">New password</span>
+          <small data-i18n="cp_new_hint">8 characters or more</small>
+        </span>
+        <input
+          id="newPasswordInput"
+          type="password"
+          autocomplete="new-password"
+        >
+      </label>
+      <label class="field">
+        <span data-i18n="cp_confirm">Repeat the new password</span>
+        <input
+          id="newPasswordAgainInput"
+          type="password"
+          autocomplete="new-password"
+        >
+      </label>
+      <div
+        id="passwordError"
+        class="form-error"
+      ></div>
+      <div class="modal-actions">
+        <button
+          class="btn secondary"
+          data-close="passwordModal"
+          data-i18n="cancel"
+        >
+          Cancel
+        </button>
+        <button
+          id="savePasswordBtn"
+          class="btn primary"
+          data-i18n="cp_save"
+        >
+          Change password
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- EVENT EDITOR -->
 

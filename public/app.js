@@ -692,7 +692,28 @@
         'click',
         resendVerification
       );
-
+    $('changePasswordBtn')
+      .addEventListener(
+        'click',
+        () => {
+          closeProfileMenu();
+          openChangePassword();
+        }
+      );
+    $('savePasswordBtn')
+      .addEventListener(
+        'click',
+        savePassword
+      );
+    $('newPasswordAgainInput')
+      .addEventListener(
+        'keydown',
+        (keyEvent) => {
+          if ( keyEvent.key === 'Enter' ) {
+            savePassword();
+          }
+        }
+      );
     $('settingPreset')
       .addEventListener(
         'change',
@@ -3459,7 +3480,15 @@
           : ( ownsThisCalendar() || state.adminToken || !state.account )
             ? t( 'public_view_btn' )
             : t( 'someones_calendar' );
-
+    /*
+      Only an account has a password of its own to change.
+    */
+    $('changePasswordBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !( state.session && state.account )
+      );
     renderProfileChip();
     if ( !signedIn ) {
       closeProfileMenu();
@@ -13505,6 +13534,75 @@
 
     }
 
+  }
+
+
+  /*
+    CHANGE PASSWORD
+
+    The account's own password: the current one proves it is the
+    owner asking, and the change signs every other device out - the
+    server hands this one a fresh session.
+  */
+  function openChangePassword() {
+    [ 'currentPasswordInput', 'newPasswordInput', 'newPasswordAgainInput' ]
+      .forEach( (id) => { $(id).value = ''; } );
+    $('passwordError').textContent = '';
+    openModal( 'passwordModal' );
+    setTimeout( () => { $('currentPasswordInput').focus(); }, 50 );
+  }
+
+
+  async function savePassword() {
+    const current =
+      $('currentPasswordInput').value;
+    const next =
+      $('newPasswordInput').value;
+    const again =
+      $('newPasswordAgainInput').value;
+    $('passwordError').textContent = '';
+    if ( next.length < 8 ) {
+      $('passwordError').textContent =
+        t( 'auth_need_pw' );
+      return;
+    }
+    if ( next !== again ) {
+      $('passwordError').textContent =
+        t( 'cp_mismatch' );
+      return;
+    }
+    $('savePasswordBtn').disabled = true;
+    try {
+      const data =
+        await api(
+          '/account/password',
+          {
+            method:
+              'POST',
+            body:
+              JSON.stringify({ current, password: next })
+          }
+        );
+      let remembered =
+        true;
+      try {
+        remembered =
+          Boolean( localStorage.getItem( 'calendarSession' ) );
+      } catch {
+        remembered =
+          true;
+      }
+      state.session =
+        { token: data.token, expiresAt: data.expiresAt, slug: data.account.slug };
+      window.CalendarSession.save( state.session, remembered );
+      closeModal( 'passwordModal' );
+      setStatus( t( 'cp_done' ) );
+    } catch (error) {
+      $('passwordError').textContent =
+        error.message;
+    } finally {
+      $('savePasswordBtn').disabled = false;
+    }
   }
 
 
