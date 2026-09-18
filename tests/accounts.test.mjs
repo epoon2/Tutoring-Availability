@@ -161,7 +161,7 @@ ok('a chosen address that is taken is refused up front', r.status === 400 && /ta
 // ---- password reset
 sent.length = 0;
 r = await call('POST', '/forgot', {}, { email: 'nobody@example.com' });
-ok('forgot for an unknown email answers the same as for a known one', r.status === 200 && /on its way/.test(r.data.message) && sent.length === 0);
+ok('forgot for an unknown email says so, so a typo can be fixed', r.status === 404 && /no account/.test(r.data.error) && sent.length === 0, JSON.stringify(r.data));
 r = await call('POST', '/forgot', {}, { email: 'maya@example.com' });
 ok('a known one gets an email', r.status === 200 && sent.length === 1 && /Reset/.test(sent[0].subject));
 const resetLink = linkIn(sent[0]);

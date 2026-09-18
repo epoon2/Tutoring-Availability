@@ -2213,9 +2213,10 @@ export default async (req) => {
     POST /reset             the code from that email and a new password
     POST /account/password  change the password while signed in
 
-  Every route that could be hammered is rate-limited by address; the
-  answers never say whether an email address has an account, except
-  at sign-up, where the person typing it needs to know.
+  Every route that could be hammered is rate-limited by address. The
+  answers do say whether an email address has an account - at sign-up
+  and at "forgot password" the person typing it needs to know, and
+  the rate limit is what keeps that from being harvested.
 
   Returns null for a request that is none of these.
 */
@@ -2298,6 +2299,8 @@ async function handleAccountRoute(
     }
     const displayName =
       String( body.displayName || "" ).trim().slice( 0, SETTINGS_LIMITS.displayName ) || email.split( "@" )[ 0 ];
+    const title =
+      String( body.title || "" ).trim().slice( 0, SETTINGS_LIMITS.title ) || `${ displayName }'s Calendar`;
     if ( await findUserByEmail( store, email ) ) {
       fail( "There is already an account with that email. Log in instead, or reset your password.", 409 );
     }
@@ -2354,8 +2357,7 @@ async function handleAccountRoute(
         ownerId:
           user.id,
         slug,
-        title:
-          `${ displayName }'s Calendar`,
+        title,
         displayName,
         notificationEmail:
           email,
@@ -2453,7 +2455,14 @@ async function handleAccountRoute(
     }
     const user =
       await findUserByEmail( store, email );
-    if ( user ) {
+    /*
+      A plain answer when the address is unknown: a typo should be
+      correctable on the spot, not found out from a silent inbox.
+    */
+    if ( !user ) {
+      fail( "There is no account with that email address. Check the spelling, or sign up.", 404 );
+    }
+    {
       const token =
         await issueToken( store, { kind: "reset", userId: user.id, hours: RESET_HOURS } );
       const link =
@@ -2475,7 +2484,7 @@ async function handleAccountRoute(
       ok:
         true,
       message:
-        "If that address has an account, a reset link is on its way. It works for two hours."
+        `A reset link is on its way to ${ user.email }. It works for two hours.`
     });
   }
 
