@@ -692,6 +692,7 @@
         'click',
         resendVerification
       );
+
     $('settingPreset')
       .addEventListener(
         'change',
@@ -723,10 +724,10 @@
               async () => {
                 try {
                   await navigator.clipboard.writeText( $(textId).textContent );
-                  $(buttonId).textContent = 'Copied';
-                  setTimeout( () => { $(buttonId).textContent = 'Copy'; }, 1500 );
+                  $(buttonId).textContent = t( 'copied' );
+                  setTimeout( () => { $(buttonId).textContent = t( 'copy' ); }, 1500 );
                 } catch (e) {
-                  setStatus( 'Copy the link by selecting it.' );
+                  setStatus( t( 'copy_by_selecting' ) );
                 }
               }
             );
@@ -1077,8 +1078,7 @@
 
           $('summaryToggleLabel')
             .textContent =
-              ( nowHidden ? 'Show each ' : 'Hide each ' ) +
-              peopleWord( 1 );
+              t( nowHidden ? 'show_each' : 'hide_each', { noun: peopleWord( 1 ) } );
 
 
           $('summaryToggle')
@@ -1645,14 +1645,14 @@
 
     undoBtn.title =
       history.undo
-        ? `Undo: ${history.undoLabel} (Ctrl+Z)`
-        : 'Nothing to undo';
+        ? t( 'undo_label', { label: history.undoLabel } )
+        : t( 'nothing_to_undo' );
 
 
     redoBtn.title =
       history.redo
-        ? `Redo: ${history.redoLabel} (Ctrl+Shift+Z)`
-        : 'Nothing to redo';
+        ? t( 'redo_label', { label: history.redoLabel } )
+        : t( 'nothing_to_redo' );
 
   }
 
@@ -1731,15 +1731,7 @@
 
 
       setStatus(
-        `${
-          which === 'undo'
-            ? 'Undid'
-            : 'Redid'
-        }: ${
-          entry
-            ? entry.label
-            : 'change'
-        }.`
+        t( which === 'undo' ? 'undid' : 'redid', { label: entry ? entry.label : t( 'change' ) } )
       );
 
     } catch (error) {
@@ -1974,7 +1966,7 @@
 
 
       empty.textContent =
-        'Only the current version so far. Every save from here on adds one.';
+        t( 'only_current' );
 
 
       list.appendChild(
@@ -2086,12 +2078,12 @@
 
     when.textContent =
       current
-        ? 'Current version'
+        ? t( 'current_version' )
         : producedBy
           ? formatVersionTime(
               producedBy.at
             )
-          : 'Before recorded history';
+          : t( 'before_history' );
 
 
     const label =
@@ -2211,11 +2203,11 @@
 
 
           restore.textContent =
-            'Restore just this';
+            t( 'restore_just_this' );
 
 
           restore.title =
-            'Put this session back as it was, leaving everything else alone';
+            t( 'restore_just_this_hint' );
 
 
           restore.addEventListener(
@@ -2268,11 +2260,11 @@
 
 
       restore.textContent =
-        'Restore this version';
+        t( 'restore_version' );
 
 
       restore.title =
-        'Make the schedule exactly what it was at this point';
+        t( 'restore_version_hint' );
 
 
       restore.addEventListener(
@@ -2353,7 +2345,7 @@
 
     if ( sameDay ) {
 
-      return `Today, ${time}`;
+      return t( 'today_at', { time } );
 
     }
 
@@ -2430,8 +2422,8 @@
 
       setStatus(
         result.unchanged
-          ? 'That version is already the current schedule.'
-          : `Restored the version from ${whenLabel}.`
+          ? t( 'already_current' )
+          : t( 'restored_version', { when: whenLabel } )
       );
 
 
@@ -2517,11 +2509,7 @@
 
 
       setStatus(
-        `Restored ${
-          shortTitle(
-            item
-          )
-        }.`
+        t( 'restored_item', { title: shortTitle( item ) } )
       );
 
     } catch (error) {
@@ -2950,7 +2938,7 @@
 
 
     showSyncNotice(
-      'Saved here, but Google Calendar was not updated' +
+      t( 'saved_not_google' ) +
       (
         sync.error
           ? ` (${sync.error}).`
@@ -3028,7 +3016,7 @@
 
 
     setStatus(
-      'Syncing Google Calendar…'
+      t( 'syncing_google' )
     );
 
 
@@ -3052,13 +3040,7 @@
       ) {
 
         showSyncNotice(
-          `Google Calendar is up to date: ${
-            result.pushed
-          } session${
-            result.pushed === 1
-              ? ''
-              : 's'
-          } pushed` +
+          t( 'google_up_to_date', { count: t( result.pushed === 1 ? 'sessions_n' : 'sessions_np', { n: result.pushed } ) } ) +
           (
             result.removed
               ? `, ${result.removed} stale removed.`
@@ -3072,7 +3054,7 @@
       ) {
 
         showSyncNotice(
-          'Google Calendar sync is not set up on this site.',
+          t( 'google_not_set_up' ),
           false
         );
 
@@ -3086,7 +3068,7 @@
 
 
         showSyncNotice(
-          `Google Calendar sync did not finish` +
+          t( 'google_did_not_finish' ) +
           (
             failed
               ? ` - ${failed} session${
@@ -3473,10 +3455,11 @@
     $('profileMenuMode')
       .textContent =
         state.isAdmin
-          ? 'Admin mode'
+          ? t( 'admin_mode' )
           : ( ownsThisCalendar() || state.adminToken || !state.account )
-            ? 'Public view'
-            : "Someone else's calendar";
+            ? t( 'public_view_btn' )
+            : t( 'someones_calendar' );
+
     renderProfileChip();
     if ( !signedIn ) {
       closeProfileMenu();
@@ -3716,9 +3699,7 @@
 
     $('saveWeekBtn')
       .textContent =
-        'Screenshot ' +
-        VIEW_WORD[ state.view ] +
-        ' schedule';
+        t( 'screenshot_view', { view: t( 'view_' + VIEW_WORD[ state.view ] ) } );
 
   }
 
@@ -4207,7 +4188,7 @@
 
 
       empty.textContent =
-        'Nothing blocked off this week.';
+        t( 'nothing_blocked_week' );
 
 
       list.appendChild( empty );
@@ -5770,8 +5751,8 @@
 
         empty.textContent =
           state.isAdmin
-            ? 'No events'
-            : 'No availability';
+            ? t( 'no_events' )
+            : t( 'no_availability' );
 
 
         section.appendChild(
@@ -6005,7 +5986,7 @@
 
     $('blockedListStatus')
       .textContent =
-        'Loading blocked sessions…';
+        t( 'loading_blocked' );
 
 
     $('pastBlockedList')
@@ -6066,8 +6047,7 @@
 
       $('upcomingBlockedRange')
         .textContent =
-          'Through ' +
-          new Date(
+          t( 'through', { date: new Date(
             (
               windowEnd -
               1440
@@ -6089,7 +6069,7 @@
                 day:
                   'numeric'
               }
-            );
+            ) } );
 
 
       const data =
@@ -6104,7 +6084,7 @@
       ) {
 
         throw new Error(
-          'Admin access is no longer active. Please log in again.'
+          t( 'admin_expired' )
         );
 
       }
@@ -6251,7 +6231,7 @@
 
 
       empty.textContent =
-        'No blocked sessions';
+        t( 'no_blocked' );
 
 
       container.appendChild(
@@ -6360,7 +6340,7 @@
 
 
         currentBadge.textContent =
-          'Happening now';
+          t( 'happening_now' );
 
 
         meta.appendChild(
@@ -6385,7 +6365,7 @@
 
 
         recurringBadge.textContent =
-          '↻ Recurring';
+          t( 'recurring' );
 
 
         meta.appendChild(
@@ -7335,7 +7315,7 @@
         if ( !blob ) {
 
           setStatus(
-            'Could not build the schedule image.'
+            t( 'image_failed' )
           );
 
           return;
@@ -7373,9 +7353,7 @@
 
 
         setStatus(
-          'The ' +
-          VIEW_WORD[ state.view ] +
-          ' schedule image is saved to your downloads.'
+          t( 'image_saved', { view: t( 'view_' + VIEW_WORD[ state.view ] ) } )
         );
 
       },
@@ -7812,7 +7790,7 @@
     try {
 
       setStatus(
-        'Saving moved event…'
+        t( 'saving_move' )
       );
 
 
@@ -7861,7 +7839,7 @@
 
 
         setStatus(
-          'Move not saved yet because of a schedule conflict.'
+          t( 'move_conflict' )
         );
 
 
@@ -8024,7 +8002,7 @@
     const items = [
       {
         label:
-          'New session here',
+          t( 'new_session_here' ),
         run:
           () => {
 
@@ -8039,9 +8017,7 @@
 
       items.push({
         label:
-          'Paste "' +
-          clipboardLabel() +
-          '" here',
+          t( 'paste_named', { name: clipboardLabel() } ),
         run:
           () => {
 
@@ -8082,7 +8058,7 @@
     const items = [
       {
         label:
-          'Edit',
+          t( 'edit' ),
         run:
           () => {
             openEventModal(
@@ -8094,7 +8070,7 @@
       },
       {
         label:
-          'Customize',
+          t( 'customize' ),
         run:
           () => {
             openColorDialog(
@@ -8106,7 +8082,7 @@
       },
       {
         label:
-          'Duplicate',
+          t( 'duplicate' ),
         run:
           () => {
             copyEvent( occurrence || original );
@@ -8122,14 +8098,14 @@
       },
       {
         label:
-          'Copy',
+          t( 'copy' ),
         run:
           () => {
             copyEvent( occurrence || original );
 
 
             setStatus(
-              'Copied. Right-click a slot or an availability block to paste it.'
+              t( 'copied_paste_hint' )
             );
 
           }
@@ -8150,8 +8126,8 @@
       {
         label:
           original.recurrence
-            ? 'Delete…'
-            : 'Delete',
+            ? t( 'delete_more' )
+            : t( 'delete' ),
         danger:
           true,
         run:
@@ -8227,7 +8203,7 @@
     const items = [
       {
         label:
-          'New session here',
+          t( 'new_session_here' ),
         run:
           () => {
             openEventModal( slot );
@@ -8240,9 +8216,7 @@
 
       items.push({
         label:
-          'Paste "' +
-          clipboardLabel() +
-          '" here',
+          t( 'paste_named', { name: clipboardLabel() } ),
         run:
           () => {
             pasteClipboardInto( slot );
@@ -8574,7 +8548,7 @@
 
       cancel.textContent =
         cancelLabel ||
-        'Cancel';
+        t( 'cancel' );
 
       cancel.addEventListener( 'click', () => {
 
@@ -8606,7 +8580,7 @@
 
         ok.textContent =
           okLabel ||
-          'OK';
+          t( 'ok' );
 
         ok.addEventListener( 'click', () => {
 
@@ -8691,7 +8665,7 @@
           {
             label:
               verb ||
-              'Delete',
+              t( 'delete' ),
             value:
               'yes',
             danger:
@@ -8778,10 +8752,10 @@
     const choice =
       await siteDialog({
         title:
-          'Delete recurring event',
+          t( 'delete_recurring' ),
         message:
-          'This session is part of a repeating series.\n' +
-          ( original.title || 'This event' ) +
+          t( 'part_of_series' ) + '\n' +
+          ( original.title || t( 'this_event' ) ) +
           ' — ' +
           occurrenceLabel( clicked ),
         mode:
@@ -8797,10 +8771,10 @@
             original,
             clicked,
             {
-              one: 'This event only',
-              following: 'This and following events',
-              weekday: 'All %ss',
-              all: 'All events, past and future'
+              one: t( 'this_event_only' ),
+              following: t( 'this_and_following' ),
+              weekday: t( 'all_weekday' ).replace( '{weekday}', '%s' ),
+              all: t( 'all_events' )
             }
           )
       });
@@ -8881,8 +8855,7 @@
 
 
       setStatus(
-        occurrenceLabel( occurrence ) +
-        ' removed. Every other week keeps this session.'
+        t( 'removed_one', { date: occurrenceLabel( occurrence ) } )
       );
 
     } catch (error) {
@@ -9026,9 +8999,7 @@
 
 
       setStatus(
-        'Removed ' +
-        occurrenceLabel( occurrence ) +
-        ' and every week after it. Earlier weeks are untouched.'
+        t( 'removed_following', { date: occurrenceLabel( occurrence ) } )
       );
 
     } catch (error) {
@@ -9068,7 +9039,7 @@
 
 
       setStatus(
-        'The whole series is deleted.'
+        t( 'series_deleted' )
       );
 
     } catch (error) {
@@ -9232,7 +9203,7 @@
       const reach =
         await siteDialog({
           title:
-            'Customize recurring event',
+            t( 'customize_recurring' ),
           mode:
             'radio',
           defaultValue:
@@ -9242,10 +9213,10 @@
               original,
               occurrence,
               {
-                one: 'This event only',
-                following: 'This and following events',
-                weekday: 'All %ss',
-                all: 'All events in the series'
+                one: t( 'this_event_only' ),
+                following: t( 'this_and_following' ),
+                weekday: t( 'all_weekday' ).replace( '{weekday}', '%s' ),
+                all: t( 'all_in_series' )
               }
             )
         });
@@ -9264,14 +9235,14 @@
         $('eventError')
           .textContent =
             error.message ||
-            'The change failed.';
+            t( 'change_failed' );
         return false;
       }
     }
     const scope =
       await siteDialog({
         title:
-          'Edit recurring event',
+          t( 'edit_recurring' ),
         mode:
           'radio',
         defaultValue:
@@ -9279,19 +9250,19 @@
         choices: [
           {
             label:
-              'This event only',
+              t( 'this_event_only' ),
             value:
               'one'
           },
           {
             label:
-              'This and following events',
+              t( 'this_and_following' ),
             value:
               'following'
           },
           {
             label:
-              'All events, past and future',
+              t( 'all_events' ),
             value:
               'all'
           }
@@ -9342,10 +9313,10 @@
         .textContent =
           error?.data?.code ===
           'BLOCKED_CONFLICT'
-            ? 'Not saved: it would overlap another blocked session.'
+            ? t( 'not_saved_overlap' )
             : (
                 error.message ||
-                'The change failed.'
+                t( 'change_failed' )
               );
 
 
@@ -9434,8 +9405,7 @@
     }
 
 
-    return occurrenceLabel( occurrence ) +
-      ' changed on its own. Every other week is untouched.';
+    return t( 'changed_one', { date: occurrenceLabel( occurrence ) } );
 
   }
 
@@ -9568,9 +9538,7 @@
     }
 
 
-    return 'Changed from ' +
-      occurrenceLabel( occurrence ) +
-      ' onward. Earlier weeks are untouched.';
+    return t( 'changed_following', { date: occurrenceLabel( occurrence ) } );
 
   }
 
@@ -9687,7 +9655,7 @@
     );
 
 
-    return 'The whole series changed, past weeks included.';
+    return t( 'changed_all' );
 
   }
 
@@ -9880,10 +9848,10 @@
 
     return error?.data?.code ===
       'BLOCKED_CONFLICT'
-      ? 'Move not saved: it would overlap another blocked session.'
+      ? t( 'move_not_saved_overlap' )
       : (
           error.message ||
-          'The move failed.'
+          t( 'move_failed' )
         );
 
   }
@@ -9989,9 +9957,9 @@
     const choice =
       await siteDialog({
         title:
-          'Edit recurring event',
+          t( 'edit_recurring' ),
         message:
-          ( original.title || 'This event' ) +
+          ( original.title || t( 'this_event' ) ) +
           ' would land on ' +
           moveTargetLabel( newStart ) +
           '.',
@@ -10002,19 +9970,19 @@
         choices: [
           {
             label:
-              'This event only',
+              t( 'this_event_only' ),
             value:
               'one'
           },
           {
             label:
-              'This and following events',
+              t( 'this_and_following' ),
             value:
               'following'
           },
           {
             label:
-              'All events, past and future',
+              t( 'all_events' ),
             value:
               'all'
           }
@@ -10092,7 +10060,7 @@
     try {
 
       setStatus(
-        'Moving this block…'
+        t( 'moving_one' )
       );
 
 
@@ -10160,9 +10128,7 @@
 
 
       setStatus(
-        'Moved just ' +
-        occurrenceLabel( occurrence ) +
-        '. Every other week keeps its time.'
+        t( 'moved_one', { date: occurrenceLabel( occurrence ) } )
       );
 
     } catch (error) {
@@ -10371,7 +10337,7 @@
     try {
 
       setStatus(
-        'Moving this and the weeks after…'
+        t( 'moving_following' )
       );
 
 
@@ -10442,9 +10408,7 @@
 
 
       setStatus(
-        'Moved ' +
-        occurrenceLabel( occurrence ) +
-        ' and every week after it. Earlier weeks keep their time.'
+        t( 'moved_following', { date: occurrenceLabel( occurrence ) } )
       );
 
     } catch (error) {
@@ -10592,7 +10556,7 @@
     try {
 
       setStatus(
-        'Moving the whole series…'
+        t( 'moving_all' )
       );
 
 
@@ -10645,7 +10609,7 @@
 
 
       setStatus(
-        'Moved the whole series, past weeks included.'
+        t( 'moved_all' )
       );
 
     } catch (error) {
@@ -10684,8 +10648,8 @@
     const wanted =
       await siteConfirm(
         original.recurrence
-          ? 'Delete this entire recurring series?'
-          : 'Delete this event?',
+          ? t( 'delete_series_q' )
+          : t( 'delete_event_q' ),
         original.title ||
         ''
       );
@@ -12163,14 +12127,12 @@
     ) {
 
       showRequestWarning(
-        'Schedule conflict',
+        t( 'schedule_conflict' ),
 
         overlapping.length ===
         1
-          ? 'That time overlaps a session ' + ownerName() + ' has already blocked out.'
-          : 'That time overlaps ' +
-            overlapping.length +
-            ' sessions ' + ownerName() + ' has already blocked out.',
+          ? t( 'overlaps_one_owner', { owner: ownerName() } )
+          : t( 'overlaps_many_owner', { n: overlapping.length, owner: ownerName() } ),
 
         overlapping.map(
           (event) => ({
@@ -12220,7 +12182,7 @@
     ) {
 
       showRequestWarning(
-        'Outside available hours',
+        t( 'outside_hours' ),
 
         windows.length
           ? ownerName() + ' has not marked that whole time as available.'
@@ -12750,7 +12712,7 @@
 
     $('requestListStatus')
       .textContent =
-        'Loading requests…';
+        t( 'loading_requests' );
 
 
     $('requestList')
@@ -12807,7 +12769,7 @@
     $('requestListStatus')
       .textContent =
         requests.length
-          ? 'Accepting opens the editor with the details filled in. Nothing is saved until you save it.'
+          ? t( 'requests_hint' )
           : '';
 
 
@@ -12834,7 +12796,7 @@
 
 
       empty.textContent =
-        'No pending requests.';
+        t( 'no_pending_requests' );
 
 
       list.appendChild(
@@ -12933,7 +12895,7 @@
 
 
       accept.textContent =
-        'Accept';
+        t( 'accept' );
 
 
       accept.addEventListener(
@@ -12956,7 +12918,7 @@
 
 
       dismiss.textContent =
-        'Dismiss';
+        t( 'dismiss' );
 
 
       dismiss.addEventListener(
@@ -13091,7 +13053,7 @@
       !recurrence
     ) {
 
-      return 'One time';
+      return t( 'one_time' );
 
     }
 
@@ -13099,8 +13061,8 @@
     const every =
       recurrence.interval >
       1
-        ? `Every ${recurrence.interval} weeks`
-        : 'Weekly';
+        ? t( 'every_n_weeks', { n: recurrence.interval } )
+                : t( 'weekly' );
 
 
     if (
@@ -13145,7 +13107,7 @@
       const who =
         document.createElement( 'span' );
       who.textContent =
-        'Parent/guardian: ' + request.guardian;
+        t( 'guardian_label' ) + request.guardian;
       line.appendChild( who );
     }
     if ( request.email ) {
@@ -13168,7 +13130,7 @@
     }
     if ( !line.childNodes.length ) {
       line.textContent =
-        'No contact details given.';
+        t( 'no_contact' );
     }
     return line;
   }
@@ -13220,7 +13182,7 @@
         [
           request.subject,
           request.guardian
-            ? 'Parent/guardian: ' + request.guardian
+            ? t( 'guardian_label' ) + request.guardian
             : '',
           request.email || '',
           request.phone || ''
@@ -13345,13 +13307,13 @@
       .toggle( 'hidden', !legacy );
     $('loginTitle')
       .textContent =
-        legacy ? 'Admin access' : t( 'login_title' );
+        legacy ? t( 'admin_access' ) : t( 'login_title' );
     $('loginSubmitBtn')
       .textContent =
-        legacy ? 'Enter admin mode' : t( 'login_btn' );
+        legacy ? t( 'enter_admin' ) : t( 'login_btn' );
     $('legacyLoginLink')
       .textContent =
-        legacy ? 'Log in with an account instead' : 'Use the admin password instead';
+        legacy ? t( 'login_with_account' ) : t( 'use_admin_password' );
     $('loginError')
       .textContent =
         '';
@@ -13739,10 +13701,10 @@
         await api( '/resend', { method: 'POST' } );
       setStatus(
         data.verification === 'sent'
-          ? 'Confirmation email sent. Check your inbox.'
+          ? t( 'confirm_sent' )
           : data.verification === 'done'
-            ? 'Your email is already confirmed.'
-            : 'The email could not be sent right now. Please try again later.'
+            ? t( 'already_confirmed' )
+            : t( 'email_not_sent' )
       );
     } catch (error) {
       setStatus( error.message );
@@ -13786,7 +13748,7 @@
 
 
     setStatus(
-      'Signed out on this device.'
+      t( 'signed_out' )
     );
 
   }
@@ -13825,7 +13787,7 @@
     the requester is told "Maya will confirm it", not "the tutor".
   */
   function ownerName() {
-    return ( state.config.tutorName || '' ).trim() || 'The owner';
+    return ( state.config.tutorName || '' ).trim() || t( 'the_owner' );
   }
 
   function peopleWord(
@@ -13886,7 +13848,8 @@
     setText( 'eventTypeAvailableOption', labelFor( 'AVAILABLE' ) );
     setText( 'summaryPeopleLabel', peopleWord( 2 ) );
     setText( 'summaryToggleLabel',
-      ( $('summaryList') && !$('summaryList').classList.contains( 'hidden' ) ? 'Hide each ' : 'Show each ' ) + peopleWord( 1 ) );
+      t( $('summaryList') && !$('summaryList').classList.contains( 'hidden' ) ? 'hide_each' : 'show_each', { noun: peopleWord( 1 ) } ) );
+    setText( 'summaryHoursLabel', t( 'hours_blocked_week' ) );
     const requestRules =
       state.config.requests || {};
     setText( 'requestIntro', requestRules.intro || t( 'request_intro', { owner: ownerName() } ) );
@@ -13901,7 +13864,7 @@
     if ( description ) {
       description.setAttribute( 'content', state.config.portalTitle || '' );
     }
-    setText( 'requestsSubtitle', 'Submitted by ' + peopleWord( 2 ) + ', waiting on you' );
+    setText( 'requestsSubtitle', t( 'submitted_by', { people: peopleWord( 2 ) } ) );
   }
 
   /*
@@ -14179,7 +14142,7 @@
       $('testMailBtn');
     if ( !mail || !mail.configured ) {
       line.textContent =
-        'Email sending is not set up on the site yet - requests still arrive under Requests.';
+        t( 'mail_not_set_up' );
       line.className =
         'mail-status';
       button.disabled =
@@ -14190,17 +14153,17 @@
       false;
     if ( mail.lastError ) {
       line.textContent =
-        'The last email failed: ' + mail.lastError.message;
+        t( 'last_mail_failed', { error: mail.lastError.message } );
       line.className =
         'mail-status bad';
     } else if ( address ) {
       line.textContent =
-        'New requests are emailed to ' + address + '.';
+        t( 'mail_goes_to', { address } );
       line.className =
         'mail-status ok';
     } else {
       line.textContent =
-        'Enter an address and save to be emailed about new requests.';
+        t( 'mail_enter_address' );
       line.className =
         'mail-status';
     }
@@ -14216,9 +14179,7 @@
       return;
     }
     $('mailNoticeText').textContent =
-      'A new-request email could not be sent (' +
-      mail.lastError.message +
-      '). The request is still under Requests.';
+      t( 'mail_failed_notice', { error: mail.lastError.message } );
     $('mailNotice')
       .classList
       .remove( 'hidden' );
@@ -14272,13 +14233,13 @@
           }
         );
       line.textContent =
-        'Test email sent to ' + data.to + '. Check the inbox (and spam, the first time).';
+        t( 'test_sent', { address: data.to } );
       line.className =
         'mail-status ok';
       hideMailNotice();
     } catch (error) {
       line.textContent =
-        'The test failed: ' + error.message;
+        t( 'test_failed', { error: error.message } );
       line.className =
         'mail-status bad';
     } finally {
@@ -14347,7 +14308,7 @@
     };
     if ( body.dayEnd <= body.dayStart ) {
       $('settingsError').textContent =
-        'The day must end after it starts.';
+        t( 'day_end_after_start' );
       return;
     }
     $('saveSettingsBtn').disabled = true;
@@ -14392,13 +14353,13 @@
       await loadWeek();
       setStatus(
         data.sync && data.sync.google === 'failed'
-          ? 'Settings saved. Google Calendar could not be updated: ' + ( data.sync.error || 'unknown error' )
-          : 'Settings saved.'
+          ? t( 'settings_saved_google_failed', { error: data.sync.error || 'unknown error' } )
+          : t( 'settings_saved' )
       );
     } catch (error) {
       $('settingsError').textContent =
         error.message ||
-        'The settings could not be saved.';
+        t( 'settings_not_saved' );
     } finally {
       $('saveSettingsBtn').disabled = false;
     }
@@ -14629,8 +14590,8 @@
         : '☾';
     $('themeBtn').title =
       dark
-        ? 'Switch to light mode'
-        : 'Switch to dark mode';
+        ? t( 'switch_light' )
+        : t( 'switch_dark' );
     $('themeBtn').setAttribute(
       'aria-label',
       $('themeBtn').title
@@ -14713,7 +14674,7 @@
           entry.hex === hex
       );
     return match
-      ? match.name
+      ? t( 'color_' + match.name.toLowerCase() )
       : hex.toUpperCase();
   }
 
@@ -14782,7 +14743,7 @@
       selected = null;
     }
     const defaultLabel =
-      'Default (' + colorName( defaultColor ) + ')';
+      t( 'default_color', { name: colorName( defaultColor ) } );
     const defaultSwatch =
       makeSwatch(
         defaultColor,
@@ -14853,9 +14814,9 @@
           'color-preset-remove';
         remove.textContent = '×';
         remove.title =
-          'Remove this preset';
+          t( 'remove_preset' );
         remove.setAttribute( 'role', 'button' );
-        remove.setAttribute( 'aria-label', 'Remove preset ' + hex.toUpperCase() );
+        remove.setAttribute( 'aria-label', t( 'remove_preset_named', { name: hex.toUpperCase() } ) );
         remove.addEventListener( 'click', (clickEvent) => {
           clickEvent.stopPropagation();
           clickEvent.preventDefault();
@@ -14879,12 +14840,12 @@
     custom.className =
       'color-swatch color-custom';
     custom.title =
-      'Custom color…';
+      t( 'custom_color_more' );
     const input =
       document.createElement( 'input' );
     input.type = 'color';
     input.className = 'color-custom-input';
-    input.setAttribute( 'aria-label', 'Custom color' );
+    input.setAttribute( 'aria-label', t( 'custom_color' ) );
     input.value =
       selected || defaultColor;
     /*
@@ -14938,6 +14899,16 @@
     Mondays" is offered only when the series meets on more than one
     weekday - on a one-day series it is the whole series.
   */
+  /*
+    A weekday's name in the language on screen.
+  */
+  function weekdayName(
+    index
+  ) {
+    return t( 'weekday_names' )[ index ] || WEEKDAY_NAMES[ index ];
+  }
+
+
   function seriesScopeChoices(
     original,
     occurrence,
@@ -14957,11 +14928,11 @@
       ( original.recurrence && original.recurrence.weekdays ) || [];
     if ( weekdays.length > 1 && occurrence ) {
       const weekday =
-        WEEKDAY_NAMES[
+        weekdayName(
           new Date(
             occurrence.start.slice( 0, 10 ) + 'T12:00'
           ).getDay()
-        ];
+        );
       choices.push({
         label:
           verbs.weekday.replace( '%s', weekday ),
@@ -15009,9 +14980,9 @@
     const scope =
       await siteDialog({
         title:
-          'Customize',
+          t( 'customize' ),
         message:
-          ( original.title || 'This event' ) +
+          ( original.title || t( 'this_event' ) ) +
           ( recurring
             ? ' — ' + occurrenceLabel( clicked )
             : '' ),
@@ -15031,15 +15002,15 @@
                 original,
                 clicked,
                 {
-                  one: 'This event only',
-                  following: 'This and following events',
-                  weekday: 'All %ss',
-                  all: 'All events in the series'
+                  one: t( 'this_event_only' ),
+                  following: t( 'this_and_following' ),
+                  weekday: t( 'all_weekday' ).replace( '{weekday}', '%s' ),
+                  all: t( 'all_in_series' )
                 }
               )
             : [],
         okLabel:
-          'Apply'
+          t( 'apply' )
       });
     if ( !scope ) {
       return false;
@@ -15112,8 +15083,8 @@
       }
     );
     return color
-      ? 'Color set to ' + colorName( color ) + '.'
-      : 'Back to the default color.';
+      ? t( 'color_set_to', { name: colorName( color ) } )
+      : t( 'back_to_default_color' );
   }
 
   /*
@@ -15180,7 +15151,7 @@
       );
       await loadWeek();
       setStatus(
-        'Every ' + WEEKDAY_NAMES[ weekday ] + ' removed. The other days keep this session.'
+        t( 'removed_weekday', { weekday: weekdayName( weekday ) } )
       );
     } catch (error) {
       setStatus( error.message );
@@ -15851,7 +15822,7 @@
     ) {
 
       throw new Error(
-        'Select at least one day of the week.'
+        t( 'select_weekday' )
       );
 
     }
@@ -15877,7 +15848,7 @@
     ) {
 
       throw new Error(
-        'Repeat interval must be between 1 and 52 weeks.'
+        t( 'interval_range' )
       );
 
     }
@@ -15916,7 +15887,7 @@
       ) {
 
         throw new Error(
-          'Choose the date when the recurring event should end.'
+          t( 'choose_end_date' )
         );
 
       }
@@ -15956,7 +15927,7 @@
       ) {
 
         throw new Error(
-          'Occurrences must be between 1 and 999.'
+          t( 'occurrences_range' )
         );
 
       }
@@ -16094,10 +16065,10 @@
         isEdit
           ? (
               event.recurrence
-                ? 'Edit recurring event'
-                : 'Edit event'
+                ? t( 'edit_recurring' )
+                : t( 'edit_event' )
             )
-          : 'Add event';
+          : t( 'add_event' );
 
 
     $('eventId')
@@ -16351,8 +16322,8 @@
       .textContent =
         total ===
         1
-          ? 'This event overlaps with an existing blocked session.'
-          : `This event overlaps with ${total} existing blocked sessions.`;
+          ? t( 'overlaps_one' )
+          : t( 'overlaps_many', { total } );
 
 
     const list =
@@ -16451,12 +16422,7 @@
 
 
       more.textContent =
-        `And ${remaining} more conflict${
-          remaining ===
-          1
-            ? ''
-            : 's'
-        }.`;
+        t( 'more_conflicts', { n: remaining } );
 
 
       list.appendChild(
@@ -16621,7 +16587,7 @@
 
       $('eventError')
         .textContent =
-          'Please select a session type before saving.';
+          t( 'select_type' );
 
 
       $('eventType')
@@ -16643,7 +16609,7 @@
 
       $('eventError')
         .textContent =
-          'Please enter a title for this event before saving.';
+          t( 'enter_title' );
 
 
       $('eventTitle')
@@ -16690,7 +16656,7 @@
 
       $('eventError')
         .textContent =
-          'Please enter a valid start and end date/time.';
+          t( 'valid_datetime' );
 
 
       return;
@@ -16709,7 +16675,7 @@
 
       $('eventError')
         .textContent =
-          'The end date/time must be after the start date/time.';
+          t( 'end_after_start_dt' );
 
 
       return;
@@ -16970,8 +16936,8 @@
     const wanted =
       await siteConfirm(
         recurring
-          ? 'Delete this entire recurring series?'
-          : 'Delete this event?',
+          ? t( 'delete_series_q' )
+          : t( 'delete_event_q' ),
         $('eventTitle')
           .value ||
         ''
@@ -17788,7 +17754,7 @@
 
       $('checkedLabel')
         .textContent =
-          `Refreshed ${minutes} min ago`;
+          t( 'refreshed_min_ago', { minutes } );
 
 
       return;

@@ -163,7 +163,7 @@
           class="btn secondary hidden"
         >
 
-          Requests
+          <span data-i18n="admin_requests">Requests</span>
 
           <span
             id="requestCount"
@@ -177,6 +177,7 @@
         <button
           id="blockedSessionsBtn"
           class="btn secondary hidden"
+          data-i18n="admin_blocked"
         >
           Blocked Sessions
         </button>
@@ -185,6 +186,7 @@
           id="googleSyncBtn"
           class="btn secondary hidden"
           title="Push every booked session to Google Calendar again"
+          data-i18n="admin_sync"
         >
           Sync Google Calendar
         </button>
@@ -192,6 +194,7 @@
         <button
           id="addBtn"
           class="btn primary hidden"
+          data-i18n="admin_add"
         >
           + Add event
         </button>
@@ -241,6 +244,7 @@
               class="menu-item hidden"
               role="menuitem"
               title="Title, display name, address, hours, time zone, colors, wording, notifications"
+              data-i18n="settings"
             >
               Settings
             </button>
@@ -265,11 +269,11 @@
 
       <div>
 
-        <strong>
+        <strong data-i18n="admin_mode">
           Admin mode
         </strong>
 
-        <span>
+        <span data-i18n="admin_banner">
           Click a session to edit it; click anywhere else to add one.
           Right-click for copy, duplicate and delete.
           Drag any block to move it.
@@ -284,6 +288,7 @@
           class="text-btn hidden"
           title="Undo (Ctrl+Z)"
           disabled
+          data-i18n="undo"
         >
           Undo
         </button>
@@ -293,6 +298,7 @@
           class="text-btn hidden"
           title="Redo (Ctrl+Shift+Z)"
           disabled
+          data-i18n="redo"
         >
           Redo
         </button>
@@ -300,6 +306,7 @@
           id="historyBtn"
           class="text-btn hidden"
           title="Every version of the schedule, newest first - restore any of them"
+          data-i18n="history"
         >
           Version history
         </button>
@@ -325,7 +332,10 @@
             0
           </span>
 
-          <span class="week-summary-label">
+          <span
+            id="summaryHoursLabel"
+            class="week-summary-label"
+          >
             hours blocked this week
           </span>
 
@@ -486,6 +496,8 @@
           id="backToAdminBtn"
           class="btn secondary small"
           aria-pressed="true"
+        
+          data-i18n="admin_view"
         >
           Admin view
         </button>
@@ -493,6 +505,8 @@
           id="exitAdminBtn"
           class="btn secondary small"
           aria-pressed="false"
+        
+          data-i18n="public_view_btn"
         >
           Public view
         </button>
@@ -529,14 +543,14 @@
       <button
         id="mailNoticeSettingsBtn"
         class="text-btn"
-      >
+       data-i18n="open_settings">
         Open Settings
       </button>
       <button
         id="mailNoticeCloseBtn"
         class="text-btn"
         aria-label="Dismiss"
-      >
+       data-i18n="dismiss">
         Dismiss
       </button>
     </div>
@@ -552,7 +566,7 @@
       <button
         id="resendVerifyBtn"
         class="text-btn"
-      >
+       data-i18n="send_again_email">
         Send the email again
       </button>
     </div>
@@ -570,7 +584,7 @@
       <button
         id="syncNoticeRetryBtn"
         class="text-btn"
-      >
+       data-i18n="sync_now">
         Sync now
       </button>
 
@@ -578,7 +592,7 @@
         id="syncNoticeCloseBtn"
         class="text-btn"
         aria-label="Dismiss"
-      >
+       data-i18n="dismiss">
         Dismiss
       </button>
 
@@ -1420,7 +1434,7 @@
   >
     <div class="modal-card">
       <div class="modal-header">
-        <h2 id="settingsTitle">
+        <h2 id="settingsTitle" data-i18n="settings">
           Settings
         </h2>
         <button
@@ -1433,7 +1447,7 @@
       </div>
 
       <label class="field">
-        <span>
+        <span data-i18n="s_title">
           Calendar title
         </span>
         <input
@@ -1445,8 +1459,8 @@
 
       <label class="field">
         <span>
-          Display name
-          <small>as in "___ last updated the schedule"</small>
+          <span data-i18n="s_display">Display name</span>
+          <small data-i18n="s_display_hint">as in "___ last updated the schedule"</small>
         </span>
         <input
           id="settingDisplayName"
@@ -1457,8 +1471,8 @@
 
       <label class="field">
         <span>
-          Calendar address
-          <small>the link you share; letters, numbers and dashes</small>
+          <span data-i18n="s_address">Calendar address</span>
+          <small data-i18n="s_address_hint">the link you share; letters, numbers and dashes</small>
         </span>
         <span class="slug-field">
           <span id="settingSlugPrefix" class="slug-prefix"></span>
@@ -1477,14 +1491,14 @@
             id="copyShareLinkBtn"
             class="btn small secondary"
             type="button"
-          >
+           data-i18n="copy">
             Copy
           </button>
         </span>
       </label>
 
       <label class="field">
-        <span>
+        <span data-i18n="s_timezone">
           Time zone
         </span>
         <select id="settingTimezone"></select>
@@ -1492,13 +1506,13 @@
 
       <div class="field-row">
         <label class="field">
-          <span>
+          <span data-i18n="s_day_starts">
             Day starts
           </span>
           <select id="settingDayStart"></select>
         </label>
         <label class="field">
-          <span>
+          <span data-i18n="s_day_ends">
             Day ends
           </span>
           <select id="settingDayEnd"></select>
@@ -1507,29 +1521,29 @@
 
       <div class="field-row">
         <label class="field">
-          <span>
+          <span data-i18n="s_week_starts">
             Week starts on
           </span>
           <select id="settingWeekStart">
-            <option value="0">Sunday</option>
-            <option value="1">Monday</option>
+            <option value="0" data-i18n="sunday">Sunday</option>
+            <option value="1" data-i18n="monday">Monday</option>
           </select>
         </label>
         <label class="field">
-          <span>
+          <span data-i18n="s_clock">
             Clock
           </span>
           <select id="settingHourFormat">
-            <option value="12">12-hour (2:30 PM)</option>
-            <option value="24">24-hour (14:30)</option>
+            <option value="12" data-i18n="s_clock12">12-hour (2:30 PM)</option>
+            <option value="24" data-i18n="s_clock24">24-hour (14:30)</option>
           </select>
         </label>
       </div>
 
       <label class="field">
         <span>
-          Language for visitors
-          <small>what the page reads in until a visitor picks their own</small>
+          <span data-i18n="s_language">Language for visitors</span>
+          <small data-i18n="s_language_hint">what the page reads in until a visitor picks their own</small>
         </span>
         <select id="settingLanguage">
           <option value="en">English</option>
@@ -1542,22 +1556,22 @@
       </label>
 
       <label class="field">
-        <span>
+        <span data-i18n="s_font">
           Typeface
         </span>
         <select id="settingFont">
-          <option value="system">Default (clean sans-serif)</option>
-          <option value="humanist">Humanist sans-serif</option>
-          <option value="rounded">Rounded</option>
-          <option value="serif">Serif</option>
-          <option value="mono">Monospace</option>
+          <option value="system" data-i18n="s_font_system">Default (clean sans-serif)</option>
+          <option value="humanist" data-i18n="s_font_humanist">Humanist sans-serif</option>
+          <option value="rounded" data-i18n="s_font_rounded">Rounded</option>
+          <option value="serif" data-i18n="s_font_serif">Serif</option>
+          <option value="mono" data-i18n="s_font_mono">Monospace</option>
         </select>
       </label>
 
       <div class="field">
         <span>
-          Default color for open time
-          <small>what visitors see</small>
+          <span data-i18n="s_color_open">Default color for open time</span>
+          <small data-i18n="s_visitors_see">what visitors see</small>
         </span>
         <div
           id="settingAvailableColor"
@@ -1567,7 +1581,7 @@
       </div>
 
       <div class="field">
-        <span>
+        <span data-i18n="s_color_booked">
           Default color for booked time
         </span>
         <div
@@ -1579,23 +1593,23 @@
 
       <label class="field">
         <span>
-          Wording preset
-          <small>fills in the names below; edit them freely afterwards</small>
+          <span data-i18n="s_preset">Wording preset</span>
+          <small data-i18n="s_preset_hint">fills in the names below; edit them freely afterwards</small>
         </span>
         <select id="settingPreset">
-          <option value="">Choose a preset…</option>
-          <option value="tutoring">Tutoring</option>
-          <option value="lessons">Music or other lessons</option>
-          <option value="office">Office hours</option>
-          <option value="coaching">Coaching or training</option>
-          <option value="classes">Classes</option>
-          <option value="appointments">Appointments</option>
+          <option value="" data-i18n="s_preset_choose">Choose a preset…</option>
+          <option value="tutoring" data-i18n="s_p_tutoring">Tutoring</option>
+          <option value="lessons" data-i18n="s_p_lessons">Music or other lessons</option>
+          <option value="office" data-i18n="s_p_office">Office hours</option>
+          <option value="coaching" data-i18n="s_p_coaching">Coaching or training</option>
+          <option value="classes" data-i18n="s_p_classes">Classes</option>
+          <option value="appointments" data-i18n="s_p_appointments">Appointments</option>
         </select>
       </label>
 
       <div class="field-row">
         <label class="field">
-          <span>
+          <span data-i18n="s_open_called">
             Open time is called
           </span>
           <input
@@ -1606,7 +1620,7 @@
           >
         </label>
         <label class="field">
-          <span>
+          <span data-i18n="s_booked_called">
             Booked time is called
           </span>
           <input
@@ -1621,8 +1635,8 @@
       <div class="field-row">
         <label class="field">
           <span>
-            The summary counts
-            <small>one</small>
+            <span data-i18n="s_summary_counts">The summary counts</span>
+            <small data-i18n="s_one">one</small>
           </span>
           <input
             id="settingLabelPerson"
@@ -1634,7 +1648,7 @@
         <label class="field">
           <span>
             &nbsp;
-            <small>several</small>
+            <small data-i18n="s_several">several</small>
           </span>
           <input
             id="settingLabelPeople"
@@ -1647,8 +1661,8 @@
 
       <label class="field">
         <span>
-          Notification email
-          <small>where new session requests are sent; leave empty for none</small>
+          <span data-i18n="s_notify">Notification email</span>
+          <small data-i18n="s_notify_hint">where new session requests are sent; leave empty for none</small>
         </span>
         <input
           id="settingNotificationEmail"
@@ -1667,12 +1681,12 @@
           id="testMailBtn"
           class="btn secondary small"
           type="button"
-        >
+         data-i18n="s_test_mail">
           Send a test email
         </button>
       </div>
 
-      <h3 class="settings-heading">Requests</h3>
+      <h3 class="settings-heading" data-i18n="s_requests">Requests</h3>
 
       <label class="checkbox-row">
         <input
@@ -1680,15 +1694,15 @@
           type="checkbox"
         >
         <span>
-          Visitors can request a session
-          <small>turn off to show the calendar only</small>
+          <span data-i18n="s_req_enabled">Visitors can request a session</span>
+          <small data-i18n="s_req_enabled_hint">turn off to show the calendar only</small>
         </span>
       </label>
 
       <label class="field">
         <span>
-          Introduction on the request form
-          <small>leave empty for the standard one</small>
+          <span data-i18n="s_req_intro">Introduction on the request form</span>
+          <small data-i18n="s_req_intro_hint">leave empty for the standard one</small>
         </span>
         <textarea
           id="settingRequestIntro"
@@ -1701,8 +1715,8 @@
       <div class="field-row">
         <label class="field">
           <span>
-            Notice needed
-            <small>hours before the session</small>
+            <span data-i18n="s_notice">Notice needed</span>
+            <small data-i18n="s_notice_hint">hours before the session</small>
           </span>
           <input
             id="settingMinNotice"
@@ -1714,8 +1728,8 @@
         </label>
         <label class="field">
           <span>
-            How far ahead
-            <small>weeks</small>
+            <span data-i18n="s_ahead">How far ahead</span>
+            <small data-i18n="s_weeks">weeks</small>
           </span>
           <input
             id="settingMaxWeeks"
@@ -1729,20 +1743,20 @@
 
       <div class="field-row">
         <label class="field">
-          <span>
+          <span data-i18n="s_shortest">
             Shortest session
           </span>
           <select id="settingMinMinutes"></select>
         </label>
         <label class="field">
-          <span>
+          <span data-i18n="s_longest">
             Longest session
           </span>
           <select id="settingMaxMinutes"></select>
         </label>
       </div>
 
-      <h3 class="settings-heading">Privacy</h3>
+      <h3 class="settings-heading" data-i18n="s_privacy">Privacy</h3>
 
       <label class="checkbox-row">
         <input
@@ -1750,25 +1764,25 @@
           type="checkbox"
         >
         <span>
-          Show booked time to visitors
-          <small>as unnamed blocks; names and notes are never shown. Off, visitors see open time only.</small>
+          <span data-i18n="s_show_booked">Show booked time to visitors</span>
+          <small data-i18n="s_show_booked_hint">as unnamed blocks; names and notes are never shown. Off, visitors see open time only.</small>
         </span>
       </label>
 
-      <h3 class="settings-heading">Google Calendar</h3>
+      <h3 class="settings-heading" data-i18n="s_google">Google Calendar</h3>
 
       <div id="googleSetup">
         <p class="settings-help">
-          Booked sessions can be copied into a Google calendar of yours.
-          In Google Calendar, open that calendar's settings, share it with
+          <span data-i18n="s_google_help">Booked sessions can be copied into a Google calendar of yours.
+          In Google Calendar, open that calendar's settings, share it with</span>
           <code id="serviceAccountEmail"></code>
-          (<em>Make changes to events</em>), then paste its Calendar ID
-          from <em>Integrate calendar</em> below.
+          (<em data-i18n="s_google_perm">Make changes to events</em>), then paste its Calendar ID
+          from <em data-i18n="s_google_integrate">Integrate calendar</em> below.
         </p>
         <label class="field">
           <span>
-            Google Calendar ID
-            <small>leave empty to turn the copy off</small>
+            <span data-i18n="s_google_id">Google Calendar ID</span>
+            <small data-i18n="s_google_id_hint">leave empty to turn the copy off</small>
           </span>
           <input
             id="settingGoogleCalendarId"
@@ -1782,7 +1796,7 @@
         <p
           id="googleFromSite"
           class="settings-help hidden"
-        >
+         data-i18n="s_google_from_site">
           This is the site's own Google calendar, set in Netlify. Enter another here to use it instead.
         </p>
       </div>
@@ -1790,15 +1804,15 @@
       <p
         id="googleUnavailable"
         class="settings-help hidden"
-      >
+       data-i18n="s_google_unavailable">
         Google Calendar copying is not set up on this site (it needs a
         service account in Netlify). The feed below works with any calendar.
       </p>
 
       <label class="field">
         <span>
-          Calendar feed
-          <small>subscribe from any calendar app: Google Calendar → Other calendars → From URL</small>
+          <span data-i18n="s_feed">Calendar feed</span>
+          <small data-i18n="s_feed_hint">subscribe from any calendar app: Google Calendar → Other calendars → From URL</small>
         </span>
         <span class="share-row">
           <code id="feedLink"></code>
@@ -1806,7 +1820,7 @@
             id="copyFeedLinkBtn"
             class="btn small secondary"
             type="button"
-          >
+           data-i18n="copy">
             Copy
           </button>
         </span>
@@ -1821,13 +1835,13 @@
         <button
           class="btn secondary"
           data-close="settingsModal"
-        >
+         data-i18n="cancel">
           Cancel
         </button>
         <button
           id="saveSettingsBtn"
           class="btn primary"
-        >
+         data-i18n="s_save">
           Save settings
         </button>
       </div>
@@ -1846,7 +1860,7 @@
 
       <div class="modal-header">
 
-        <h2 id="eventModalTitle">
+        <h2 id="eventModalTitle" data-i18n="e_add">
           Add event
         </h2>
 
@@ -1871,7 +1885,7 @@
 
       <label class="field">
 
-        <span>
+        <span data-i18n="e_type">
           Type
         </span>
 
@@ -1886,7 +1900,7 @@
             disabled
             selected
             hidden
-          >
+           data-i18n="select_one">
             Select One
           </option>
 
@@ -1897,7 +1911,7 @@
             Available
           </option>
 
-          <option value="BLOCKED">
+          <option value="BLOCKED" data-i18n="e_type_blocked">
             Blocked / private event
           </option>
 
@@ -1913,7 +1927,7 @@
 
         <div class="field">
 
-          <span>
+          <span data-i18n="starts">
             Starts
           </span>
 
@@ -1997,7 +2011,7 @@
 
         <div class="field">
 
-          <span>
+          <span data-i18n="ends">
             Ends
           </span>
 
@@ -2085,7 +2099,7 @@
 
       <label class="field">
 
-        <span>
+        <span data-i18n="repeat">
           Repeat
         </span>
 
@@ -2094,11 +2108,11 @@
           data-repeat-type
         >
 
-          <option value="NONE">
+          <option value="NONE" data-i18n="no_repeat">
             Does not repeat
           </option>
 
-          <option value="WEEKLY">
+          <option value="WEEKLY" data-i18n="weekly">
             Weekly
           </option>
 
@@ -2117,7 +2131,7 @@
 
         <div class="repeat-every-row">
 
-          <span>
+          <span data-i18n="repeat_every">
             Repeat every
           </span>
 
@@ -2130,7 +2144,7 @@
             data-repeat-interval
           >
 
-          <span>
+          <span data-i18n="weeks">
             week(s)
           </span>
 
@@ -2139,7 +2153,7 @@
 
         <div class="recurrence-section">
 
-          <div class="recurrence-label">
+          <div class="recurrence-label" data-i18n="repeat_on">
             Repeat on
           </div>
 
@@ -2219,7 +2233,7 @@
 
         <div class="recurrence-section">
 
-          <div class="recurrence-label">
+          <div class="recurrence-label" data-i18n="ends">
             Ends
           </div>
 
@@ -2234,7 +2248,7 @@
               checked
             >
 
-            <span>
+            <span data-i18n="never">
               Never
             </span>
 
@@ -2250,7 +2264,7 @@
               data-repeat-end
             >
 
-            <span>
+            <span data-i18n="on">
               On
             </span>
 
@@ -2273,7 +2287,7 @@
               data-repeat-end
             >
 
-            <span>
+            <span data-i18n="after">
               After
             </span>
 
@@ -2287,7 +2301,7 @@
               disabled
             >
 
-            <span>
+            <span data-i18n="occurrences">
               occurrences
             </span>
 
@@ -2305,9 +2319,9 @@
 
         <span>
 
-          Title
+          <span data-i18n="e_title">Title</span>
 
-          <small>
+          <small data-i18n="e_admin_only">
             (admin only)
           </small>
 
@@ -2331,9 +2345,9 @@
 
         <span>
 
-          Color
+          <span data-i18n="e_color">Color</span>
 
-          <small>
+          <small data-i18n="e_color_hint">
             (admin only — visitors always see red and green)
           </small>
 
@@ -2354,9 +2368,9 @@
 
         <span>
 
-          Notes
+          <span data-i18n="e_notes">Notes</span>
 
-          <small>
+          <small data-i18n="e_admin_only">
             (admin only)
           </small>
 
@@ -2388,7 +2402,7 @@
 
           <div>
 
-            <div class="conflict-warning-title">
+            <div class="conflict-warning-title" data-i18n="e_conflict">
               Schedule conflict
             </div>
 
@@ -2408,7 +2422,7 @@
         ></div>
 
 
-        <div class="conflict-warning-footer">
+        <div class="conflict-warning-footer" data-i18n="e_conflict_hint">
           You can still save this event if the overlap is intentional.
         </div>
 
@@ -2432,7 +2446,7 @@
         <button
           id="deleteEventBtn"
           class="btn danger hidden"
-        >
+         data-i18n="delete">
           Delete
         </button>
 
@@ -2442,7 +2456,7 @@
           <button
             class="btn secondary"
             data-close="eventModal"
-          >
+           data-i18n="cancel">
             Cancel
           </button>
 
@@ -2450,7 +2464,7 @@
           <button
             id="saveAnywayBtn"
             class="btn warning hidden"
-          >
+           data-i18n="save_anyway">
             Save Anyway
           </button>
 
@@ -2458,7 +2472,7 @@
           <button
             id="saveEventBtn"
             class="btn primary"
-          >
+           data-i18n="save">
             Save
           </button>
 
@@ -2485,7 +2499,7 @@
 
         <div>
 
-          <h2>
+          <h2 data-i18n="r_title">
             Session Requests
           </h2>
 
@@ -2544,11 +2558,11 @@
 
         <div>
 
-          <h2>
+          <h2 data-i18n="history">
             Version history
           </h2>
 
-          <div class="blocked-drawer-subtitle">
+          <div class="blocked-drawer-subtitle" data-i18n="h_intro">
             The schedule at every save, newest first. Restore any version to make it the current one again; what came after stays in the list.
           </div>
 
@@ -2596,11 +2610,11 @@
 
         <div>
 
-          <h2>
+          <h2 data-i18n="admin_blocked">
             Blocked Sessions
           </h2>
 
-          <div class="blocked-drawer-subtitle">
+          <div class="blocked-drawer-subtitle" data-i18n="b_intro">
             Past and upcoming blocked events
           </div>
 
@@ -2634,11 +2648,11 @@
 
             <div>
 
-              <h3>
+              <h3 data-i18n="b_past">
                 Past
               </h3>
 
-              <span>
+              <span data-i18n="b_recent_first">
                 Most recent first
               </span>
 
@@ -2670,11 +2684,11 @@
 
             <div>
 
-              <h3>
+              <h3 data-i18n="b_upcoming">
                 Upcoming
               </h3>
 
-              <span id="upcomingBlockedRange">
+              <span id="upcomingBlockedRange" data-i18n="b_soonest_first">
                 Soonest first
               </span>
 

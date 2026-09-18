@@ -59,18 +59,25 @@ async def main():
         await page.select_option("#langSelect", "en"); await page.wait_for_timeout(600)
         check("and back to English", await text(page, "#requestBtn") == "Request a session")
 
-        # ---- the owner's tools stay English whatever the language
+        # ---- the owner's tools follow the language too
         await page.select_option("#langSelect", "fr"); await page.wait_for_timeout(400)
         await page.click("#adminBtn"); await page.wait_for_timeout(200)
-        check("the log-in dialog (admin password, first calendar) is English", await text(page, "#loginTitle") == "Admin access")
+        check("the log-in dialog (admin password, first calendar) is in French", await text(page, "#loginTitle") == "Accès admin" and await text(page, "#loginSubmitBtn") == "Entrer en mode admin")
         await page.fill("#adminPasswordInput", "t"); await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
-        check("the admin banner and Settings are English", "Admin mode" in await text(page, "#adminBanner"))
-        await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(500)
-        check("Settings offers a default language for visitors, English", await page.evaluate("document.getElementById('settingLanguage').value") == "en"
-              and await text(page, "#settingsModal h2") == "Settings")
+        check("so are the admin banner, toolbar and switch", "Mode admin" in await text(page, "#adminBanner") and await text(page, "#addBtn") == "+ Ajouter un événement"
+              and await text(page, "#backToAdminBtn") == "Vue admin" and await text(page, "#historyBtn") == "Historique des versions")
+        check("and the weekly summary", await text(page, "#summaryHoursLabel") == "heures occupées cette semaine")
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        check("and the profile menu", await text(page, "#settingsBtn") == "Réglages" and await text(page, "#signOutBtn") == "Se déconnecter" and await text(page, "#profileMenuMode") == "Mode admin")
+        await page.click("#settingsBtn"); await page.wait_for_timeout(500)
+        check("Settings is in French and offers a default language for visitors, English", await page.evaluate("document.getElementById('settingLanguage').value") == "en"
+              and await text(page, "#settingsModal h2") == "Réglages" and await text(page, "#saveSettingsBtn") == "Enregistrer les réglages")
         await page.select_option("#settingLanguage", "vi")
         await page.click("#saveSettingsBtn"); await page.wait_for_timeout(900)
-        check("saving keeps this device's own choice (French)", await text(page, "#todayBtn") == "Aujourd’hui", await text(page, "#todayBtn"))
+        check("saving keeps this device's own choice (French), and says so in French", await text(page, "#todayBtn") == "Aujourd’hui" and (await text(page, "#status")).startswith("Réglages enregistrés"), await text(page, "#status"))
+        await page.evaluate("document.getElementById('addBtn').click()"); await page.wait_for_timeout(300)
+        check("the editor is in French", await text(page, "#eventModalTitle") == "Ajouter un événement" if await page.evaluate("!!document.getElementById('eventModalTitle')") else await page.evaluate("[...document.querySelectorAll('#eventModal h2')].some(h => h.textContent.trim() === 'Ajouter un événement')"))
+        await page.evaluate("document.querySelector('#eventModal [data-close]').click()")
 
         # ---- a Vietnamese default: a German browser gets it, a Korean browser gets Korean
         german = await (await b.new_context(viewport={"width": 1300, "height": 900}, locale="de-DE")).new_page()
