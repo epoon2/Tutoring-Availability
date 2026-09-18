@@ -3226,3 +3226,96 @@ body.calendar-missing .header-actions {
   font-size: 14px;
   cursor: pointer;
 }
+
+
+/* -----------------------------
+   SEVERAL CALENDARS IN ONE VIEW
+----------------------------- */
+
+.calendars-switch {
+  position: relative;
+  margin-left: 4px;
+}
+
+.calendars-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 260px;
+  padding: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px var(--shadow);
+}
+
+.calendars-menu-head {
+  padding: 6px 10px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.calendar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.calendar-row:hover {
+  background: var(--accent-soft);
+}
+
+.calendar-row input {
+  margin: 0;
+}
+
+.calendar-row .calendar-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.calendar-row .calendar-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-row a {
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.calendar-row a:hover {
+  text-decoration: underline;
+}
+
+/*
+  A block from another calendar of the same owner: its own colors,
+  a dashed edge so it reads as borrowed, and a tag with the
+  calendar's name.
+*/
+.event-card.overlay {
+  border-style: dashed;
+}
+
+.event-card .overlay-tag {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

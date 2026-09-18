@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Several calendars per account: the dashboard lists and makes
-calendars, each with its own address, and can delete one.
+calendars; on any of them the others can be drawn over it and their
+blocks edited in place.
 
     python3 tests/multical.py
 """
@@ -33,6 +34,7 @@ async def main():
         # ---- one calendar: straight in, no switch, but a way to the dashboard
         await signup(page, "Maya Chen", "Maya's Tutoring", "maya@example.com")
         check("sign-up with no email set up lands straight on the calendar, confirmed", page.url.endswith("/maya-chen") and not await hidden(page, "#adminBanner"))
+        check("with one calendar there is no Calendars switch", await hidden(page, "#calendarsSwitch"))
         await page.click("#profileBtn"); await page.wait_for_timeout(200)
         check("the profile menu offers My calendars", not await hidden(page, "#dashboardLink"))
         await page.click("#dashboardLink"); await page.wait_for_load_state("networkidle"); await page.wait_for_timeout(500)
@@ -60,6 +62,35 @@ async def main():
             await fetch('/api/events?calendar=piano-lessons', { method: 'POST', headers: {'Content-Type': 'application/json', 'x-session': token},
                 body: JSON.stringify({ type: 'BLOCKED', title: 'Kai - piano', start: wed + 'T16:00', end: wed + 'T17:00' }) });
         }""")
+
+        # ---- overlaying it on the first calendar
+        await page.goto(BASE + "/maya-chen", wait_until="networkidle"); await page.wait_for_timeout(800)
+        check("with two calendars the Calendars switch appears", not await hidden(page, "#calendarsSwitch"))
+        check("and no borrowed blocks yet", await page.evaluate("document.querySelectorAll('.event-card.overlay').length") == 0)
+        await page.click("#calendarsBtn"); await page.wait_for_timeout(200)
+        rows = await page.evaluate("[...document.querySelectorAll('#calendarsList .calendar-row')].map(r => [r.querySelector('.calendar-name').textContent, r.querySelector('input').checked, r.querySelector('input').disabled])")
+        check("the menu lists both, this one ticked and fixed", rows == [["Maya's Tutoring", True, True], ["Piano lessons", False, False]], str(rows))
+        await page.check("#calendarsList .calendar-row:nth-child(2) input"); await page.wait_for_timeout(800)
+        card = await page.query_selector(".event-card.overlay")
+        check("ticking Piano lessons draws its block here, dashed and tagged", card is not None and "Kai - piano" in await card.text_content() and "Piano lessons" in await card.text_content()
+              and await page.evaluate("document.querySelector('.event-card.overlay').dataset.calendar") == "piano-lessons")
+        check("the choice is kept for this calendar on this device", await page.evaluate("JSON.parse(localStorage.getItem('overlays:maya-chen'))") == ["piano-lessons"])
+        await page.evaluate("document.body.click()")
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(800)
+        check("and survives a reload", await page.evaluate("document.querySelectorAll('.event-card.overlay').length") == 1)
+
+        # ---- editing the borrowed block in place
+        await page.click(".event-card.overlay"); await page.wait_for_timeout(400)
+        check("the borrowed block opens in the editor", await page.input_value("#eventTitle") == "Kai - piano")
+        await page.fill("#eventTitle", "Kai - piano (moved)")
+        await page.evaluate("document.getElementById('saveEventBtn').click()"); await page.wait_for_timeout(900)
+        titles = await page.evaluate("""() => { const token = JSON.parse(localStorage.getItem('calendarSession')).token;
+            return fetch('/api/events?start=2020-01-01&end=2030-01-01&calendar=piano-lessons', { headers: { 'x-session': token } }).then(r => r.json()).then(d => d.events.map(e => e.title)); }""")
+        check("the change went to the Piano lessons calendar", titles == ["Kai - piano (moved)"], str(titles))
+        own = await page.evaluate("""() => { const token = JSON.parse(localStorage.getItem('calendarSession')).token;
+            return fetch('/api/events?start=2020-01-01&end=2030-01-01&calendar=maya-chen', { headers: { 'x-session': token } }).then(r => r.json()).then(d => d.events.length); }""")
+        check("and not to the calendar on screen", own == 0, str(own))
+        check("the block on screen shows the new title", "Kai - piano (moved)" in await page.text_content(".event-card.overlay"))
 
         # ---- deleting a calendar
         await page.goto(BASE + "/dashboard", wait_until="networkidle"); await page.wait_for_timeout(600)

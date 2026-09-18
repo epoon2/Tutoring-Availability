@@ -529,6 +529,43 @@
           Public view
         </button>
       </div>
+      <div
+        id="calendarsSwitch"
+        class="calendars-switch hidden"
+      >
+        <button
+          id="calendarsBtn"
+          class="btn secondary small"
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          data-i18n="calendars_btn"
+        >
+          Calendars
+        </button>
+        <div
+          id="calendarsMenu"
+          class="calendars-menu hidden"
+          role="menu"
+        >
+          <div
+            class="calendars-menu-head"
+            data-i18n="calendars_show"
+          >
+            Show on this calendar
+          </div>
+          <div id="calendarsList"></div>
+          <a
+            id="calendarsDashboardLink"
+            class="menu-item"
+            role="menuitem"
+            href="/dashboard"
+            data-i18n="my_calendars"
+          >
+            My calendars
+          </a>
+        </div>
+      </div>
     </section>
 
 

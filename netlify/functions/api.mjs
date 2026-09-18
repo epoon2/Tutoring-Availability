@@ -565,6 +565,25 @@ export default async (req) => {
             ownsActiveCalendar()
         },
 
+        /*
+          Other calendars of the same owner, drawn over this one when
+          the page asks (?with=slug,slug): each with its events for
+          the range and the colors and words it uses.
+        */
+        ...(
+          admin && url.searchParams.get( "with" )
+            ? {
+                overlays:
+                  await overlayCalendars(
+                    store,
+                    url.searchParams.get( "with" ),
+                    rangeStart,
+                    rangeEnd
+                  )
+              }
+            : {}
+        ),
+
         session:
           req.headers.get( "x-session" )
             ? ( activeUser ? "valid" : "invalid" )
@@ -2866,6 +2885,60 @@ async function ownedCalendars(
       url:
         `${ origin }/${ slug }`
     });
+  }
+  return out;
+}
+
+/*
+  The events of other calendars the same account owns, read without
+  switching the calendar in hand:
+  the storage helpers key off activeCalendar, so it is swapped for
+  each and put back.
+*/
+async function overlayCalendars(
+  store,
+  list,
+  rangeStart,
+  rangeEnd
+) {
+  const out =
+    {};
+  const keep =
+    { calendar: activeCalendar, settings: activeSettings, config: activeConfig, record: activeRecord };
+  const slugs =
+    String( list ).split( "," ).map( (item) => item.trim().toLowerCase() ).filter( Boolean ).slice( 0, 12 );
+  try {
+    for ( const slug of slugs ) {
+      if ( slug === keep.calendar.slug ) continue;
+      const id =
+        await calendarForSlug( store, slug );
+      if ( !id ) continue;
+      activeCalendar =
+        { id, slug };
+      useSettings( await readSettings() );
+      if ( !ownsActiveCalendar() ) continue;
+      const events =
+        await readEvents();
+      out[ slug ] = {
+        title:
+          activeSettings.title,
+        colors:
+          { ...activeSettings.colors },
+        labels:
+          { ...activeSettings.labels },
+        events:
+          expandEventsForRange( events, rangeStart, rangeEnd )
+      };
+    }
+  } finally {
+    activeCalendar =
+      keep.calendar;
+    activeSettings =
+      keep.settings;
+    activeConfig =
+      keep.config;
+    activeRecord =
+      keep.record;
   }
   return out;
 }

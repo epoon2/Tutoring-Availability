@@ -69,6 +69,19 @@
     calendar:
       null,
 
+    /*
+      The account's other calendars (from /me), which of them are
+      drawn over this one, and who owns each borrowed event id, so a
+      write to it goes to the right calendar.
+    */
+    myCalendars:
+      [],
+
+    overlays:
+      {},
+
+    overlayOwner:
+      {},
 
 
     /*
@@ -701,7 +714,27 @@
           openChangePassword();
         }
       );
-
+    $('calendarsBtn')
+      .addEventListener(
+        'click',
+        (clickEvent) => {
+          clickEvent.stopPropagation();
+          toggleCalendarsMenu();
+        }
+      );
+    $('calendarsMenu')
+      .addEventListener(
+        'click',
+        (clickEvent) => {
+          clickEvent.stopPropagation();
+        }
+      );
+    document.addEventListener(
+      'click',
+      () => {
+        closeCalendarsMenu();
+      }
+    );
     $('savePasswordBtn')
       .addEventListener(
         'click',
@@ -1406,9 +1439,12 @@
 
     /*
       Every request names the calendar the page is showing; with no
-      address in the URL it is the first calendar.
+      address in the URL it is the first calendar. A write to an event
+      borrowed from another of the owner's calendars goes to that
+      calendar instead.
     */
     const target =
+      overlayCalendarFor( path, method, options.body ) ||
       state.calendarSlug;
     if ( target ) {
       path +=
@@ -3179,9 +3215,12 @@
 
       let data;
       try {
+        const shown =
+          state.isAdmin ? shownOverlays() : [];
         data =
           await api(
-            `/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+            `/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}` +
+            ( shown.length ? `&with=${ encodeURIComponent( shown.join( ',' ) ) }` : '' )
           );
       } catch (error) {
         if (
@@ -3204,6 +3243,9 @@
       state.calendar =
         data.calendar ||
         state.calendar;
+      mergeOverlays(
+        data.overlays || {}
+      );
       if ( data.session === 'invalid' ) {
         forgetSession();
       }
@@ -3469,7 +3511,10 @@
         'hidden',
         !( state.session && state.account )
       );
-
+    if ( state.isAdmin && state.session ) {
+      loadMyCalendars();
+    }
+    renderCalendarsMenu();
     if ( state.account ) {
       $('myCalendarLink').href =
         '/' + state.account.slug;
@@ -5418,6 +5463,21 @@
       titleElement,
       timeElement
     );
+    if ( event.overlay ) {
+      card.classList.add( 'overlay' );
+      card.dataset.calendar =
+        event.overlay;
+      card.title =
+        event.overlayTitle || event.overlay;
+      const tag =
+        document.createElement( 'div' );
+      tag.className =
+        'overlay-tag';
+      tag.textContent =
+        event.overlayTitle || event.overlay;
+      card.appendChild( tag );
+    }
+
 
     /*
       Admin interaction.
@@ -13627,12 +13687,241 @@
   }
 
 
+  /* =========================================================
+     SEVERAL CALENDARS IN ONE VIEW
+  ========================================================= */
+
+  /*
+    An account may own more than one calendar. On any of them, the
+    owner can draw the others over it: their blocks appear in their
+    own colors with the calendar's name on them, and can be edited in
+    place - the page remembers which calendar each borrowed block
+    belongs to and sends the write there. The choice of which to show
+    is kept on the device, per calendar.
+  */
+
+  function overlaysKey() {
+    return 'overlays:' + ( state.calendarSlug || 'main' );
+  }
+
+
+  function shownOverlays() {
+    try {
+      const saved =
+        JSON.parse( localStorage.getItem( overlaysKey() ) || '[]' );
+      return Array.isArray( saved ) ? saved.filter( (slug) => typeof slug === 'string' ) : [];
+    } catch {
+      return [];
+    }
+  }
+
+
+  function saveShownOverlays(
+    slugs
+  ) {
+    try {
+      localStorage.setItem( overlaysKey(), JSON.stringify( slugs ) );
+    } catch {
+      /* storage off: the choice lasts for this page only */
+    }
+  }
+
+
+  /*
+    Borrowed events join the week's list with their calendar's colors
+    already applied and a note of where they came from.
+  */
+  function mergeOverlays(
+    overlays
+  ) {
+    state.overlays =
+      overlays;
+    state.overlayOwner =
+      {};
+    Object.entries( overlays ).forEach(
+      ([ slug, calendar ]) => {
+        ( calendar.events || [] ).forEach(
+          (event) => {
+            const type =
+              event.type === 'AVAILABLE' ? 'available' : 'blocked';
+            state.events.push({
+              ...event,
+              color:
+                normalizeHex( event.color ) || normalizeHex( calendar.colors && calendar.colors[ type ] ) || null,
+              overlay:
+                slug,
+              overlayTitle:
+                calendar.title
+            });
+            state.overlayOwner[ event.id ] =
+              slug;
+            if ( event.masterId ) {
+              state.overlayOwner[ event.masterId ] =
+                slug;
+            }
+          }
+        );
+      }
+    );
+  }
+
+
+  /*
+    Which calendar a request is really about: the one that owns the
+    event in its path or body, if that event was borrowed.
+  */
+  function overlayCalendarFor(
+    path,
+    method,
+    body
+  ) {
+    const inPath =
+      /^\/events\/([^/?]+)/.exec( path );
+    let id =
+      inPath ? decodeURIComponent( inPath[ 1 ] ) : null;
+    if ( !id && path.split( '?' )[ 0 ] === '/events' && method === 'POST' && body ) {
+      try {
+        id =
+          JSON.parse( body ).id || null;
+      } catch {
+        id =
+          null;
+      }
+    }
+    return id ? state.overlayOwner[ id ] || null : null;
+  }
+
+
+  /*
+    The account's calendars, fetched once per sign-in for the menu.
+  */
+  async function loadMyCalendars() {
+    if ( !state.session || state.myCalendars.length ) {
+      return;
+    }
+    try {
+      const data =
+        await api( '/me' );
+      state.myCalendars =
+        data.calendars || [];
+      state.account =
+        data.account || state.account;
+    } catch {
+      state.myCalendars =
+        [];
+    }
+    renderCalendarsMenu();
+  }
+
+
+  function renderCalendarsMenu() {
+    const others =
+      state.myCalendars.filter(
+        (calendar) => state.calendar && calendar.slug !== state.calendar.slug
+      );
+    const here =
+      state.myCalendars.find(
+        (calendar) => state.calendar && calendar.slug === state.calendar.slug
+      );
+    /*
+      The switch is worth showing once there is more than one calendar
+      to choose from.
+    */
+    const show =
+      state.isAdmin &&
+      state.session &&
+      others.length > 0;
+    $('calendarsSwitch')
+      .classList
+      .toggle( 'hidden', !show );
+    if ( !show ) {
+      return;
+    }
+    const list =
+      $('calendarsList');
+    list.innerHTML =
+      '';
+    const shown =
+      shownOverlays();
+    const rows =
+      [ ...( here ? [ here ] : [] ), ...others ];
+    rows.forEach(
+      (calendar) => {
+        const row =
+          document.createElement( 'label' );
+        row.className =
+          'calendar-row';
+        const box =
+          document.createElement( 'input' );
+        box.type =
+          'checkbox';
+        const isHere =
+          here && calendar.slug === here.slug;
+        box.checked =
+          isHere || shown.includes( calendar.slug );
+        box.disabled =
+          Boolean( isHere );
+        box.addEventListener(
+          'change',
+          () => {
+            const next =
+              shownOverlays().filter( (slug) => slug !== calendar.slug );
+            if ( box.checked ) {
+              next.push( calendar.slug );
+            }
+            saveShownOverlays( next );
+            loadWeek( true );
+          }
+        );
+        const dot =
+          document.createElement( 'span' );
+        dot.className =
+          'calendar-dot';
+        dot.style.background =
+          ( calendar.colors && calendar.colors.blocked ) || '#b42318';
+        const name =
+          document.createElement( 'span' );
+        name.className =
+          'calendar-name';
+        name.textContent =
+          calendar.title;
+        row.append( box, dot, name );
+        if ( !isHere ) {
+          const open =
+            document.createElement( 'a' );
+          open.href =
+            '/' + calendar.slug;
+          open.textContent =
+            t( 'open' );
+          row.appendChild( open );
+        }
+        list.appendChild( row );
+      }
+    );
+  }
+
+
+  function toggleCalendarsMenu() {
+    const open =
+      $('calendarsMenu').classList.contains( 'hidden' );
+    $('calendarsMenu').classList.toggle( 'hidden', !open );
+    $('calendarsBtn').setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+  }
+
+
+  function closeCalendarsMenu() {
+    $('calendarsMenu').classList.add( 'hidden' );
+    $('calendarsBtn').setAttribute( 'aria-expanded', 'false' );
+  }
+
+
   function forgetSession() {
     state.session =
       null;
     state.account =
       null;
-
+    state.myCalendars =
+      [];
     window.CalendarSession.clear();
   }
 

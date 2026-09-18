@@ -251,6 +251,12 @@ r = await call('GET', '/events' + week + '&calendar=mayas-piano-lessons', { 'x-s
 ok('and she is its admin, it is live since her email is confirmed, with her name on it', r.data.mode === 'admin' && r.data.calendar.owned === true && r.data.calendar.live === true && r.data.config.portalTitle === "Maya's Piano Lessons" && r.data.config.tutorName === 'Maya Chen');
 r = await call('POST', '/events?calendar=mayas-piano-lessons', { 'x-session': mayaNow }, { type: 'BLOCKED', title: 'Piano - Kai', start: '2026-09-10T15:00', end: '2026-09-10T16:00', recurrence: null });
 ok('she can write to it', r.status === 200);
+r = await call('GET', '/events' + week + '&calendar=maya&with=mayas-piano-lessons,ethan,nobody', { 'x-session': mayaNow });
+ok('asking for overlays brings the other calendar\'s events, with its colors, and not someone else\'s', r.data.overlays && r.data.overlays['mayas-piano-lessons'] && r.data.overlays['mayas-piano-lessons'].events.length === 1
+  && r.data.overlays['mayas-piano-lessons'].events[0].title === 'Piano - Kai' && r.data.overlays['mayas-piano-lessons'].colors.blocked && !r.data.overlays.ethan && !r.data.overlays.nobody, JSON.stringify(r.data.overlays));
+ok('and the calendar in hand is unchanged by the detour', r.data.config.portalTitle === "Maya Chen's Calendar" && r.data.events.length === 2, JSON.stringify(r.data.config));
+r = await call('GET', '/events' + week + '&calendar=maya&with=mayas-piano-lessons');
+ok('visitors get no overlays', !r.data.overlays);
 r = await call('DELETE', '/calendars/ethan', { 'x-session': mayaNow });
 ok("she cannot delete the first calendar", r.status === 400 || r.status === 401);
 r = await call('DELETE', '/calendars/mayas-piano-lessons', { 'x-session': mayaNow });
