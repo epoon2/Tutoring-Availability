@@ -25,22 +25,31 @@
     /*
       THE HOME PAGE
 
-      What the site does, and the way in: log in, sign up, and the
-      two things an email link can bring someone here for - confirming
-      an address and choosing a new password.
+      What the site does, at length: a header that stays put, a hero,
+      how it works, everything included, what visitors see, who it is
+      for, questions, and the way in - a dialog for logging in and
+      signing up that the email links also open.
     */
-    .home {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 24px;
+    html {
+      scroll-behavior: smooth;
     }
 
     .home-top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .home-top-inner {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      margin-bottom: 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 12px 24px;
     }
 
     .home-brand {
@@ -51,6 +60,7 @@
       font-size: 18px;
       color: var(--text);
       text-decoration: none;
+      white-space: nowrap;
     }
 
     .home-brand img {
@@ -59,39 +69,112 @@
       border-radius: 8px;
     }
 
+    .home-nav {
+      display: flex;
+      gap: 18px;
+      font-size: 14px;
+    }
+
+    .home-nav a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .home-nav a:hover {
+      color: var(--text);
+    }
+
     .home-top-actions {
       display: flex;
+      align-items: center;
       gap: 8px;
+    }
+
+    .home {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    .home section {
+      padding: 56px 0 8px;
+    }
+
+    .home h2 {
+      margin: 0 0 20px;
+      font-size: clamp(24px, 3vw, 32px);
+      letter-spacing: -0.01em;
     }
 
     .home-hero {
       display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 420px);
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
       gap: 40px;
-      align-items: start;
+      align-items: center;
+      padding-top: 64px;
     }
 
     .home-hero h1 {
       margin: 8px 0 14px;
-      font-size: clamp(30px, 4vw, 44px);
-      line-height: 1.1;
+      font-size: clamp(32px, 4.6vw, 52px);
+      line-height: 1.08;
       letter-spacing: -0.02em;
     }
 
     .home-hero .lede {
       margin: 0 0 24px;
-      font-size: 17px;
+      font-size: 18px;
       line-height: 1.55;
       color: var(--muted);
     }
 
+    .home-cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .home-cta .btn {
+      padding: 12px 18px;
+      font-size: 16px;
+      text-decoration: none;
+    }
+
+    .home-free {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     .home-preview {
-      margin: 0 0 28px;
       padding: 14px;
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: 0 10px 30px var(--shadow);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px var(--shadow);
+    }
+
+    .home-preview-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .home-preview-bar strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .home-preview-pill {
+      padding: 4px 9px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 999px;
+      font-weight: 650;
     }
 
     .home-preview-grid {
@@ -104,7 +187,7 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      min-height: 120px;
+      min-height: 150px;
       padding: 6px;
       background: var(--surface-2);
       border-radius: 8px;
@@ -119,7 +202,6 @@
     }
 
     .home-preview-block {
-      flex: 0 0 auto;
       padding: 5px 6px;
       border-radius: 6px;
       font-size: 11px;
@@ -127,21 +209,58 @@
       color: #fff;
     }
 
-    .home-preview-block.open {
-      background: #2f7d4a;
+    .home-preview-block.open { background: #2f7d4a; }
+    .home-preview-block.booked { background: #b42318; }
+    .home-preview-block.blue { background: #1d4ed8; }
+    .home-preview-block.purple { background: #6d28d9; }
+
+    .home-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      counter-reset: step;
     }
 
-    .home-preview-block.booked {
-      background: #b42318;
+    .home-step {
+      padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
     }
 
-    .home-preview-block.blue {
-      background: #1d4ed8;
+    .home-step::before {
+      counter-increment: step;
+      content: counter(step);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      margin-bottom: 12px;
+      background: var(--accent-tint);
+      color: var(--accent);
+      border-radius: 50%;
+      font-weight: 750;
+    }
+
+    .home-step strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+
+    .home-step span,
+    .home-features span,
+    .home-visitors p,
+    .home-faq p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
     }
 
     .home-features {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 14px;
       margin: 0;
       padding: 0;
@@ -149,7 +268,7 @@
     }
 
     .home-features li {
-      padding: 14px;
+      padding: 18px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -157,29 +276,168 @@
 
     .home-features strong {
       display: block;
+      margin-bottom: 6px;
+      font-size: 16px;
+    }
+
+    .home-visitors {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 36px;
+      align-items: center;
+    }
+
+    .home-visitors ul {
+      margin: 16px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .home-visitors li {
+      position: relative;
+      margin: 0 0 10px;
+      padding-left: 26px;
+      font-size: 15px;
+    }
+
+    .home-visitors li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #2f7d4a;
+      font-weight: 750;
+    }
+
+    .home-phone {
+      justify-self: center;
+      width: 280px;
+      padding: 14px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: 0 20px 60px var(--shadow);
+    }
+
+    .home-phone-head {
+      margin: 0 0 10px;
+      font-weight: 750;
+      font-size: 14px;
+    }
+
+    .home-phone-day {
+      margin-bottom: 10px;
+    }
+
+    .home-phone-day small {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    .home-phone .home-preview-block {
       margin-bottom: 4px;
     }
 
-    .home-features span {
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.45;
+    .home-phone-btn {
+      margin-top: 8px;
+      padding: 9px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 650;
     }
 
-    .auth-card {
-      position: sticky;
-      top: 24px;
-      padding: 20px;
+    .home-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .home-chips span {
+      padding: 9px 14px;
       background: var(--card);
       border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .home-faq details {
+      padding: 14px 18px;
+      margin-bottom: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .home-faq summary {
+      cursor: pointer;
+      font-weight: 650;
+      font-size: 16px;
+    }
+
+    .home-faq p {
+      margin: 10px 0 0;
+    }
+
+    .home-ready {
+      margin-top: 56px;
+      padding: 40px 24px;
+      background: var(--accent-tint);
+      border-radius: 20px;
+      text-align: center;
+    }
+
+    .home-ready h2 {
+      margin-bottom: 8px;
+    }
+
+    .home-ready p {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+
+    .home-foot {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .home-foot p {
+      margin: 6px 0;
+    }
+
+    /* ---- the way in */
+
+    .auth-card {
+      width: min(440px, 100%);
+      padding: 22px;
+      background: var(--card);
       border-radius: 16px;
       box-shadow: 0 20px 60px var(--shadow);
+      max-height: 92vh;
+      overflow: auto;
+    }
+
+    .auth-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
     }
 
     .auth-tabs {
       display: flex;
       gap: 4px;
-      margin-bottom: 18px;
+      flex: 1;
+      margin-right: 12px;
       padding: 4px;
       background: var(--surface-2);
       border-radius: 10px;
@@ -242,27 +500,8 @@
       text-decoration: underline;
     }
 
-    .slug-field {
-      display: flex;
-      align-items: center;
-    }
-
-    .slug-prefix {
-      padding: 10px 6px 10px 11px;
-      background: var(--surface-2);
-      color: var(--muted);
-      border: 1px solid var(--border);
-      border-right: 0;
-      border-radius: 10px 0 0 10px;
-      font-size: 14px;
-      white-space: nowrap;
-    }
-
-    .field .slug-field input {
-      border-radius: 0 10px 10px 0;
-    }
-
     .auth-ok {
+      margin-bottom: 10px;
       padding: 12px 14px;
       background: var(--ok-bg);
       border: 1px solid var(--ok-border);
@@ -280,19 +519,14 @@
       margin-top: 10px;
     }
 
-    .home-foot {
-      margin-top: 48px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
     @media (max-width: 860px) {
-      .home-hero {
+      .home-hero,
+      .home-visitors {
         grid-template-columns: 1fr;
       }
 
-      .auth-card {
-        position: static;
+      .home-nav {
+        display: none;
       }
 
       .home-preview-grid {
@@ -302,240 +536,351 @@
       .home-preview-day:nth-child(n+4) {
         display: none;
       }
+
+      .home section {
+        padding-top: 40px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <div class="home">
-
-    <header class="home-top">
+  <header class="home-top">
+    <div class="home-top-inner">
       <a class="home-brand" href="/">
         <img src="/icon-192.png" alt="">
         <span id="siteName">Calendar</span>
       </a>
+      <nav class="home-nav">
+        <a href="#how" data-i18n="home_how">How it works</a>
+        <a href="#features" data-i18n="home_features">Everything included</a>
+        <a href="#visitors" data-i18n="home_visitors">What your visitors see</a>
+        <a href="#faq" data-i18n="home_faq">Questions</a>
+      </nav>
       <div class="home-top-actions">
-        <button id="themeBtn" class="icon-btn theme-btn" type="button" title="Switch between light and dark" aria-label="Switch between light and dark">
+        <select id="langSelect" class="lang-select" aria-label="Language" title="Language"></select>
+        <button id="themeBtn" class="icon-btn theme-btn" type="button" data-i18n-title="theme" title="Switch between light and dark" aria-label="Switch between light and dark">
           <span id="themeIcon" aria-hidden="true">☾</span>
         </button>
-        <button id="topLoginBtn" class="btn secondary" type="button">Log in</button>
-        <button id="topSignupBtn" class="btn primary" type="button">Sign up</button>
+        <button id="topLoginBtn" class="btn secondary" type="button" data-i18n="auth_login">Log in</button>
+        <button id="topSignupBtn" class="btn primary" type="button" data-i18n="auth_signup">Sign up</button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <main class="home-hero">
+  <main class="home">
 
-      <section>
-        <h1>Share when you're free, at a link of your own.</h1>
-        <p class="lede">
-          A weekly calendar of your open and booked time. Visitors see what is
-          open, ask for a session with their contact details, and you get an
-          email. Everything else - hours, colors, wording, time zone - is yours
-          to set.
-        </p>
-
-        <div class="home-preview" aria-hidden="true">
-          <div class="home-preview-grid">
-            <div class="home-preview-day"><small>Mon</small><span class="home-preview-block open">Available 4–7 PM</span></div>
-            <div class="home-preview-day"><small>Tue</small><span class="home-preview-block booked">Booked</span><span class="home-preview-block open">Available 6–8 PM</span></div>
-            <div class="home-preview-day"><small>Wed</small><span class="home-preview-block blue">Booked</span></div>
-            <div class="home-preview-day"><small>Thu</small><span class="home-preview-block open">Available 3–6 PM</span><span class="home-preview-block booked">Booked</span></div>
-            <div class="home-preview-day"><small>Fri</small><span class="home-preview-block open">Available all day</span></div>
-          </div>
+    <section class="home-hero">
+      <div>
+        <h1 data-i18n="home_tagline">Share when you're free, at a link of your own.</h1>
+        <p class="lede" data-i18n="home_lede">A weekly calendar of your open and booked time. Visitors see what is open, ask for a session with their contact details, and you get an email. Everything else - hours, colors, wording, time zone, language - is yours to set.</p>
+        <div class="home-cta">
+          <button id="heroSignupBtn" class="btn primary" type="button" data-i18n="home_cta_signup">Create your calendar</button>
+          <button id="heroLoginBtn" class="btn secondary" type="button" data-i18n="home_cta_login">Log in</button>
+          <a id="exampleLink" class="btn secondary hidden" href="/" data-i18n="home_cta_example">See a live calendar</a>
         </div>
+        <p class="home-free" data-i18n="home_free">Free. No app to install. Works on any phone.</p>
+      </div>
+      <div class="home-preview" aria-hidden="true">
+        <div class="home-preview-bar"><strong>Ethan's Tutoring</strong><span class="home-preview-pill">Request a session</span></div>
+        <div class="home-preview-grid">
+          <div class="home-preview-day"><small>Mon</small><span class="home-preview-block open">Available 4–7 PM</span></div>
+          <div class="home-preview-day"><small>Tue</small><span class="home-preview-block booked">Booked</span><span class="home-preview-block open">Available 6–8 PM</span></div>
+          <div class="home-preview-day"><small>Wed</small><span class="home-preview-block blue">Booked</span><span class="home-preview-block purple">Booked</span></div>
+          <div class="home-preview-day"><small>Thu</small><span class="home-preview-block open">Available 3–6 PM</span><span class="home-preview-block booked">Booked</span></div>
+          <div class="home-preview-day"><small>Fri</small><span class="home-preview-block open">Available all day</span></div>
+        </div>
+      </div>
+    </section>
 
-        <ul class="home-features">
-          <li><strong>Your own address</strong><span>Your calendar lives at <code id="exampleUrl">this site/you</code>. Send the link to anyone; they need no account.</span></li>
-          <li><strong>Requests, with contact details</strong><span>A visitor picks an open time and leaves a name, email, phone and guardian. You approve or decline.</span></li>
-          <li><strong>Email when someone asks</strong><span>Every request lands in your inbox, with a reply-to so you can answer in one click.</span></li>
-          <li><strong>Google Calendar</strong><span>Booked sessions mirror to a Google calendar you choose, and a feed keeps any other calendar in step.</span></li>
-          <li><strong>Make it yours</strong><span>Colors for every block, the words for open and booked time, the hours in your day, your time zone.</span></li>
-          <li><strong>Light and dark, phone and desktop</strong><span>A week on a wide screen, a day on a phone, and a theme that follows the device.</span></li>
+    <section id="how">
+      <h2 data-i18n="home_how">How it works</h2>
+      <div class="home-steps">
+        <div class="home-step"><strong data-i18n="home_step1_t">Set your hours</strong><span data-i18n="home_step1_d">Mark the times you are open each week, once or repeating. Booked time goes in beside it, in any color you like.</span></div>
+        <div class="home-step"><strong data-i18n="home_step2_t">Share your link</strong><span id="step2Text" data-i18n="home_step2_d">Your calendar lives at {host}/you. Send the link to anyone - a parent, a student, a client. They need no account.</span></div>
+        <div class="home-step"><strong data-i18n="home_step3_t">Get requests by email</strong><span data-i18n="home_step3_d">A visitor picks an open time and leaves their name, email and phone. You get an email, and you accept or decline in one click.</span></div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2 data-i18n="home_features">Everything included</h2>
+      <ul class="home-features">
+        <li><strong data-i18n="home_f1_t">Your own address</strong><span data-i18n="home_f1_d"></span></li>
+        <li><strong data-i18n="home_f2_t">Requests with contact details</strong><span data-i18n="home_f2_d"></span></li>
+        <li><strong data-i18n="home_f3_t">Email when someone asks</strong><span data-i18n="home_f3_d"></span></li>
+        <li><strong data-i18n="home_f4_t">Google Calendar</strong><span data-i18n="home_f4_d"></span></li>
+        <li><strong data-i18n="home_f5_t">Make it yours</strong><span data-i18n="home_f5_d"></span></li>
+        <li><strong data-i18n="home_f6_t">Rules for requests</strong><span data-i18n="home_f6_d"></span></li>
+        <li><strong data-i18n="home_f7_t">Privacy</strong><span data-i18n="home_f7_d"></span></li>
+        <li><strong data-i18n="home_f8_t">Version history</strong><span data-i18n="home_f8_d"></span></li>
+        <li><strong data-i18n="home_f9_t">Six languages</strong><span data-i18n="home_f9_d"></span></li>
+      </ul>
+    </section>
+
+    <section id="visitors" class="home-visitors">
+      <div>
+        <h2 data-i18n="home_visitors">What your visitors see</h2>
+        <p data-i18n="home_visitors_d"></p>
+        <ul>
+          <li data-i18n="home_v1"></li>
+          <li data-i18n="home_v2"></li>
+          <li data-i18n="home_v3"></li>
+          <li data-i18n="home_v4"></li>
         </ul>
-      </section>
+      </div>
+      <div class="home-phone" aria-hidden="true">
+        <p class="home-phone-head">Ethan's Tutoring</p>
+        <div class="home-phone-day"><small>Tuesday</small><span class="home-preview-block booked">Booked · 3 – 4 PM</span><span class="home-preview-block open">Available · 4 – 8 PM</span></div>
+        <div class="home-phone-day"><small>Wednesday</small><span class="home-preview-block open">Available · 5 – 9 PM</span></div>
+        <div class="home-phone-day"><small>Thursday</small><span class="home-preview-block open">Available · 3 – 6 PM</span><span class="home-preview-block booked">Booked · 6 – 7 PM</span></div>
+        <div class="home-phone-btn" data-i18n="request">Request a session</div>
+      </div>
+    </section>
 
-      <aside class="auth-card" id="authCard">
+    <section id="madefor">
+      <h2 data-i18n="home_madefor">Made for</h2>
+      <div class="home-chips">
+        <span data-i18n="home_m1"></span><span data-i18n="home_m2"></span><span data-i18n="home_m3"></span>
+        <span data-i18n="home_m4"></span><span data-i18n="home_m5"></span><span data-i18n="home_m6"></span>
+      </div>
+    </section>
 
-        <div class="auth-tabs" id="authTabs" role="tablist">
-          <button type="button" id="tabLogin" role="tab" aria-selected="true">Log in</button>
-          <button type="button" id="tabSignup" role="tab" aria-selected="false">Sign up</button>
-        </div>
+    <section id="faq" class="home-faq">
+      <h2 data-i18n="home_faq">Questions</h2>
+      <details><summary data-i18n="home_q1"></summary><p data-i18n="home_a1"></p></details>
+      <details><summary data-i18n="home_q2"></summary><p data-i18n="home_a2"></p></details>
+      <details><summary data-i18n="home_q3"></summary><p data-i18n="home_a3"></p></details>
+      <details><summary data-i18n="home_q4"></summary><p data-i18n="home_a4"></p></details>
+      <details><summary data-i18n="home_q5"></summary><p data-i18n="home_a5"></p></details>
+    </section>
 
-        <!-- LOG IN -->
-        <form id="loginPanel" class="auth-panel" novalidate>
-          <label class="field">
-            <span>Email</span>
-            <input id="loginEmail" type="email" autocomplete="username" placeholder="you@example.com" required>
-          </label>
-          <label class="field">
-            <span>Password</span>
-            <input id="loginPassword" type="password" autocomplete="current-password" required>
-          </label>
-          <label class="checkbox-row">
-            <input id="loginRemember" type="checkbox" checked>
-            <span>Keep me signed in on this device</span>
-          </label>
-          <div id="loginError" class="form-error"></div>
-          <button id="loginSubmit" class="btn primary" type="submit">Log in</button>
-          <p class="auth-links">
-            <button type="button" id="forgotLink">Forgot your password?</button>
-            <button type="button" id="toSignupLink">Create an account</button>
-          </p>
-        </form>
-
-        <!-- SIGN UP -->
-        <form id="signupPanel" class="auth-panel hidden" novalidate>
-          <label class="field">
-            <span>Your name <small>shown on the calendar</small></span>
-            <input id="signupName" type="text" autocomplete="name" maxlength="40" placeholder="Ethan" required>
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input id="signupEmail" type="email" autocomplete="username" placeholder="you@example.com" required>
-          </label>
-          <label class="field">
-            <span>Password <small>8 characters or more</small></span>
-            <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required>
-          </label>
-          <label class="field">
-            <span>Calendar address <small>you can change it later</small></span>
-            <span class="slug-field">
-              <span class="slug-prefix" id="signupSlugPrefix">/</span>
-              <input id="signupSlug" type="text" maxlength="30" autocomplete="off" spellcheck="false" placeholder="ethan">
-            </span>
-          </label>
-          <label class="checkbox-row hidden" id="claimRow">
-            <input id="claimMain" type="checkbox">
-            <span>This site already has a calendar and it is mine <small>take it over with the admin password</small></span>
-          </label>
-          <label class="field hidden" id="claimField">
-            <span>Admin password</span>
-            <input id="claimPassword" type="password" autocomplete="off">
-          </label>
-          <div id="signupError" class="form-error"></div>
-          <button id="signupSubmit" class="btn primary" type="submit">Create my calendar</button>
-          <p class="auth-links">
-            <span></span>
-            <button type="button" id="toLoginLink">I already have an account</button>
-          </p>
-        </form>
-
-        <!-- FORGOT -->
-        <form id="forgotPanel" class="auth-panel hidden" novalidate>
-          <h2>Reset your password</h2>
-          <p>Enter your email and we will send a link to choose a new one.</p>
-          <label class="field">
-            <span>Email</span>
-            <input id="forgotEmail" type="email" autocomplete="username" required>
-          </label>
-          <div id="forgotError" class="form-error"></div>
-          <div id="forgotDone" class="auth-ok hidden"></div>
-          <button id="forgotSubmit" class="btn primary" type="submit">Send the link</button>
-          <p class="auth-links">
-            <span></span>
-            <button type="button" id="forgotBackLink">Back to log in</button>
-          </p>
-        </form>
-
-        <!-- RESET (from the email link) -->
-        <form id="resetPanel" class="auth-panel hidden" novalidate>
-          <h2>Choose a new password</h2>
-          <label class="field">
-            <span>New password <small>8 characters or more</small></span>
-            <input id="resetPassword" type="password" autocomplete="new-password" minlength="8" required>
-          </label>
-          <div id="resetError" class="form-error"></div>
-          <button id="resetSubmit" class="btn primary" type="submit">Save and log in</button>
-        </form>
-
-        <!-- VERIFYING (from the email link) -->
-        <div id="verifyPanel" class="auth-panel hidden">
-          <h2>Confirming your email…</h2>
-          <p id="verifyText">One moment.</p>
-          <div id="verifyError" class="form-error"></div>
-          <p class="auth-links hidden" id="verifyLinks">
-            <span></span>
-            <button type="button" id="verifyBackLink">Log in</button>
-          </p>
-        </div>
-
-        <!-- AFTER SIGN-UP -->
-        <div id="welcomePanel" class="auth-panel hidden">
-          <h2>Your calendar is ready</h2>
-          <div class="auth-ok">
-            <span id="welcomeText"></span>
-            <br>
-            <a id="welcomeOpen" class="btn primary" href="/">Open my calendar</a>
-          </div>
-          <p class="auth-links">
-            <span id="welcomeStatus"></span>
-            <button type="button" id="welcomeResend" class="hidden">Send the email again</button>
-          </p>
-        </div>
-
-      </aside>
-
-    </main>
+    <div class="home-ready">
+      <h2 data-i18n="home_ready">Ready when you are.</h2>
+      <p data-i18n="home_ready_d"></p>
+      <button id="readySignupBtn" class="btn primary" type="button" data-i18n="home_cta_signup">Create your calendar</button>
+    </div>
 
     <footer class="home-foot">
-      <span id="footNote"></span>
+      <p><span id="footSite"></span> · <span data-i18n="home_footer"></span></p>
+      <p id="footNote"></p>
     </footer>
 
+  </main>
+
+  <!-- THE WAY IN -->
+
+  <div id="authModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="auth-card" id="authCard">
+
+      <div class="auth-head">
+        <div class="auth-tabs" id="authTabs" role="tablist">
+          <button type="button" id="tabLogin" role="tab" aria-selected="true" data-i18n="auth_login">Log in</button>
+          <button type="button" id="tabSignup" role="tab" aria-selected="false" data-i18n="auth_signup">Sign up</button>
+        </div>
+        <button type="button" id="authClose" class="close-btn" data-i18n-title="close" aria-label="Close">×</button>
+      </div>
+
+      <!-- LOG IN -->
+      <form id="loginPanel" class="auth-panel" novalidate>
+        <label class="field">
+          <span data-i18n="auth_email">Email</span>
+          <input id="loginEmail" type="email" autocomplete="username" placeholder="you@example.com" required>
+        </label>
+        <label class="field">
+          <span data-i18n="auth_password">Password</span>
+          <input id="loginPassword" type="password" autocomplete="current-password" required>
+        </label>
+        <label class="checkbox-row">
+          <input id="loginRemember" type="checkbox" checked>
+          <span data-i18n="auth_keep">Keep me signed in on this device</span>
+        </label>
+        <div id="loginError" class="form-error"></div>
+        <button id="loginSubmit" class="btn primary" type="submit" data-i18n="auth_login_btn">Log in</button>
+        <p class="auth-links">
+          <button type="button" id="forgotLink" data-i18n="auth_forgot">Forgot your password?</button>
+          <button type="button" id="toSignupLink" data-i18n="auth_create">Create an account</button>
+        </p>
+      </form>
+
+      <!-- SIGN UP -->
+      <form id="signupPanel" class="auth-panel hidden" novalidate>
+        <label class="field">
+          <span><span data-i18n="auth_name">Your name</span> <small data-i18n="auth_name_hint">shown on the calendar</small></span>
+          <input id="signupName" type="text" autocomplete="name" maxlength="40" placeholder="Ethan" required>
+        </label>
+        <label class="field">
+          <span><span data-i18n="auth_calname">Calendar name</span> <small data-i18n="auth_calname_hint">the title at the top of your calendar; you can change it later</small></span>
+          <input id="signupTitle" type="text" maxlength="80" placeholder="Ethan's Tutoring Availability">
+        </label>
+        <label class="field">
+          <span data-i18n="auth_email">Email</span>
+          <input id="signupEmail" type="email" autocomplete="username" placeholder="you@example.com" required>
+        </label>
+        <label class="field">
+          <span><span data-i18n="auth_password">Password</span> <small data-i18n="auth_pw_hint">8 characters or more</small></span>
+          <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <label class="checkbox-row hidden" id="claimRow">
+          <input id="claimMain" type="checkbox">
+          <span><span data-i18n="auth_claim">This site already has a calendar and it is mine</span> <small data-i18n="auth_claim_hint">take it over with the admin password</small></span>
+        </label>
+        <label class="field hidden" id="claimField">
+          <span data-i18n="auth_admin_pw">Admin password</span>
+          <input id="claimPassword" type="password" autocomplete="off">
+        </label>
+        <div id="signupError" class="form-error"></div>
+        <button id="signupSubmit" class="btn primary" type="submit" data-i18n="auth_signup_btn">Create my calendar</button>
+        <p class="auth-links">
+          <span></span>
+          <button type="button" id="toLoginLink" data-i18n="auth_have">I already have an account</button>
+        </p>
+      </form>
+
+      <!-- FORGOT -->
+      <form id="forgotPanel" class="auth-panel hidden" novalidate>
+        <h2 data-i18n="auth_forgot_title">Reset your password</h2>
+        <p data-i18n="auth_forgot_d">Enter your email and we will send a link to choose a new one.</p>
+        <label class="field">
+          <span data-i18n="auth_email">Email</span>
+          <input id="forgotEmail" type="email" autocomplete="username" required>
+        </label>
+        <div id="forgotError" class="form-error"></div>
+        <div id="forgotDone" class="auth-ok hidden"></div>
+        <button id="forgotSubmit" class="btn primary" type="submit" data-i18n="auth_send_link">Send the link</button>
+        <p class="auth-links">
+          <span></span>
+          <button type="button" id="forgotBackLink" data-i18n="auth_back">Back to log in</button>
+        </p>
+      </form>
+
+      <!-- RESET (from the email link) -->
+      <form id="resetPanel" class="auth-panel hidden" novalidate>
+        <h2 data-i18n="auth_reset_title">Choose a new password</h2>
+        <label class="field">
+          <span><span data-i18n="auth_new_pw">New password</span> <small data-i18n="auth_pw_hint">8 characters or more</small></span>
+          <input id="resetPassword" type="password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <div id="resetError" class="form-error"></div>
+        <button id="resetSubmit" class="btn primary" type="submit" data-i18n="auth_save_login">Save and log in</button>
+      </form>
+
+      <!-- VERIFYING (from the email link) -->
+      <div id="verifyPanel" class="auth-panel hidden">
+        <h2 id="verifyTitle" data-i18n="auth_verifying">Confirming your email…</h2>
+        <p id="verifyText" data-i18n="auth_moment">One moment.</p>
+        <div id="verifyError" class="form-error"></div>
+        <p class="auth-links hidden" id="verifyLinks">
+          <span></span>
+          <button type="button" id="verifyBackLink" data-i18n="auth_login_btn">Log in</button>
+        </p>
+      </div>
+
+      <!-- AFTER SIGN-UP -->
+      <div id="welcomePanel" class="auth-panel hidden">
+        <h2 data-i18n="auth_ready">Your calendar is ready</h2>
+        <div class="auth-ok">
+          <span id="welcomeText"></span>
+          <br>
+          <a id="welcomeOpen" class="btn primary" href="/" data-i18n="auth_open">Open my calendar</a>
+        </div>
+        <p class="auth-links">
+          <span id="welcomeStatus"></span>
+          <button type="button" id="welcomeResend" class="hidden" data-i18n="auth_resend">Send the email again</button>
+        </p>
+      </div>
+
+    </div>
   </div>
 
   <script src="/session.js"></script>
+  <script src="/i18n.js"></script>
   <script>
     (function () {
 
       var $ = function (id) { return document.getElementById(id); };
+      var t = function (key, vars) { return window.I18N.t(key, vars); };
       var params = new URLSearchParams(window.location.search);
-      var site = { name: 'Calendar', claimed: true, mail: true };
+      var site = { name: 'Calendar', claimed: true, mail: true, mainSlug: null };
 
       /* ---------- theme, the same as on the calendar ---------- */
 
-      function renderThemeButton() {
+      function isDark() {
         var chosen = document.documentElement.getAttribute('data-theme');
-        var dark = chosen ? chosen === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        $('themeIcon').textContent = dark ? '☀' : '☾';
+        return chosen ? chosen === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      }
+      function renderThemeButton() {
+        $('themeIcon').textContent = isDark() ? '☀' : '☾';
       }
       $('themeBtn').addEventListener('click', function () {
-        var chosen = document.documentElement.getAttribute('data-theme');
-        var dark = chosen ? chosen === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        var next = dark ? 'light' : 'dark';
+        var next = isDark() ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
         try { localStorage.setItem('theme', next); } catch (e) {}
         renderThemeButton();
       });
       renderThemeButton();
 
-      /* ---------- panels ---------- */
+      /* ---------- language ---------- */
+
+      Object.keys(window.I18N.LANGUAGES).forEach(function (code) {
+        var option = document.createElement('option');
+        option.value = code;
+        option.textContent = window.I18N.LANGUAGES[code];
+        $('langSelect').appendChild(option);
+      });
+      function applyLanguage() {
+        window.I18N.apply();
+        $('langSelect').value = window.I18N.get();
+        $('langSelect').title = t('language');
+        $('step2Text').textContent = t('home_step2_d', { host: window.location.host });
+        $('footNote').textContent = site.claimed || !site.mainSlug ? '' : t('home_looking', { slug: site.mainSlug });
+        document.title = site.name;
+      }
+      $('langSelect').addEventListener('change', function () {
+        window.I18N.set($('langSelect').value);
+        applyLanguage();
+      });
+      window.I18N.set(window.I18N.detect('en'), false);
+      applyLanguage();
+
+      /* ---------- the dialog and its panels ---------- */
 
       var PANELS = ['loginPanel', 'signupPanel', 'forgotPanel', 'resetPanel', 'verifyPanel', 'welcomePanel'];
 
       function show(panel) {
         PANELS.forEach(function (id) { $(id).classList.toggle('hidden', id !== panel); });
         var tabbed = panel === 'loginPanel' || panel === 'signupPanel';
-        $('authTabs').classList.toggle('hidden', !tabbed);
+        $('authTabs').style.visibility = tabbed ? 'visible' : 'hidden';
         $('tabLogin').setAttribute('aria-selected', panel === 'loginPanel' ? 'true' : 'false');
         $('tabSignup').setAttribute('aria-selected', panel === 'signupPanel' ? 'true' : 'false');
+        $('authModal').classList.remove('hidden');
         var first = $(panel).querySelector('input');
         if (first) setTimeout(function () { first.focus(); }, 30);
       }
 
-      function scrollToCard() {
-        $('authCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      function closeDialog() {
+        $('authModal').classList.add('hidden');
       }
 
       $('tabLogin').addEventListener('click', function () { show('loginPanel'); });
       $('tabSignup').addEventListener('click', function () { show('signupPanel'); });
-      $('topLoginBtn').addEventListener('click', function () { show('loginPanel'); scrollToCard(); });
-      $('topSignupBtn').addEventListener('click', function () { show('signupPanel'); scrollToCard(); });
+      $('topLoginBtn').addEventListener('click', function () { show('loginPanel'); });
+      $('heroLoginBtn').addEventListener('click', function () { show('loginPanel'); });
+      $('topSignupBtn').addEventListener('click', function () { show('signupPanel'); });
+      $('heroSignupBtn').addEventListener('click', function () { show('signupPanel'); });
+      $('readySignupBtn').addEventListener('click', function () { show('signupPanel'); });
       $('toSignupLink').addEventListener('click', function () { show('signupPanel'); });
       $('toLoginLink').addEventListener('click', function () { show('loginPanel'); });
       $('forgotLink').addEventListener('click', function () { show('forgotPanel'); });
       $('forgotBackLink').addEventListener('click', function () { show('loginPanel'); });
       $('verifyBackLink').addEventListener('click', function () { show('loginPanel'); });
+      $('authClose').addEventListener('click', closeDialog);
+      $('authModal').addEventListener('click', function (event) {
+        if (event.target === $('authModal')) closeDialog();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeDialog();
+      });
 
       /* ---------- the API ---------- */
 
@@ -578,7 +923,7 @@
         $('loginError').textContent = '';
         var email = $('loginEmail').value.trim();
         var password = $('loginPassword').value;
-        if (!email || !password) { $('loginError').textContent = 'Please enter your email and password.'; return; }
+        if (!email || !password) { $('loginError').textContent = t('auth_need_both'); return; }
         busy($('loginSubmit'), true);
         call('/login', { email: email, password: password }).then(function (data) {
           arrive(data, $('loginRemember').checked);
@@ -590,21 +935,10 @@
 
       /* ---------- sign up ---------- */
 
-      function slugify(text) {
-        return String(text || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
-          .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
-      }
-
-      var slugTouched = false;
-      $('signupName').addEventListener('input', function () {
-        if (!slugTouched) $('signupSlug').value = slugify($('signupName').value);
-      });
-      $('signupSlug').addEventListener('input', function () {
-        slugTouched = $('signupSlug').value !== '';
-      });
       $('claimMain').addEventListener('change', function () {
         $('claimField').classList.toggle('hidden', !$('claimMain').checked);
-        $('signupSubmit').textContent = $('claimMain').checked ? 'Take over my calendar' : 'Create my calendar';
+        $('signupSubmit').textContent = t($('claimMain').checked ? 'auth_claim_btn' : 'auth_signup_btn');
+        $('signupTitle').closest('.field').classList.toggle('hidden', $('claimMain').checked);
       });
 
       $('signupPanel').addEventListener('submit', function (event) {
@@ -612,17 +946,17 @@
         $('signupError').textContent = '';
         var body = {
           displayName: $('signupName').value.trim(),
+          title: $('signupTitle').value.trim(),
           email: $('signupEmail').value.trim(),
-          password: $('signupPassword').value,
-          slug: $('signupSlug').value.trim().toLowerCase()
+          password: $('signupPassword').value
         };
-        if (!body.displayName) { $('signupError').textContent = 'Please enter your name.'; return; }
-        if (!body.email) { $('signupError').textContent = 'Please enter your email.'; return; }
-        if (body.password.length < 8) { $('signupError').textContent = 'Use at least 8 characters for the password.'; return; }
+        if (!body.displayName) { $('signupError').textContent = t('auth_need_name'); return; }
+        if (!body.email) { $('signupError').textContent = t('auth_need_email'); return; }
+        if (body.password.length < 8) { $('signupError').textContent = t('auth_need_pw'); return; }
         if ($('claimMain').checked) {
           body.adminPassword = $('claimPassword').value;
-          if (!body.adminPassword) { $('signupError').textContent = 'Enter the admin password to take over the calendar.'; return; }
-          delete body.slug;
+          if (!body.adminPassword) { $('signupError').textContent = t('auth_need_admin'); return; }
+          delete body.title;
         }
         busy($('signupSubmit'), true);
         call('/signup', body).then(function (data) {
@@ -633,9 +967,10 @@
             return;
           }
           currentSession = session;
-          $('welcomeText').innerHTML = (data.verification === 'sent'
-            ? 'We sent a confirmation link to <strong>' + escapeHtml(data.account.email) + '</strong>. Your calendar is at <code>' + escapeHtml(data.account.url) + '</code>. You can set it up now; it goes public once you confirm your email.'
-            : 'Your calendar is at <code>' + escapeHtml(data.account.url) + '</code>. The confirmation email could not be sent right now; you can ask for it again from your calendar.');
+          $('welcomeText').innerHTML = t(data.verification === 'sent' ? 'auth_welcome_sent' : 'auth_welcome_failed', {
+            email: '<strong>' + escapeHtml(data.account.email) + '</strong>',
+            url: '<code>' + escapeHtml(data.account.url) + '</code>'
+          });
           $('welcomeOpen').href = '/' + data.account.slug;
           $('welcomeResend').classList.remove('hidden');
           show('welcomePanel');
@@ -648,9 +983,9 @@
 
       var currentSession = null;
       $('welcomeResend').addEventListener('click', function () {
-        $('welcomeStatus').textContent = 'Sending…';
+        $('welcomeStatus').textContent = t('auth_sending');
         call('/resend', {}, currentSession).then(function (data) {
-          $('welcomeStatus').textContent = data.verification === 'sent' ? 'Sent. Check your inbox.' : data.verification === 'done' ? 'Already confirmed.' : 'It could not be sent right now.';
+          $('welcomeStatus').textContent = t(data.verification === 'sent' ? 'auth_sent' : data.verification === 'done' ? 'auth_already' : 'auth_not_sent');
         }).catch(function (error) {
           $('welcomeStatus').textContent = error.message;
         });
@@ -661,15 +996,21 @@
       $('forgotPanel').addEventListener('submit', function (event) {
         event.preventDefault();
         $('forgotError').textContent = '';
+        $('forgotDone').classList.add('hidden');
         var email = $('forgotEmail').value.trim();
-        if (!email) { $('forgotError').textContent = 'Please enter your email.'; return; }
+        if (!email) { $('forgotError').textContent = t('auth_need_email'); return; }
         busy($('forgotSubmit'), true);
         call('/forgot', { email: email }).then(function (data) {
+          /*
+            The field stays: a typo can be corrected and the link
+            sent again.
+          */
           $('forgotDone').textContent = data.message;
           $('forgotDone').classList.remove('hidden');
-          $('forgotSubmit').classList.add('hidden');
+          $('forgotSubmit').textContent = t('auth_send_again');
         }).catch(function (error) {
           $('forgotError').textContent = error.message;
+        }).then(function () {
           busy($('forgotSubmit'), false);
         });
       });
@@ -678,7 +1019,7 @@
         event.preventDefault();
         $('resetError').textContent = '';
         var password = $('resetPassword').value;
-        if (password.length < 8) { $('resetError').textContent = 'Use at least 8 characters.'; return; }
+        if (password.length < 8) { $('resetError').textContent = t('auth_need_pw'); return; }
         busy($('resetSubmit'), true);
         call('/reset', { token: params.get('reset'), password: password }).then(function (data) {
           arrive(data, true);
@@ -693,12 +1034,12 @@
       function verify(token) {
         show('verifyPanel');
         call('/verify', { token: token }).then(function (data) {
-          $('verifyPanel').querySelector('h2').textContent = 'Email confirmed';
-          $('verifyText').textContent = 'Your calendar is public now. Taking you there…';
+          $('verifyTitle').textContent = t('auth_verified');
+          $('verifyText').textContent = t('auth_verified_d');
           window.CalendarSession.save({ token: data.token, expiresAt: data.expiresAt, slug: data.account.slug }, true);
           setTimeout(function () { window.location.href = '/' + data.account.slug; }, 800);
         }).catch(function (error) {
-          $('verifyPanel').querySelector('h2').textContent = 'That link did not work';
+          $('verifyTitle').textContent = t('auth_link_failed');
           $('verifyText').textContent = '';
           $('verifyError').textContent = error.message;
           $('verifyLinks').classList.remove('hidden');
@@ -713,12 +1054,14 @@
 
       call('/site').then(function (data) {
         site = data;
-        document.title = data.name;
         $('siteName').textContent = data.name;
-        $('exampleUrl').textContent = window.location.host + '/you';
-        $('signupSlugPrefix').textContent = window.location.host + '/';
+        $('footSite').textContent = data.name;
         $('claimRow').classList.toggle('hidden', data.claimed);
-        $('footNote').textContent = data.claimed || !data.mainSlug ? '' : 'Looking for the calendar that was here before? It is at /' + data.mainSlug + '.';
+        if (data.mainSlug) {
+          $('exampleLink').href = '/' + data.mainSlug;
+          $('exampleLink').classList.remove('hidden');
+        }
+        applyLanguage();
       }).catch(function () {});
 
       if (params.has('verify')) {
@@ -737,6 +1080,10 @@
         show('forgotPanel');
         return;
       }
+      if (params.has('login')) {
+        show('loginPanel');
+        return;
+      }
 
       /*
         Already signed in: straight to the calendar. The session is
@@ -748,10 +1095,7 @@
           window.location.replace('/' + data.account.slug);
         }).catch(function (error) {
           if (error.status === 401) window.CalendarSession.clear();
-          show('loginPanel');
         });
-      } else {
-        show('loginPanel');
       }
 
     })();

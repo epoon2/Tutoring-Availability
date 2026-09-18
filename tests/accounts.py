@@ -32,14 +32,24 @@ async def main():
 
         # ---- the home page
         await page.goto(BASE + "/", wait_until="networkidle"); await page.wait_for_timeout(300)
-        check("the home page opens on Log in", not await hidden(page, "#loginPanel") and await hidden(page, "#signupPanel"))
-        check("and offers to take over the first calendar, which nobody owns yet", not await hidden(page, "#claimRow"))
-        check("the footer points to the first calendar's address", "/ethan" in (await page.text_content("#footNote")))
+        check("the home page opens with the dialog closed and a sticky header", await hidden(page, "#authModal")
+              and await page.evaluate("getComputedStyle(document.querySelector('.home-top')).position") == "sticky")
+        check("it is a long page with sections", await page.evaluate("document.body.scrollHeight") > 2000
+              and await page.evaluate("['how','features','visitors','faq'].every(id => document.getElementById(id))"))
+        check("the footer points to the first calendar's address, and the hero to a live one", "/ethan" in (await page.text_content("#footNote"))
+              and await page.get_attribute("#exampleLink", "href") == "/ethan")
+        await page.click("#topLoginBtn"); await page.wait_for_timeout(200)
+        check("Log in opens the dialog on Log in", not await hidden(page, "#authModal") and not await hidden(page, "#loginPanel") and await hidden(page, "#signupPanel"))
+        await page.keyboard.press("Escape"); await page.wait_for_timeout(100)
+        check("Escape closes it", await hidden(page, "#authModal"))
+        await page.click("#heroSignupBtn"); await page.wait_for_timeout(200)
+        check("Create your calendar opens it on Sign up, offering to take over the first calendar, which nobody owns yet",
+              not await hidden(page, "#signupPanel") and not await hidden(page, "#claimRow"))
+        check("sign-up asks for a calendar name, not an address", await page.evaluate("!!document.getElementById('signupTitle') && !document.getElementById('signupSlug')"))
 
         # ---- sign up
-        await page.click("#tabSignup"); await page.wait_for_timeout(100)
         await page.fill("#signupName", "Maya Chen")
-        check("the address follows the name", await page.input_value("#signupSlug") == "maya-chen")
+        await page.fill("#signupTitle", "Maya's Piano Lessons")
         await page.fill("#signupEmail", "maya@example.com")
         await page.fill("#signupPassword", "maya-pass-1")
         await page.click("#signupSubmit"); await page.wait_for_timeout(800)
@@ -51,7 +61,7 @@ async def main():
 
         await page.click("#welcomeOpen"); await page.wait_for_load_state("networkidle"); await page.wait_for_timeout(800)
         check("Open my calendar lands on /maya-chen in admin mode", page.url.endswith("/maya-chen") and not await hidden(page, "#adminBanner"))
-        check("with a fresh title and the chip", await page.text_content("#portalTitle") == "Maya Chen's Calendar" and await page.text_content("#profileName") == "Maya Chen")
+        check("with the calendar name as its title, the address from her name, and the chip", await page.text_content("#portalTitle") == "Maya's Piano Lessons" and await page.text_content("#profileName") == "Maya Chen")
         check("and a notice that the email is not confirmed", not await hidden(page, "#verifyNotice") and "maya@example.com" in (await page.text_content("#verifyNoticeText")))
 
         # ---- the calendar is not public until confirmed
@@ -64,7 +74,7 @@ async def main():
         await confirm.goto(link, wait_until="networkidle"); await confirm.wait_for_timeout(1500)
         check("the link confirms the email and goes to the calendar, signed in", confirm.url.endswith("/maya-chen") and not await hidden(confirm, "#adminBanner"))
         await visitor.reload(wait_until="networkidle"); await visitor.wait_for_timeout(500)
-        check("now the visitor sees it", not await visitor.evaluate("document.body.classList.contains('calendar-missing')") and await visitor.text_content("#portalTitle") == "Maya Chen's Calendar")
+        check("now the visitor sees it", not await visitor.evaluate("document.body.classList.contains('calendar-missing')") and await visitor.text_content("#portalTitle") == "Maya's Piano Lessons")
         await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
         check("and the notice is gone on the first device", await hidden(page, "#verifyNotice"))
 
@@ -92,6 +102,36 @@ async def main():
         check("the right one opens admin mode", await hidden(page, "#loginModal") and not await hidden(page, "#adminBanner"))
         await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
         check("and a reload stays signed in", not await hidden(page, "#adminBanner"))
+
+        # ---- change password
+        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        check("the menu offers Change password to an account", not await hidden(page, "#changePasswordBtn"))
+        await page.click("#changePasswordBtn"); await page.wait_for_timeout(300)
+        await page.fill("#currentPasswordInput", "wrong-pass"); await page.fill("#newPasswordInput", "maya-pass-2"); await page.fill("#newPasswordAgainInput", "maya-pass-2")
+        await page.click("#savePasswordBtn"); await page.wait_for_timeout(500)
+        check("the current password must be right", "not right" in (await page.text_content("#passwordError")))
+        await page.fill("#currentPasswordInput", "maya-pass-1"); await page.fill("#newPasswordAgainInput", "maya-pass-3")
+        await page.click("#savePasswordBtn"); await page.wait_for_timeout(300)
+        check("and the new one typed twice the same", "do not match" in (await page.text_content("#passwordError")))
+        await page.fill("#newPasswordAgainInput", "maya-pass-2")
+        await page.click("#savePasswordBtn"); await page.wait_for_timeout(800)
+        check("then it changes, and this device stays signed in", await hidden(page, "#passwordModal") and "Password changed" in (await page.text_content("#status")))
+        await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
+        check("even across a reload", not await hidden(page, "#adminBanner"))
+        await confirm.reload(wait_until="networkidle"); await confirm.wait_for_timeout(600)
+        check("while the other device is signed out", await hidden(confirm, "#adminBanner") and not await hidden(confirm, "#adminBtn"))
+
+        # ---- forgot password: a typo can be fixed
+        await page.goto(BASE + "/?forgot", wait_until="networkidle"); await page.wait_for_timeout(300)
+        check("?forgot opens the reset form", not await hidden(page, "#forgotPanel"))
+        await page.fill("#forgotEmail", "mya@example.com")
+        await page.click("#forgotSubmit"); await page.wait_for_timeout(600)
+        check("an unknown email is refused plainly", "no account" in (await page.text_content("#forgotError")) and await page.is_editable("#forgotEmail"))
+        await page.fill("#forgotEmail", "maya@example.com")
+        await page.click("#forgotSubmit"); await page.wait_for_timeout(800)
+        check("the corrected one gets the link, and the field stays for another go", "maya@example.com" in (await page.text_content("#forgotDone"))
+              and await page.is_editable("#forgotEmail") and (await page.text_content("#forgotSubmit")).strip() == "Send it again")
+        check("the reset email went out", any("Reset" in m["subject"] for m in sent_mail()))
 
         # ---- the home page sends a signed-in person to their calendar
         await page.goto(BASE + "/", wait_until="networkidle"); await page.wait_for_timeout(800)

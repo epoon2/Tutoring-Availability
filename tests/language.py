@@ -79,6 +79,14 @@ async def main():
         check("the editor is in French", await text(page, "#eventModalTitle") == "Ajouter un événement" if await page.evaluate("!!document.getElementById('eventModalTitle')") else await page.evaluate("[...document.querySelectorAll('#eventModal h2')].some(h => h.textContent.trim() === 'Ajouter un événement')"))
         await page.evaluate("document.querySelector('#eventModal [data-close]').click()")
 
+        # ---- the home page follows too
+        await page.goto(BASE + "/?login", wait_until="networkidle"); await page.wait_for_timeout(400)
+        check("the home page reads in the device's language (French)", "adresse" in (await text(page, "h1")).lower() and await text(page, "#topSignupBtn") == "S’inscrire", await text(page, "h1"))
+        check("with the dialog open on Log in", await page.evaluate("!document.getElementById('authModal').classList.contains('hidden')") and await text(page, "#loginSubmit") == "Se connecter")
+        await page.select_option("#langSelect", "ko"); await page.wait_for_timeout(300)
+        check("and its menu switches it", await text(page, "#topSignupBtn") == "가입" and "링크" in await text(page, "h1"))
+        await page.select_option("#langSelect", "fr"); await page.wait_for_timeout(200)
+
         # ---- a Vietnamese default: a German browser gets it, a Korean browser gets Korean
         german = await (await b.new_context(viewport={"width": 1300, "height": 900}, locale="de-DE")).new_page()
         await german.goto(CAL, wait_until="networkidle"); await german.wait_for_timeout(500)
