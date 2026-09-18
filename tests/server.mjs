@@ -131,7 +131,7 @@ createServer(async (req, res) => {
   }
   // static; a single-segment path with no file behind it is a calendar
   // address and gets calendar.html, as the Netlify redirect does
-  let path = url.pathname === '/' ? '/index.html' : url.pathname;
+  let path = url.pathname === '/' ? '/index.html' : url.pathname === '/dashboard' ? '/dashboard.html' : url.pathname;
   let file = normalize(join(ROOT, path));
   if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
   try {

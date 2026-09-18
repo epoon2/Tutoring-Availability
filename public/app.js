@@ -70,6 +70,7 @@
       null,
 
 
+
     /*
       Which segmented time control has its
       quarter-hour list open, so a click
@@ -700,6 +701,7 @@
           openChangePassword();
         }
       );
+
     $('savePasswordBtn')
       .addEventListener(
         'click',
@@ -1406,11 +1408,13 @@
       Every request names the calendar the page is showing; with no
       address in the URL it is the first calendar.
     */
-    if ( state.calendarSlug ) {
+    const target =
+      state.calendarSlug;
+    if ( target ) {
       path +=
         ( path.includes( '?' ) ? '&' : '?' ) +
         'calendar=' +
-        encodeURIComponent( state.calendarSlug );
+        encodeURIComponent( target );
     }
 
 
@@ -3192,7 +3196,7 @@
       }
 
 
-      state.events =
+            state.events =
         data.events ||
         [];
 
@@ -3459,6 +3463,13 @@
         'hidden',
         !( state.session && state.account && !ownsThisCalendar() )
       );
+    $('dashboardLink')
+      .classList
+      .toggle(
+        'hidden',
+        !( state.session && state.account )
+      );
+
     if ( state.account ) {
       $('myCalendarLink').href =
         '/' + state.account.slug;
@@ -5403,11 +5414,10 @@
       );
 
 
-    card.append(
+        card.append(
       titleElement,
       timeElement
     );
-
 
     /*
       Admin interaction.
@@ -13607,12 +13617,13 @@
 
 
   function ownsThisCalendar() {
-    return Boolean(
-      state.session &&
-      state.account &&
-      state.calendar &&
-      state.account.slug === state.calendar.slug
-    );
+    if ( !state.session || !state.account || !state.calendar ) {
+      return false;
+    }
+    if ( typeof state.calendar.owned === 'boolean' ) {
+      return state.calendar.owned;
+    }
+    return state.account.slug === state.calendar.slug;
   }
 
 
@@ -13621,6 +13632,7 @@
       null;
     state.account =
       null;
+
     window.CalendarSession.clear();
   }
 

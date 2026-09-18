@@ -209,6 +209,7 @@ export async function rateLimit(store, bucket, who, limits = RATE_LIMITS, now = 
 export function slugify(text) {
   return String(text || "")
     .toLowerCase()
+    .replace(/['\u2019]/g, "")
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
@@ -227,7 +228,7 @@ export function slugIsValid(slug) {
 export const RESERVED_SLUGS = new Set([
   "api", "admin", "login", "signup", "sign-up", "signin", "sign-in", "logout", "verify", "reset",
   "settings", "home", "index", "calendar", "calendars", "app", "static", "assets", "img", "images",
-  "feed", "help", "about", "terms", "privacy", "www", "netlify", "new", "me", "account"
+  "feed", "help", "about", "terms", "privacy", "www", "netlify", "new", "me", "account", "dashboard", "calendars", "accounts"
 ]);
 
 /*

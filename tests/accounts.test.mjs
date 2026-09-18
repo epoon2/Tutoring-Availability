@@ -242,6 +242,24 @@ ok('and at the new one', feed.status === 200);
 feed = await ics(mayaFeed.replace(/\/[A-Za-z0-9_-]+\/maya\.ics$/, '/wrong-token-wrong-token-wrong/maya.ics'));
 ok('a wrong token is a plain 404', feed.status === 404);
 
+// ---- more calendars per account, and the master
+r = await call('GET', '/me', { 'x-session': mayaNow });
+ok('/me lists the account\'s calendars: one so far, the primary', r.data.calendars.length === 1 && r.data.calendars[0].slug === 'maya' && r.data.calendars[0].primary === true && r.data.account.calendarCount === 1, JSON.stringify(r.data.calendars));
+r = await call('POST', '/calendars', { 'x-session': mayaNow }, { title: "Maya's Piano Lessons" });
+ok('a second calendar is made from a name, at an address from it', r.status === 201 && r.data.calendar.slug === 'mayas-piano-lessons' && r.data.calendars.length === 2, JSON.stringify(r.data));
+r = await call('GET', '/events' + week + '&calendar=mayas-piano-lessons', { 'x-session': mayaNow });
+ok('and she is its admin, it is live since her email is confirmed, with her name on it', r.data.mode === 'admin' && r.data.calendar.owned === true && r.data.calendar.live === true && r.data.config.portalTitle === "Maya's Piano Lessons" && r.data.config.tutorName === 'Maya Chen');
+r = await call('POST', '/events?calendar=mayas-piano-lessons', { 'x-session': mayaNow }, { type: 'BLOCKED', title: 'Piano - Kai', start: '2026-09-10T15:00', end: '2026-09-10T16:00', recurrence: null });
+ok('she can write to it', r.status === 200);
+r = await call('DELETE', '/calendars/ethan', { 'x-session': mayaNow });
+ok("she cannot delete the first calendar", r.status === 400 || r.status === 401);
+r = await call('DELETE', '/calendars/mayas-piano-lessons', { 'x-session': mayaNow });
+ok('she can delete her second calendar', r.status === 200 && r.data.calendars.length === 1, JSON.stringify(r.data));
+r = await call('GET', '/events' + week + '&calendar=mayas-piano-lessons', { 'x-session': mayaNow });
+ok('and it is gone', r.status === 404);
+r = await call('DELETE', '/calendars/maya', { 'x-session': mayaNow });
+ok('but not her last one', r.status === 400 && /only calendar/.test(r.data.error));
+
 fake.close();
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\naccounts: all ${ran} checks passed`);
 process.exit(fails.length ? 1 : 0);

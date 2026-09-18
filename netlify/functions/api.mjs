@@ -233,7 +233,9 @@ export default async (req) => {
       route === "/resend" ||
       route === "/forgot" ||
       route === "/reset" ||
-      route === "/account/password"
+      route === "/account/password" ||
+      route === "/calendars" ||
+      route.startsWith( "/calendars/" )
     ) {
       activeCalendar =
         { id: MAIN_CALENDAR_ID, slug: null };
@@ -558,7 +560,9 @@ export default async (req) => {
             activeCalendar.id !== MAIN_CALENDAR_ID,
           live:
             activeCalendar.id === MAIN_CALENDAR_ID ||
-            Boolean( activeRecord.live )
+            Boolean( activeRecord.live ),
+          owned:
+            ownsActiveCalendar()
         },
 
         session:
@@ -2227,7 +2231,7 @@ async function handleAccountRoute(
   url,
   store
 ) {
-  if ( req.method !== "POST" && route !== "/me" && route !== "/site" ) {
+  if ( req.method !== "POST" && req.method !== "DELETE" && route !== "/me" && route !== "/site" ) {
     return null;
   }
   const origin =
@@ -2351,9 +2355,7 @@ async function handleAccountRoute(
         ...( fresh.notificationEmail ? {} : { notificationEmail: email } )
       });
     } else {
-      const feedToken =
-        crypto.randomBytes( 24 ).toString( "base64url" );
-      await store.setJSON( `cal/${ calendarId }/${ SETTINGS_KEY }`, {
+      await writeCalendarRecord( store, calendarId, {
         ownerId:
           user.id,
         slug,
@@ -2362,17 +2364,123 @@ async function handleAccountRoute(
         notificationEmail:
           email,
         live:
-          false,
-        feedToken:
-          feedToken,
-        createdAt:
-          new Date().toISOString()
+          false
       });
-      await store.setJSON( `feed/${ feedToken }`, calendarId );
     }
+    await addOwnedCalendar( store, user.id, calendarId );
     const verification =
       await sendVerification( store, user, origin );
     return answer( user, { verification }, 201 );
+  }
+
+  /*
+    MORE CALENDARS
+
+    POST   /calendars          a new calendar for the signed-in account
+    DELETE /calendars/<slug>   one of its calendars, everything in it
+    GET    /me                 (below) lists them
+  */
+  if ( route === "/calendars" && req.method === "POST" ) {
+    if ( !activeUser ) {
+      fail( "Please log in.", 401 );
+    }
+    await limited( "signup", `user:${ activeUser.id }` );
+    const body =
+      await readBody();
+    const title =
+      String( body.title || "" ).trim().slice( 0, SETTINGS_LIMITS.title );
+    if ( !title ) {
+      bad( "Please give the calendar a name." );
+    }
+    const calendarId =
+      crypto.randomUUID();
+    const wanted =
+      slugify( body.slug || title ) || "calendar";
+    if ( body.slug && !slugIsValid( wanted ) ) {
+      bad( "An address is 3 to 30 letters, numbers and dashes, and cannot be a word the site uses itself." );
+    }
+    if ( body.slug && await calendarForSlug( store, wanted ) ) {
+      bad( "That address is taken. Please choose another." );
+    }
+    const slug =
+      await claimSlug( store, slugIsValid( wanted ) ? wanted : "calendar", calendarId );
+    await writeCalendarRecord( store, calendarId, {
+      ownerId:
+        activeUser.id,
+      slug,
+      title,
+      displayName:
+        activeUser.displayName,
+      notificationEmail:
+        activeUser.email,
+      live:
+        Boolean( activeUser.verifiedAt )
+    });
+    await addOwnedCalendar( store, activeUser.id, calendarId );
+    return json({
+      ok:
+        true,
+      calendar:
+        { slug, title, url: `${ origin }/${ slug }` },
+      calendars:
+        await ownedCalendars( store, activeUser, origin )
+    }, 201 );
+  }
+
+  if ( route.startsWith( "/calendars/" ) && req.method === "DELETE" ) {
+    if ( !activeUser ) {
+      fail( "Please log in.", 401 );
+    }
+    const slug =
+      decodeURIComponent( route.slice( "/calendars/".length ) ).toLowerCase();
+    const calendarId =
+      await calendarForSlug( store, slug );
+    if ( !calendarId ) {
+      fail( "There is no calendar at that address.", 404 );
+    }
+    if ( calendarId === MAIN_CALENDAR_ID ) {
+      fail( "The site's first calendar cannot be deleted.", 400 );
+    }
+    const record =
+      await store.get( `cal/${ calendarId }/${ SETTINGS_KEY }`, { type: "json", consistency: "strong" } ) || {};
+    if ( record.ownerId !== activeUser.id ) {
+      fail( "This is not your calendar.", 401 );
+    }
+    const ownerId =
+      record.ownerId;
+    const owned =
+      ownerId ? await ownedCalendarIds( store, ownerId ) : [];
+    if ( ownerId === activeUser.id && owned.length <= 1 ) {
+      fail( "This is your only calendar. Make another before deleting it.", 400 );
+    }
+    for ( const name of [ EVENTS_KEY, LEGACY_EVENTS_KEY, REQUESTS_KEY, HISTORY_KEY, SETTINGS_KEY ] ) {
+      await store.delete( `cal/${ calendarId }/${ name }` );
+    }
+    await store.delete( `slug/${ slug }` );
+    if ( record.feedToken ) {
+      await store.delete( `feed/${ record.feedToken }` );
+    }
+    if ( ownerId ) {
+      await store.setJSON( `owner/${ ownerId }`, owned.filter( (id) => id !== calendarId ) );
+      const owner =
+        await readUser( store, ownerId );
+      if ( owner && owner.calendarId === calendarId ) {
+        owner.calendarId =
+          owned.find( (id) => id !== calendarId ) || null;
+        await writeUser( store, owner );
+      }
+    }
+    try {
+      await purgeCache({ tags: [ `cal-${ calendarId }` ] });
+    } catch ( error ) {
+      console.error( "Cache purge failed", error );
+    }
+    return json({
+      ok:
+        true,
+      calendars:
+        await ownedCalendars( store, activeUser, origin )
+    });
   }
 
   if ( route === "/login" ) {
@@ -2404,7 +2512,9 @@ async function handleAccountRoute(
       ok:
         true,
       account:
-        await accountSummary( store, activeUser, origin )
+        await accountSummary( store, activeUser, origin ),
+      calendars:
+        await ownedCalendars( store, activeUser, origin )
     });
   }
 
@@ -2423,7 +2533,7 @@ async function handleAccountRoute(
       user.verifiedAt =
         new Date().toISOString();
       await writeUser( store, user );
-      await publishCalendar( store, user.calendarId );
+      await publishAll( store, user.id );
     }
     return answer( user );
   }
@@ -2510,7 +2620,7 @@ async function handleAccountRoute(
     if ( !user.verifiedAt ) {
       user.verifiedAt =
         new Date().toISOString();
-      await publishCalendar( store, user.calendarId );
+      await publishAll( store, user.id );
     }
     await writeUser( store, user );
     return answer( user );
@@ -2654,6 +2764,8 @@ async function accountSummary(
 ) {
   const slug =
     await slugOfCalendar( store, user.calendarId );
+  const owned =
+    await ownedCalendarIds( store, user.id );
   return {
     email:
       user.email,
@@ -2663,10 +2775,116 @@ async function accountSummary(
       Boolean( user.verifiedAt ),
     slug,
     url:
-      `${ origin }/${ slug }`
+      `${ origin }/${ slug }`,
+    calendarCount:
+      owned.length
   };
 }
 
+
+/*
+  CALENDARS PER ACCOUNT
+
+  An account owns one calendar at sign-up and any number after. The
+  list lives under owner/<userId>; the first calendar an account got
+  stays user.calendarId, which is where its links point. Accounts made
+  before there was a list get one the first time it is asked for.
+*/
+async function ownedCalendarIds(
+  store,
+  userId
+) {
+  const listed =
+    await store.get( `owner/${ userId }`, { type: "json", consistency: "strong" } );
+  if ( Array.isArray( listed ) ) {
+    return listed;
+  }
+  const user =
+    await readUser( store, userId );
+  const seed =
+    user && user.calendarId ? [ user.calendarId ] : [];
+  await store.setJSON( `owner/${ userId }`, seed );
+  return seed;
+}
+
+async function addOwnedCalendar(
+  store,
+  userId,
+  calendarId
+) {
+  const listed =
+    await ownedCalendarIds( store, userId );
+  if ( !listed.includes( calendarId ) ) {
+    await store.setJSON( `owner/${ userId }`, [ ...listed, calendarId ] );
+  }
+}
+
+async function calendarRecordOf(
+  store,
+  calendarId
+) {
+  const key =
+    calendarId === MAIN_CALENDAR_ID
+      ? SETTINGS_KEY
+      : `cal/${ calendarId }/${ SETTINGS_KEY }`;
+  return await store.get( key, { type: "json", consistency: "strong" } ) || {};
+}
+
+/*
+  What the page needs about each of an account's calendars: address,
+  title, colors, whether it is public.
+*/
+async function ownedCalendars(
+  store,
+  user,
+  origin
+) {
+  const out =
+    [];
+  for ( const id of await ownedCalendarIds( store, user.id ) ) {
+    const record =
+      await calendarRecordOf( store, id );
+    const settings =
+      settingsFrom( record );
+    const slug =
+      id === MAIN_CALENDAR_ID ? await ensureMainSlug( store ) : record.slug;
+    if ( !slug ) {
+      continue;
+    }
+    out.push({
+      slug,
+      title:
+        settings.title,
+      colors:
+        { ...settings.colors },
+      labels:
+        { ...settings.labels },
+      live:
+        id === MAIN_CALENDAR_ID || Boolean( record.live ),
+      primary:
+        id === user.calendarId,
+      url:
+        `${ origin }/${ slug }`
+    });
+  }
+  return out;
+}
+
+async function writeCalendarRecord(
+  store,
+  calendarId,
+  record
+) {
+  const feedToken =
+    crypto.randomBytes( 24 ).toString( "base64url" );
+  await store.setJSON( `cal/${ calendarId }/${ SETTINGS_KEY }`, {
+    ...record,
+    feedToken,
+    createdAt:
+      new Date().toISOString()
+  });
+  await store.setJSON( `feed/${ feedToken }`, calendarId );
+}
 
 async function slugOfCalendar(
   store,
@@ -2699,7 +2917,7 @@ async function publishCalendar(
   store,
   calendarId
 ) {
-  if ( calendarId === MAIN_CALENDAR_ID ) {
+  if ( calendarId === MAIN_CALENDAR_ID || !calendarId ) {
     return;
   }
   const key =
@@ -2707,6 +2925,15 @@ async function publishCalendar(
   const record =
     await store.get( key, { type: "json", consistency: "strong" } ) || {};
   await store.setJSON( key, { ...record, live: true } );
+}
+
+async function publishAll(
+  store,
+  userId
+) {
+  for ( const id of await ownedCalendarIds( store, userId ) ) {
+    await publishCalendar( store, id );
+  }
 }
 
 
@@ -2725,7 +2952,7 @@ async function sendVerification(
       user.verifiedAt =
         new Date().toISOString();
       await writeUser( store, user );
-      await publishCalendar( store, user.calendarId );
+      await publishAll( store, user.id );
     }
     return "off";
   }
@@ -3939,9 +4166,12 @@ function requireAdmin(
   site's admin password or the device token made from it.
 */
 function ownsActiveCalendar() {
+  if ( !activeUser ) {
+    return false;
+  }
   return Boolean(
-    activeUser &&
-    activeUser.calendarId === activeCalendar.id
+    activeRecord.ownerId &&
+    activeRecord.ownerId === activeUser.id
   );
 }
 

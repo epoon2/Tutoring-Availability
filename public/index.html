@@ -1092,7 +1092,12 @@
       var session = window.CalendarSession.read();
       if (session) {
         call('/me', undefined, session).then(function (data) {
-          window.location.replace('/' + data.account.slug);
+          /*
+            One calendar: straight to it. More than one: the dashboard
+            that lists them.
+          */
+          var many = (data.calendars || []).length > 1;
+          window.location.replace(many ? '/dashboard' : '/' + data.account.slug);
         }).catch(function (error) {
           if (error.status === 401) window.CalendarSession.clear();
         });
