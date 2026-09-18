@@ -3511,6 +3511,12 @@
         'hidden',
         !( state.session && state.account )
       );
+    $('accountsLink')
+      .classList
+      .toggle(
+        'hidden',
+        !( state.session && state.account && state.account.master )
+      );
     if ( state.isAdmin && state.session ) {
       loadMyCalendars();
     }
@@ -13825,12 +13831,12 @@
       );
     /*
       The switch is worth showing once there is more than one calendar
-      to choose from.
+      to choose from - or always to the master, who may borrow any.
     */
     const show =
       state.isAdmin &&
       state.session &&
-      others.length > 0;
+      ( others.length > 0 || ( state.account && state.account.master ) );
     $('calendarsSwitch')
       .classList
       .toggle( 'hidden', !show );

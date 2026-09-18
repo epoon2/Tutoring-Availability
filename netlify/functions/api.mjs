@@ -235,7 +235,8 @@ export default async (req) => {
       route === "/reset" ||
       route === "/account/password" ||
       route === "/calendars" ||
-      route.startsWith( "/calendars/" )
+      route.startsWith( "/calendars/" ) ||
+      route === "/admin/accounts"
     ) {
       activeCalendar =
         { id: MAIN_CALENDAR_ID, slug: null };
@@ -2250,7 +2251,7 @@ async function handleAccountRoute(
   url,
   store
 ) {
-  if ( req.method !== "POST" && req.method !== "DELETE" && route !== "/me" && route !== "/site" ) {
+  if ( req.method !== "POST" && req.method !== "DELETE" && route !== "/me" && route !== "/site" && route !== "/admin/accounts" ) {
     return null;
   }
   const origin =
@@ -2462,7 +2463,7 @@ async function handleAccountRoute(
     }
     const record =
       await store.get( `cal/${ calendarId }/${ SETTINGS_KEY }`, { type: "json", consistency: "strong" } ) || {};
-    if ( record.ownerId !== activeUser.id ) {
+    if ( record.ownerId !== activeUser.id && !isMaster( activeUser ) ) {
       fail( "This is not your calendar.", 401 );
     }
     const ownerId =
@@ -2500,6 +2501,38 @@ async function handleAccountRoute(
       calendars:
         await ownedCalendars( store, activeUser, origin )
     });
+  }
+
+  /*
+    THE MASTER'S VIEW: every account and every calendar on the site.
+  */
+  if ( route === "/admin/accounts" ) {
+    if ( req.method !== "GET" ) {
+      return null;
+    }
+    if ( !isMaster( activeUser ) ) {
+      fail( activeUser ? "Only the site's owner can see this." : "Please log in.", activeUser ? 403 : 401 );
+    }
+    const accounts =
+      [];
+    for ( const user of await listUsers( store ) ) {
+      accounts.push({
+        email:
+          user.email,
+        displayName:
+          user.displayName,
+        verified:
+          Boolean( user.verifiedAt ),
+        createdAt:
+          user.createdAt,
+        master:
+          isMaster( user ),
+        calendars:
+          await ownedCalendars( store, user, origin )
+      });
+    }
+    accounts.sort( (a, b) => ( b.master - a.master ) || String( a.createdAt ).localeCompare( String( b.createdAt ) ) );
+    return json({ ok: true, accounts });
   }
 
   if ( route === "/login" ) {
@@ -2795,6 +2828,8 @@ async function accountSummary(
     slug,
     url:
       `${ origin }/${ slug }`,
+    master:
+      isMaster( user ),
     calendarCount:
       owned.length
   };
@@ -2890,8 +2925,8 @@ async function ownedCalendars(
 }
 
 /*
-  The events of other calendars the same account owns, read without
-  switching the calendar in hand:
+  The events of other calendars the same account owns (or, for the
+  master, any calendar), read without switching the calendar in hand:
   the storage helpers key off activeCalendar, so it is swapped for
   each and put back.
 */
@@ -2958,6 +2993,37 @@ async function writeCalendarRecord(
   });
   await store.setJSON( `feed/${ feedToken }`, calendarId );
 }
+
+/*
+  Every account, for the master. The store lists keys by prefix; the
+  test shim does the same.
+*/
+async function listUsers(
+  store
+) {
+  const users =
+    [];
+  const seen =
+    new Set();
+  let cursor;
+  do {
+    const page =
+      await store.list({ prefix: "users/", cursor });
+    for ( const blob of page.blobs || [] ) {
+      const id =
+        blob.key.slice( "users/".length );
+      if ( seen.has( id ) ) continue;
+      seen.add( id );
+      const user =
+        await readUser( store, id );
+      if ( user ) users.push( user );
+    }
+    cursor =
+      page.cursor;
+  } while ( cursor );
+  return users;
+}
+
 
 async function slugOfCalendar(
   store,
@@ -4242,10 +4308,30 @@ function ownsActiveCalendar() {
   if ( !activeUser ) {
     return false;
   }
+  if ( isMaster( activeUser ) ) {
+    return true;
+  }
   return Boolean(
     activeRecord.ownerId &&
     activeRecord.ownerId === activeUser.id
   );
+}
+
+
+/*
+  THE MASTER ACCOUNT
+
+  The site's owner. One address, MASTER_EMAIL in Netlify (the site's
+  own by default), whose account can open every calendar on the site
+  as its admin and see every account.
+*/
+const MASTER_EMAIL =
+  ( process.env.MASTER_EMAIL || "ethanp0811@gmail.com" ).trim().toLowerCase();
+
+function isMaster(
+  user
+) {
+  return Boolean( user && user.email === MASTER_EMAIL );
 }
 
 

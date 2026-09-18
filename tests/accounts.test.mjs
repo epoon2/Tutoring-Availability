@@ -7,7 +7,8 @@ import crypto from 'node:crypto';
 import { getStore } from '@netlify/blobs';
 
 process.env.ADMIN_PASSWORD = 'admin-pw';
-process.env.SITE_NAME = 'Test Calendar';   // else the host would be read as "Site Test"
+process.env.SITE_NAME = 'Test Calendar';
+process.env.MASTER_EMAIL = 'ethan@example.com';   // the account that claims the first calendar below   // else the host would be read as "Site Test"
 
 // a fake Brevo that keeps every message, and a fake Google that keeps
 // every pushed event per calendar
@@ -265,6 +266,25 @@ r = await call('GET', '/events' + week + '&calendar=mayas-piano-lessons', { 'x-s
 ok('and it is gone', r.status === 404);
 r = await call('DELETE', '/calendars/maya', { 'x-session': mayaNow });
 ok('but not her last one', r.status === 400 && /only calendar/.test(r.data.error));
+
+// the master: the account behind MASTER_EMAIL
+r = await call('GET', '/me', { 'x-session': ethan });
+ok('the master account says so', r.data.account.master === true);
+r = await call('GET', '/me', { 'x-session': mayaNow });
+ok('others do not', r.data.account.master === false);
+r = await call('GET', '/events' + week + '&calendar=maya', { 'x-session': ethan });
+ok("the master opens anyone's calendar as its admin", r.data.mode === 'admin' && r.data.calendar.owned === true);
+r = await call('POST', '/events?calendar=maya', { 'x-session': ethan }, { type: 'BLOCKED', title: 'By the master', start: '2026-09-11T10:00', end: '2026-09-11T11:00', recurrence: null });
+ok('and can write there', r.status === 200);
+r = await call('GET', '/admin/accounts', { 'x-session': mayaNow });
+ok('the account list is for the master only', r.status === 403);
+r = await call('GET', '/admin/accounts', { 'x-session': ethan });
+ok('the master sees every account with its calendars, itself first', r.status === 200 && r.data.accounts.length >= 4 && r.data.accounts[0].email === 'ethan@example.com' && r.data.accounts[0].master === true
+  && r.data.accounts.some((a) => a.email === 'maya@example.com' && a.calendars.length === 1 && a.calendars[0].slug === 'maya'), JSON.stringify(r.data.accounts.map((a) => [a.email, a.calendars.map((c) => c.slug)])));
+r = await call('GET', '/events' + week + '&calendar=maya&with=ethan', { 'x-session': ethan });
+ok('and can overlay any calendar', r.data.overlays && r.data.overlays.ethan && r.data.overlays.ethan.events.length === 1);
+r = await call('GET', '/settings?calendar=maya', { 'x-session': ethan });
+ok("another account's calendar never falls back to the site's Google calendar - only its own", r.data.google.calendarId === 'maya-cal@group.calendar.google.com' && r.data.google.fromSite === false && r.data.google.calendarId !== 'ethan-site@group.calendar.google.com');
 
 fake.close();
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\naccounts: all ${ran} checks passed`);

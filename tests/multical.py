@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Several calendars per account: the dashboard lists and makes
-calendars; on any of them the others can be drawn over it and their
-blocks edited in place.
+"""Several calendars per account, and the master account: the
+dashboard lists and makes calendars; on any of them the others can be
+drawn over it and their blocks edited in place; the site's owner sees
+every account and opens any calendar as its admin.
 
     python3 tests/multical.py
 """
@@ -36,13 +37,14 @@ async def main():
         check("sign-up with no email set up lands straight on the calendar, confirmed", page.url.endswith("/maya-chen") and not await hidden(page, "#adminBanner"))
         check("with one calendar there is no Calendars switch", await hidden(page, "#calendarsSwitch"))
         await page.click("#profileBtn"); await page.wait_for_timeout(200)
-        check("the profile menu offers My calendars", not await hidden(page, "#dashboardLink"))
+        check("the profile menu offers My calendars, not All accounts", not await hidden(page, "#dashboardLink") and await hidden(page, "#accountsLink"))
         await page.click("#dashboardLink"); await page.wait_for_load_state("networkidle"); await page.wait_for_timeout(500)
 
         # ---- the dashboard
         check("the dashboard lists the one calendar as the main one, public", page.url.endswith("/dashboard")
               and await page.evaluate("document.querySelectorAll('.cal-card').length") == 1
               and "Main calendar" in await page.text_content(".cal-card") and "Public" in await page.text_content(".cal-card"))
+        check("and shows no account list to an ordinary account", await hidden(page, "#accounts"))
         await page.fill("#newCalName", "Piano lessons")
         await page.click("#newCalBtn"); await page.wait_for_timeout(800)
         cards = await page.evaluate("[...document.querySelectorAll('.cal-card')].map(c => c.dataset.slug)")
@@ -92,6 +94,24 @@ async def main():
         check("and not to the calendar on screen", own == 0, str(own))
         check("the block on screen shows the new title", "Kai - piano (moved)" in await page.text_content(".event-card.overlay"))
 
+        # ---- the master
+        master = await (await b.new_context(viewport={"width": 1300, "height": 900})).new_page()
+        master.on("pageerror", lambda e: errs.append(str(e)))
+        await master.goto(BASE + "/?signup", wait_until="networkidle"); await master.wait_for_timeout(300)
+        await master.fill("#signupName", "Ethan"); await master.fill("#signupEmail", "ethan@example.com"); await master.fill("#signupPassword", "ethan-pass-1")
+        await master.check("#claimMain"); await master.fill("#claimPassword", "t")
+        await master.click("#signupSubmit"); await master.wait_for_load_state("networkidle"); await master.wait_for_timeout(1000)
+        check("the site's owner is sent to the dashboard", master.url.endswith("/dashboard"), master.url)
+        await master.wait_for_timeout(600)
+        check("which lists every account with its calendars", not await hidden(master, "#accounts")
+              and "maya@example.com" in await master.text_content("#accountsBody") and "Piano lessons" in await master.text_content("#accountsBody")
+              and "Site owner" in await master.text_content("#accountsBody"))
+        await master.click("#accountsBody a[href='/maya-chen']"); await master.wait_for_load_state("networkidle"); await master.wait_for_timeout(800)
+        check("opening someone's calendar from there is admin mode for the master", master.url.endswith("/maya-chen") and not await hidden(master, "#adminBanner")
+              and not await hidden(master, "#modeSwitch"))
+        await master.click("#profileBtn"); await master.wait_for_timeout(200)
+        check("with All accounts in the menu", not await hidden(master, "#accountsLink"))
+
         # ---- deleting a calendar
         await page.goto(BASE + "/dashboard", wait_until="networkidle"); await page.wait_for_timeout(600)
         page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
@@ -109,7 +129,7 @@ async def main():
 
 def run():
     subprocess.run(["node", "tests/install-shim.mjs"], check=True, stdout=subprocess.DEVNULL)
-    env = dict(os.environ)
+    env = dict(os.environ, MASTER_EMAIL="ethan@example.com")
     env.pop("FAKE_MAIL", None)
     server = subprocess.Popen(["node", "tests/server.mjs", str(PORT)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env)
     for _ in range(50):
