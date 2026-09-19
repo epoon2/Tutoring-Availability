@@ -199,6 +199,31 @@
           + Add event
         </button>
 
+        <!-- EDIT VIEW / PUBLIC VIEW (SIGNED IN) -->
+        <div
+          id="modeSwitch"
+          class="view-switch mode-switch hidden"
+          role="group"
+          aria-label="Edit or public view"
+        >
+          <button
+            id="backToAdminBtn"
+            class="btn secondary small"
+            aria-pressed="true"
+            data-i18n="admin_view"
+          >
+            Edit view
+          </button>
+          <button
+            id="exitAdminBtn"
+            class="btn secondary small"
+            aria-pressed="false"
+            data-i18n="public_view_btn"
+          >
+            Public view
+          </button>
+        </div>
+
         <!-- PROFILE (SIGNED IN) -->
 
         <div
@@ -475,31 +500,6 @@
           <i class="legend-swatch blocked"></i>
           <span id="legendBlocked">Blocked Session</span>
         </span>
-      </div>
-      <div
-        id="modeSwitch"
-        class="view-switch mode-switch hidden"
-        role="group"
-        aria-label="Admin or public view"
-      >
-        <button
-          id="backToAdminBtn"
-          class="btn secondary small"
-          aria-pressed="true"
-        
-          data-i18n="admin_view"
-        >
-          Admin view
-        </button>
-        <button
-          id="exitAdminBtn"
-          class="btn secondary small"
-          aria-pressed="false"
-        
-          data-i18n="public_view_btn"
-        >
-          Public view
-        </button>
       </div>
       <div
         id="toolsMenuWrap"

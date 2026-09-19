@@ -106,6 +106,23 @@ async def main():
         await page.reload(wait_until="networkidle"); await page.wait_for_timeout(600)
         check("and a reload stays signed in", not await hidden(page, "#adminBanner"))
 
+        # ---- Public view while signed in as the owner shows what a visitor gets, not the owner's answer
+        await page.click("#nextWeekBtn"); await page.wait_for_timeout(600)
+        await page.evaluate("""async () => { const wed = [...document.querySelectorAll('.day-column')].map(c => c.dataset.date)[3];
+            const token = JSON.parse(localStorage.getItem('calendarSession')).token;
+            const post = (body) => fetch('/api/events?calendar=maya', { method: 'POST', headers: {'Content-Type': 'application/json', 'x-session': token}, body: JSON.stringify(body) });
+            await post({ type: 'AVAILABLE', title: 'Available', start: wed + 'T09:00', end: wed + 'T12:00' });
+            await post({ type: 'BLOCKED', title: 'Leo - algebra', start: wed + 'T10:00', end: wed + 'T11:00' }); }""")
+        await page.evaluate("document.getElementById('refreshBtn').click()"); await page.wait_for_timeout(800)
+        check("the owner sees the student's name", "Leo - algebra" in (await page.text_content("#calendar")))
+        await page.click("#exitAdminBtn"); await page.wait_for_timeout(900)
+        check("Public view, still signed in, shows the visitor's calendar: no name, the block just booked", await hidden(page, "#adminBanner")
+              and "Leo - algebra" not in (await page.text_content("#calendar")) and await page.evaluate("document.querySelectorAll('.event-card').length") >= 2
+              and not await hidden(page, "#profileMenu"), await page.text_content("#calendar"))
+        await page.click("#backToAdminBtn"); await page.wait_for_timeout(900)
+        check("Edit view brings the name back without a password", "Leo - algebra" in (await page.text_content("#calendar")) and await hidden(page, "#loginModal"))
+        await page.click("#todayBtn"); await page.wait_for_timeout(500)
+
         # ---- change password
         await page.click("#profileBtn"); await page.wait_for_timeout(100)
         check("the menu offers Change password to an account", not await hidden(page, "#changePasswordBtn"))

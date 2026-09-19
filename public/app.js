@@ -664,6 +664,9 @@
 
           if ( ownsThisCalendar() ) {
 
+            state.preview =
+              false;
+
             state.isAdmin =
               true;
 
@@ -1460,6 +1463,11 @@
         ( path.includes( '?' ) ? '&' : '?' ) +
         'calendar=' +
         encodeURIComponent( target );
+    }
+    if ( state.preview && !state.isAdmin && method === 'GET' ) {
+      path +=
+        ( path.includes( '?' ) ? '&' : '?' ) +
+        'preview=1';
     }
 
 
@@ -13980,6 +13988,8 @@
       null;
     state.myCalendars =
       [];
+    state.preview =
+      false;
     window.CalendarSession.clear();
   }
 
@@ -14191,6 +14201,14 @@
 
     state.adminPassword =
       '';
+
+
+    /*
+      Signed in with an account, the page keeps its session and asks
+      the server for what a visitor would get instead.
+    */
+    state.preview =
+      Boolean( state.session );
 
 
     return loadWeek();

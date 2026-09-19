@@ -44,7 +44,8 @@ async def main():
         await page.click("#profileBtn"); await page.wait_for_timeout(200)
         check("clicking the chip opens the menu", not await hidden(page, "#profileDropdown") and await page.evaluate("document.getElementById('profileBtn').getAttribute('aria-expanded')") == "true")
         check("the menu offers Sign out, not Settings", await menu_items(page) == ["Sign out"], str(await menu_items(page)))
-        check("the Admin view / Public view switch is on the calendar toolbar, Admin pressed", not await hidden(page, "#modeSwitch")
+        check("the Edit view / Public view switch is in the header, Edit pressed", not await hidden(page, "#modeSwitch")
+              and await page.evaluate("document.getElementById('modeSwitch').closest('header, .app-header, .topbar') !== null")
               and await page.evaluate("document.getElementById('backToAdminBtn').getAttribute('aria-pressed')") == "true"
               and await page.evaluate("document.getElementById('exitAdminBtn').getAttribute('aria-pressed')") == "false")
         check("and says so", await page.text_content("#profileMenuMode") == "Admin mode")
@@ -65,8 +66,18 @@ async def main():
         check("so does Escape", await hidden(page, "#profileDropdown"))
 
         # ---- switch to the public view and back, without signing out
-        await page.click("#exitAdminBtn"); await page.wait_for_timeout(700)
+        await page.click("#nextWeekBtn"); await page.wait_for_timeout(700)
+        await page.evaluate("""async () => { const wed = [...document.querySelectorAll('.day-column')].map(c => c.dataset.date)[3];
+            await fetch('/api/events', { method: 'POST', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
+                body: JSON.stringify({ type: 'AVAILABLE', title: 'Available', start: wed + 'T09:00', end: wed + 'T12:00' }) });
+            await fetch('/api/events', { method: 'POST', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
+                body: JSON.stringify({ type: 'BLOCKED', title: 'Kai - piano', start: wed + 'T10:00', end: wed + 'T11:00' }) }); }""")
+        await page.evaluate("document.getElementById('refreshBtn').click()"); await page.wait_for_timeout(800)
+        check("in Edit view a booked block carries the student's name", "Kai - piano" in (await page.text_content("#calendar")))
+        await page.click("#exitAdminBtn"); await page.wait_for_timeout(900)
         check("Public view shows the public page, gear gone", await hidden(page, "#adminBanner") and await hidden(page, "#toolsMenuWrap"))
+        check("and really is what a visitor sees: the name is gone, the block is just booked", "Kai - piano" not in (await page.text_content("#calendar"))
+              and await page.evaluate("document.querySelectorAll('.event-card').length") >= 2, await page.text_content("#calendar"))
         check("the switch stays, now with Public pressed", not await hidden(page, "#modeSwitch")
               and await page.evaluate("document.getElementById('exitAdminBtn').getAttribute('aria-pressed')") == "true")
         check("and the chip stays, because the device is remembered", not await hidden(page, "#profileMenu") and await hidden(page, "#adminBtn"))
@@ -74,8 +85,9 @@ async def main():
         check("the menu now offers Sign out only", await menu_items(page) == ["Sign out"], str(await menu_items(page)))
         check("and says Public view", await page.text_content("#profileMenuMode") == "Public view")
         await page.click("#portalTitle"); await page.wait_for_timeout(100)
-        await page.click("#backToAdminBtn"); await page.wait_for_timeout(700)
-        check("Admin view returns without a password", not await hidden(page, "#adminBanner") and await hidden(page, "#loginModal"))
+        await page.click("#backToAdminBtn"); await page.wait_for_timeout(900)
+        check("Edit view returns without a password, names back", not await hidden(page, "#adminBanner") and await hidden(page, "#loginModal")
+              and "Kai - piano" in (await page.text_content("#calendar")))
 
         # ---- Settings changes the name on the chip
         await page.click("#gearBtn"); await page.wait_for_timeout(100)

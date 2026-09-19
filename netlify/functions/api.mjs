@@ -442,10 +442,15 @@ export default async (req) => {
       )
     ) {
 
+      /*
+        ?preview=1 asks for the visitor's answer even from the owner,
+        for the Public view switch.
+      */
       const admin =
         hasValidAdminPassword(
           req
-        );
+        ) &&
+        !url.searchParams.get( "preview" );
 
 
       const events =
