@@ -48,7 +48,7 @@ async def main():
               and await page.evaluate("document.getElementById('modeSwitch').closest('header, .app-header, .topbar') !== null")
               and await page.evaluate("document.getElementById('backToAdminBtn').getAttribute('aria-pressed')") == "true"
               and await page.evaluate("document.getElementById('exitAdminBtn').getAttribute('aria-pressed')") == "false")
-        check("and says so", await page.text_content("#profileMenuMode") == "Admin mode")
+        check("and the menu names the role, Admin", await page.text_content("#profileMenuMode") == "Admin", await page.text_content("#profileMenuMode"))
         check("the gear is on the toolbar, its menu closed", not await hidden(page, "#toolsMenuWrap") and await hidden(page, "#toolsMenu"))
         await page.click("#portalTitle"); await page.wait_for_timeout(100)
         await page.click("#gearBtn"); await page.wait_for_timeout(200)

@@ -37,7 +37,8 @@ async def main():
         check("sign-up with no email set up lands straight on the calendar, confirmed", page.url.endswith("/maya-chen") and not await hidden(page, "#adminBanner"))
         check("with one calendar there is no Calendars switch", await hidden(page, "#calendarsSwitch"))
         await page.click("#profileBtn"); await page.wait_for_timeout(200)
-        check("the profile menu offers My calendars, not All accounts", not await hidden(page, "#dashboardLink") and await hidden(page, "#accountsLink"))
+        check("the profile menu offers My calendars, not Admin view, and names her Owner", not await hidden(page, "#dashboardLink") and await hidden(page, "#accountsLink")
+              and await page.text_content("#profileMenuMode") == "Owner")
         await page.click("#dashboardLink"); await page.wait_for_load_state("networkidle"); await page.wait_for_timeout(500)
 
         # ---- the dashboard
@@ -110,7 +111,8 @@ async def main():
         check("opening someone's calendar from there is admin mode for the master", master.url.endswith("/maya-chen") and not await hidden(master, "#adminBanner")
               and not await hidden(master, "#modeSwitch"))
         await master.click("#profileBtn"); await master.wait_for_timeout(200)
-        check("with All accounts in the menu", not await hidden(master, "#accountsLink"))
+        check("with Admin view in the menu, and the role Admin", not await hidden(master, "#accountsLink") and (await master.text_content("#accountsLink")).strip() == "Admin view"
+              and await master.text_content("#profileMenuMode") == "Admin")
 
         # ---- deleting a calendar
         await page.goto(BASE + "/dashboard", wait_until="networkidle"); await page.wait_for_timeout(600)

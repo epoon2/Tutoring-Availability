@@ -3535,7 +3535,7 @@
     $('profileMenuMode')
       .textContent =
         state.isAdmin
-          ? t( 'admin_mode' )
+          ? roleName()
           : ( ownsThisCalendar() || state.adminToken || !state.account )
             ? t( 'public_view_btn' )
             : t( 'someones_calendar' );
@@ -13725,6 +13725,19 @@
     } finally {
       $('savePasswordBtn').disabled = false;
     }
+  }
+
+
+  /*
+    What the account is: the site's owner is the Admin, any other
+    account the Owner of its calendars, and the site's admin password
+    (before an account claimed the first calendar) counts as Admin.
+  */
+  function roleName() {
+    if ( state.account ) {
+      return t( state.account.master ? 'role_admin' : 'role_owner' );
+    }
+    return t( 'role_admin' );
   }
 
 

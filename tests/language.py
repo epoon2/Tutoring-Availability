@@ -83,7 +83,7 @@ async def main():
               and await text(page, "#backToAdminBtn") == "Vue édition" and await text(page, "#historyBtn") == "Historique des versions", (await text(page, "#adminBanner"))[:40] + " | " + await text(page, "#backToAdminBtn"))
         check("and the weekly summary", await text(page, "#summaryHoursLabel") == "heures occupées cette semaine")
         await page.click("#profileBtn"); await page.wait_for_timeout(100)
-        check("and the profile menu, with the role", await text(page, "#signOutBtn") == "Se déconnecter" and await text(page, "#profileMenuMode") == "Mode admin", await text(page, "#profileMenuMode"))
+        check("and the profile menu, with the role", await text(page, "#signOutBtn") == "Se déconnecter" and await text(page, "#profileMenuMode") == "Admin", await text(page, "#profileMenuMode"))
         await page.click("#portalTitle"); await page.wait_for_timeout(100)
         await page.click("#gearBtn"); await page.wait_for_timeout(100)
         check("and the gear menu", await text(page, "#settingsBtn") == "Réglages" and await page.get_attribute("#gearBtn", "title") == "Outils du calendrier", await page.get_attribute("#gearBtn", "title"))

@@ -490,7 +490,7 @@
       calendars_btn: 'Calendars',
       calendars_show: 'Show on this calendar',
       my_calendars: 'My calendars',
-      all_accounts: 'All accounts',
+      all_accounts: 'Admin view',
       open: 'Open',
       dash_title: 'My calendars',
       dash_intro: 'Each calendar has its own address, settings and requests. On any of them, the Calendars button shows the others alongside.',
@@ -516,6 +516,8 @@
       label_people: 'students',
       how_to_edit: 'How to edit',
       calendar_tools: 'Calendar tools',
+      role_admin: 'Admin',
+      role_owner: 'Owner',
       wd: [ 'S', 'M', 'T', 'W', 'T', 'F', 'S' ]
     },
 
@@ -975,7 +977,7 @@
       calendars_btn: 'Calendarios',
       calendars_show: 'Mostrar en este calendario',
       my_calendars: 'Mis calendarios',
-      all_accounts: 'Todas las cuentas',
+      all_accounts: 'Vista de administrador',
       open: 'Abrir',
       dash_title: 'Mis calendarios',
       dash_intro: 'Cada calendario tiene su propia dirección, ajustes y solicitudes. En cualquiera de ellos, el botón Calendarios muestra los demás al lado.',
@@ -1001,6 +1003,8 @@
       label_people: 'estudiantes',
       how_to_edit: 'Cómo editar',
       calendar_tools: 'Herramientas del calendario',
+      role_admin: 'Administrador',
+      role_owner: 'Propietario',
       wd: [ 'D', 'L', 'M', 'X', 'J', 'V', 'S' ]
     },
 
@@ -1460,7 +1464,7 @@
       calendars_btn: '日历',
       calendars_show: '在此日历上显示',
       my_calendars: '我的日历',
-      all_accounts: '所有账户',
+      all_accounts: '管理员视图',
       open: '打开',
       dash_title: '我的日历',
       dash_intro: '每个日历都有自己的地址、设置和请求。在任一日历中，“日历”按钮可以同时显示其他日历。',
@@ -1486,6 +1490,8 @@
       label_people: '学生',
       how_to_edit: '如何编辑',
       calendar_tools: '日历工具',
+      role_admin: '管理员',
+      role_owner: '所有者',
       wd: [ '日', '一', '二', '三', '四', '五', '六' ]
     },
 
@@ -1945,7 +1951,7 @@
       calendars_btn: 'Calendriers',
       calendars_show: 'Afficher sur ce calendrier',
       my_calendars: 'Mes calendriers',
-      all_accounts: 'Tous les comptes',
+      all_accounts: 'Vue admin',
       open: 'Ouvrir',
       dash_title: 'Mes calendriers',
       dash_intro: 'Chaque calendrier a sa propre adresse, ses réglages et ses demandes. Sur chacun, le bouton Calendriers affiche les autres à côté.',
@@ -1971,6 +1977,8 @@
       label_people: 'élèves',
       how_to_edit: 'Comment modifier',
       calendar_tools: 'Outils du calendrier',
+      role_admin: 'Admin',
+      role_owner: 'Propriétaire',
       wd: [ 'D', 'L', 'M', 'M', 'J', 'V', 'S' ]
     },
 
@@ -2430,7 +2438,7 @@
       calendars_btn: '캘린더',
       calendars_show: '이 캘린더에 표시',
       my_calendars: '내 캘린더',
-      all_accounts: '모든 계정',
+      all_accounts: '관리자 보기',
       open: '열기',
       dash_title: '내 캘린더',
       dash_intro: '각 캘린더는 고유한 주소, 설정, 요청을 가집니다. 어느 캘린더에서든 캘린더 버튼으로 다른 캘린더를 함께 볼 수 있습니다.',
@@ -2456,6 +2464,8 @@
       label_people: '학생',
       how_to_edit: '편집 방법',
       calendar_tools: '캘린더 도구',
+      role_admin: '관리자',
+      role_owner: '소유자',
       wd: [ '일', '월', '화', '수', '목', '금', '토' ]
     },
 
@@ -2915,7 +2925,7 @@
       calendars_btn: 'Lịch',
       calendars_show: 'Hiển thị trên lịch này',
       my_calendars: 'Lịch của tôi',
-      all_accounts: 'Tất cả tài khoản',
+      all_accounts: 'Chế độ quản trị',
       open: 'Mở',
       dash_title: 'Lịch của tôi',
       dash_intro: 'Mỗi lịch có địa chỉ, cài đặt và yêu cầu riêng. Trên bất kỳ lịch nào, nút Lịch hiển thị các lịch khác bên cạnh.',
@@ -2941,6 +2951,8 @@
       label_people: 'học sinh',
       how_to_edit: 'Cách chỉnh sửa',
       calendar_tools: 'Công cụ lịch',
+      role_admin: 'Quản trị viên',
+      role_owner: 'Chủ lịch',
       wd: [ 'CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7' ]
     }
   };
