@@ -3356,8 +3356,7 @@
 
       $('timezoneLabel')
         .textContent =
-          state.config
-            .timezoneLabel;
+          localizedTimezoneLabel();
 
 
             $('updatedLabel')
@@ -11938,6 +11937,20 @@
     }
 
 
+    if ( localizedClock() ) {
+
+      const text =
+        intlTime( hour24 * 60 + minute, true );
+
+      if ( text ) {
+
+        return text;
+
+      }
+
+    }
+
+
     const hour =
       hour24 % 12 === 0
         ? 12
@@ -14177,14 +14190,34 @@
       '#b42318'
   };
 
-  function labelFor(
-    type
+  /*
+    The words for open and booked time and for whoever books it are
+    the owner's, typed in Settings. Left at the built-in defaults,
+    they read in the visitor's language; changed, they read as typed.
+  */
+  const DEFAULT_LABELS = {
+    available: 'Available',
+    blocked: 'Blocked Session',
+    person: 'student',
+    people: 'students'
+  };
+
+  function ownerWord(
+    key
   ) {
     const labels =
       state.config.labels || {};
-    return type === 'AVAILABLE'
-      ? ( labels.available || 'Available' )
-      : ( labels.blocked || 'Blocked Session' );
+    const word =
+      labels[ key ] || DEFAULT_LABELS[ key ];
+    return word === DEFAULT_LABELS[ key ]
+      ? t( 'label_' + key )
+      : word;
+  }
+
+  function labelFor(
+    type
+  ) {
+    return ownerWord( type === 'AVAILABLE' ? 'available' : 'blocked' );
   }
 
   /*
@@ -14198,11 +14231,7 @@
   function peopleWord(
     count
   ) {
-    const labels =
-      state.config.labels || {};
-    return count === 1
-      ? ( labels.person || 'student' )
-      : ( labels.people || 'students' );
+    return ownerWord( count === 1 ? 'person' : 'people' );
   }
 
   function applyConfigStyling() {
@@ -17788,9 +17817,60 @@
     /*
     The clock is a setting: "2:30 PM" or "14:30". Every label on the
     page goes through the helpers below, so one flag changes them all.
+    In a language other than English the browser writes the 12-hour
+    form its own way - "8 a. m.", "上午8时" - so those come from Intl.
   */
   function is24h() {
     return state.config.hourFormat === '24';
+  }
+
+
+  function localizedClock() {
+    return !is24h() && window.I18N.get() !== 'en';
+  }
+
+
+  function intlTime(
+    minutes,
+    withMinutes
+  ) {
+    const date =
+      new Date( 2026, 0, 1, Math.floor( minutes / 60 ), minutes % 60 );
+    try {
+      return new Intl.DateTimeFormat(
+        window.I18N.locale(),
+        {
+          hour: 'numeric',
+          ...( withMinutes ? { minute: '2-digit' } : {} ),
+          hour12: true
+        }
+      ).format( date );
+    } catch {
+      return null;
+    }
+  }
+
+
+  /*
+    The time zone's name as the visitor's language gives it, falling
+    back to the server's English label.
+  */
+  function localizedTimezoneLabel() {
+    if ( window.I18N.get() === 'en' || !state.config.timezoneId ) {
+      return state.config.timezoneLabel;
+    }
+    try {
+      const part =
+        new Intl.DateTimeFormat(
+          window.I18N.locale(),
+          { timeZone: state.config.timezoneId, timeZoneName: 'longGeneric' }
+        )
+          .formatToParts( new Date() )
+          .find( (item) => item.type === 'timeZoneName' );
+      return part && part.value ? part.value : state.config.timezoneLabel;
+    } catch {
+      return state.config.timezoneLabel;
+    }
   }
 
 
@@ -17816,6 +17896,20 @@
         ':' +
         String( normalized % 60 ).padStart( 2, '0' )
       );
+
+    }
+
+
+    if ( localizedClock() ) {
+
+      const text =
+        intlTime( normalized, normalized % 60 !== 0 );
+
+      if ( text ) {
+
+        return text;
+
+      }
 
     }
 
@@ -17896,6 +17990,7 @@
 
         const opening =
       !is24h() &&
+      !localizedClock() &&
       start.slice(
         -2
       ) ===

@@ -39,6 +39,12 @@ async def main():
         check("Spanish: the header and toolbar change", await text(page, "#requestBtn") == "Solicitar una sesión" and await text(page, "#todayBtn") == "Hoy"
               and await text(page, "#adminBtn") == "Iniciar sesión", await text(page, "#requestBtn"))
         check("the status line too", "Ethan" in await text(page, "#updatedLabel") and "horario" in await text(page, "#updatedLabel"), await text(page, "#updatedLabel"))
+        check("the time zone reads in Spanish", await text(page, "#timezoneLabel") == "hora del Pacífico", await text(page, "#timezoneLabel"))
+        labels = await page.evaluate("[...document.querySelectorAll('.time-label')].map(l => l.textContent.trim()).filter(Boolean)")
+        labels = [l.replace("\u00a0", " ") for l in labels]
+        check("so do the hour labels", "8 a. m." in labels and "2 p. m." in labels, str(labels[:4]))
+        check("and the default words for open and booked time", await text(page, "#legendAvailable") == "Disponible" and await text(page, "#legendBlocked") == "Sesión ocupada")
+        check("and the word the summary counts", await text(page, "#summaryPeopleLabel") == "estudiantes")
         week_label = (await text(page, "#weekLabel")).lower()
         check("and the week label speaks Spanish", any(m in week_label for m in ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]), week_label)
         await page.click("#requestBtn"); await page.wait_for_timeout(300)
@@ -58,6 +64,15 @@ async def main():
         check("Chinese", await text(page, "#requestBtn") == "预约时段" and await page.evaluate("document.documentElement.lang") == "zh-CN")
         await page.select_option("#langSelect", "en"); await page.wait_for_timeout(600)
         check("and back to English", await text(page, "#requestBtn") == "Request a session")
+
+        # ---- a word the owner typed stays as typed
+        await page.evaluate("fetch('/api/settings', { method: 'PUT', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'}, body: JSON.stringify({ labels: { blocked: 'Piano lesson' } }) })")
+        await page.wait_for_timeout(300)
+        await page.select_option("#langSelect", "es"); await page.wait_for_timeout(700)
+        check("a name the owner typed is not translated, the default beside it is", await text(page, "#legendBlocked") == "Piano lesson" and await text(page, "#legendAvailable") == "Disponible")
+        await page.evaluate("fetch('/api/settings', { method: 'PUT', headers: {'Content-Type': 'application/json', 'x-admin-password': 't'}, body: JSON.stringify({ labels: { blocked: 'Blocked Session' } }) })")
+        await page.wait_for_timeout(300)
+        await page.select_option("#langSelect", "en"); await page.wait_for_timeout(400)
 
         # ---- the owner's tools follow the language too
         await page.select_option("#langSelect", "fr"); await page.wait_for_timeout(400)

@@ -510,6 +510,10 @@
       dash_signed_as: 'Signed in as {name}',
       dash_none: 'No calendars yet.',
       dash_since: 'since {date}',
+      label_available: 'Available',
+      label_blocked: 'Blocked Session',
+      label_person: 'student',
+      label_people: 'students',
       wd: [ 'S', 'M', 'T', 'W', 'T', 'F', 'S' ]
     },
 
@@ -989,6 +993,10 @@
       dash_signed_as: 'Sesión iniciada como {name}',
       dash_none: 'Todavía no hay calendarios.',
       dash_since: 'desde {date}',
+      label_available: 'Disponible',
+      label_blocked: 'Sesión ocupada',
+      label_person: 'estudiante',
+      label_people: 'estudiantes',
       wd: [ 'D', 'L', 'M', 'X', 'J', 'V', 'S' ]
     },
 
@@ -1468,6 +1476,10 @@
       dash_signed_as: '已登录：{name}',
       dash_none: '还没有日历。',
       dash_since: '自 {date}',
+      label_available: '可预约',
+      label_blocked: '已占用',
+      label_person: '学生',
+      label_people: '学生',
       wd: [ '日', '一', '二', '三', '四', '五', '六' ]
     },
 
@@ -1947,6 +1959,10 @@
       dash_signed_as: 'Connecté en tant que {name}',
       dash_none: 'Aucun calendrier pour l’instant.',
       dash_since: 'depuis le {date}',
+      label_available: 'Disponible',
+      label_blocked: 'Séance occupée',
+      label_person: 'élève',
+      label_people: 'élèves',
       wd: [ 'D', 'L', 'M', 'M', 'J', 'V', 'S' ]
     },
 
@@ -2426,6 +2442,10 @@
       dash_signed_as: '{name} 님으로 로그인됨',
       dash_none: '아직 캘린더가 없습니다.',
       dash_since: '{date}부터',
+      label_available: '가능',
+      label_blocked: '예약됨',
+      label_person: '학생',
+      label_people: '학생',
       wd: [ '일', '월', '화', '수', '목', '금', '토' ]
     },
 
@@ -2905,6 +2925,10 @@
       dash_signed_as: 'Đăng nhập với tên {name}',
       dash_none: 'Chưa có lịch nào.',
       dash_since: 'từ {date}',
+      label_available: 'Còn trống',
+      label_blocked: 'Đã đặt',
+      label_person: 'học sinh',
+      label_people: 'học sinh',
       wd: [ 'CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7' ]
     }
   };
