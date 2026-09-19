@@ -32,8 +32,9 @@ async def main():
         await page.goto(CAL, wait_until="networkidle")
 
         check("a visitor sees Log in, no chip", not await hidden(page, "#adminBtn") and (await page.text_content("#adminBtn")).strip() == "Log in" and await hidden(page, "#profileMenu"))
-        check("the banner carries Undo, Redo and Version history", await page.evaluate("[...document.querySelectorAll('.admin-banner-actions button')].map(b => b.id)") == ["undoBtn", "redoBtn", "historyBtn"])
-        check("a visitor sees no Admin/Public switch", await hidden(page, "#modeSwitch"))
+        check("the banner carries no buttons, only how to edit", await page.evaluate("document.querySelectorAll('#adminBanner button').length") == 0
+              and "How to edit" in (await page.text_content("#adminBanner")))
+        check("a visitor sees no Edit/Public switch and no gear", await hidden(page, "#modeSwitch") and await hidden(page, "#toolsMenuWrap"))
 
         await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
         await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
@@ -42,11 +43,21 @@ async def main():
         check("the menu is closed until clicked", await hidden(page, "#profileDropdown"))
         await page.click("#profileBtn"); await page.wait_for_timeout(200)
         check("clicking the chip opens the menu", not await hidden(page, "#profileDropdown") and await page.evaluate("document.getElementById('profileBtn').getAttribute('aria-expanded')") == "true")
-        check("the menu offers Settings and Sign out", await menu_items(page) == ["Settings", "Sign out"], str(await menu_items(page)))
+        check("the menu offers Sign out, not Settings", await menu_items(page) == ["Sign out"], str(await menu_items(page)))
         check("the Admin view / Public view switch is on the calendar toolbar, Admin pressed", not await hidden(page, "#modeSwitch")
               and await page.evaluate("document.getElementById('backToAdminBtn').getAttribute('aria-pressed')") == "true"
               and await page.evaluate("document.getElementById('exitAdminBtn').getAttribute('aria-pressed')") == "false")
         check("and says so", await page.text_content("#profileMenuMode") == "Admin mode")
+        check("the gear is on the toolbar, its menu closed", not await hidden(page, "#toolsMenuWrap") and await hidden(page, "#toolsMenu"))
+        await page.click("#portalTitle"); await page.wait_for_timeout(100)
+        await page.click("#gearBtn"); await page.wait_for_timeout(200)
+        check("the gear opens Undo, Redo, Version history and Settings", not await hidden(page, "#toolsMenu")
+              and await page.evaluate("[...document.querySelectorAll('#toolsMenu .menu-item')].map(b => b.id)") == ["undoBtn", "redoBtn", "historyBtn", "settingsBtn"]
+              and await page.evaluate("document.getElementById('gearBtn').getAttribute('aria-expanded')") == "true")
+        check("Undo and Redo show their shortcuts", await page.evaluate("[...document.querySelectorAll('#toolsMenu kbd')].map(k => k.textContent)") == ["Ctrl+Z", "Ctrl+Y"])
+        await page.click("#portalTitle"); await page.wait_for_timeout(100)
+        check("a click elsewhere closes the gear menu", await hidden(page, "#toolsMenu"))
+        await page.click("#profileBtn"); await page.wait_for_timeout(200)
         await page.click("#portalTitle"); await page.wait_for_timeout(200)
         check("a click elsewhere closes it", await hidden(page, "#profileDropdown"))
         await page.click("#profileBtn"); await page.wait_for_timeout(100)
@@ -55,7 +66,7 @@ async def main():
 
         # ---- switch to the public view and back, without signing out
         await page.click("#exitAdminBtn"); await page.wait_for_timeout(700)
-        check("Public view shows the public page", await hidden(page, "#adminBanner"))
+        check("Public view shows the public page, gear gone", await hidden(page, "#adminBanner") and await hidden(page, "#toolsMenuWrap"))
         check("the switch stays, now with Public pressed", not await hidden(page, "#modeSwitch")
               and await page.evaluate("document.getElementById('exitAdminBtn').getAttribute('aria-pressed')") == "true")
         check("and the chip stays, because the device is remembered", not await hidden(page, "#profileMenu") and await hidden(page, "#adminBtn"))
@@ -67,9 +78,9 @@ async def main():
         check("Admin view returns without a password", not await hidden(page, "#adminBanner") and await hidden(page, "#loginModal"))
 
         # ---- Settings changes the name on the chip
-        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#gearBtn"); await page.wait_for_timeout(100)
         await page.click("#settingsBtn"); await page.wait_for_timeout(500)
-        check("Settings opens from the menu, menu closed", not await hidden(page, "#settingsModal") and await hidden(page, "#profileDropdown"))
+        check("Settings opens from the gear menu, menu closed", not await hidden(page, "#settingsModal") and await hidden(page, "#toolsMenu"))
         await page.fill("#settingDisplayName", "Maya")
         await page.click("#saveSettingsBtn"); await page.wait_for_timeout(900)
         check("the chip follows the display name", await page.text_content("#profileInitial") == "M" and await page.text_content("#profileName") == "Maya")
@@ -85,7 +96,7 @@ async def main():
         await page.fill("#adminPasswordInput", "t"); await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
         check("a session without a remembered device shows the chip in admin mode", not await hidden(page, "#profileMenu"))
         await page.click("#profileBtn"); await page.wait_for_timeout(100)
-        check("its menu offers Settings and Sign out", await menu_items(page) == ["Settings", "Sign out"])
+        check("its menu offers Sign out, and the gear is back", await menu_items(page) == ["Sign out"] and not await hidden(page, "#toolsMenuWrap"))
         await page.click("#portalTitle"); await page.wait_for_timeout(100)
         await page.click("#exitAdminBtn"); await page.wait_for_timeout(700)
         check("Public view without a remembered device is a plain Log in again, switch gone", not await hidden(page, "#adminBtn") and await hidden(page, "#profileMenu") and await hidden(page, "#modeSwitch"))

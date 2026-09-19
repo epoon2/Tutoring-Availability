@@ -82,7 +82,7 @@ async def main():
         check("and the notice is gone on the first device", await hidden(page, "#verifyNotice"))
 
         # ---- the address in Settings
-        await page.click("#profileBtn"); await page.wait_for_timeout(100)
+        await page.click("#gearBtn"); await page.wait_for_timeout(100)
         await page.click("#settingsBtn"); await page.wait_for_timeout(500)
         check("Settings shows the address and the link to share", await page.input_value("#settingSlug") == "maya-chen" and (await page.text_content("#shareLink")).endswith("/maya-chen"))
         await page.fill("#settingSlug", "maya")
@@ -145,7 +145,7 @@ async def main():
         check("on another calendar a signed-in person is a visitor", await hidden(page, "#adminBanner") and await hidden(page, "#modeSwitch") and await hidden(page, "#adminBtn"))
         check("with the chip showing their own name", await page.text_content("#profileName") == "Maya Chen")
         await page.click("#profileBtn"); await page.wait_for_timeout(100)
-        check("and a way home in the menu", not await hidden(page, "#myCalendarLink") and (await page.get_attribute("#myCalendarLink", "href")) == "/maya" and await hidden(page, "#settingsBtn"))
+        check("and a way home in the menu, no gear here", not await hidden(page, "#myCalendarLink") and (await page.get_attribute("#myCalendarLink", "href")) == "/maya" and await hidden(page, "#toolsMenuWrap"))
         await page.click("#portalTitle")
 
         # ---- the first calendar: the admin password still works until it is claimed

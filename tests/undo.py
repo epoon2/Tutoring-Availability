@@ -25,7 +25,7 @@ async def buttons(page):
         redo: !document.getElementById('redoBtn').disabled,
         undoTitle: document.getElementById('undoBtn').title,
         redoTitle: document.getElementById('redoBtn').title,
-        shown: !document.getElementById('undoBtn').classList.contains('hidden') })""")
+        shown: !document.getElementById('toolsMenuWrap').classList.contains('hidden') })""")
 
 async def rclick(page, selector):
     await page.evaluate("""(sel) => document.querySelector(sel).dispatchEvent(
@@ -83,8 +83,11 @@ async def main():
         # ---- Ctrl+Shift+Z brings it back, Ctrl+Y works too
         await page.keyboard.press("Control+Shift+z"); await page.wait_for_timeout(900)
         check("Ctrl+Shift+Z redoes", await cards(page) == 1)
+        await page.click("#gearBtn"); await page.wait_for_timeout(150)
+        check("the gear menu holds Undo, enabled", not await page.evaluate("document.getElementById('toolsMenu').classList.contains('hidden')")
+              and not await page.evaluate("document.getElementById('undoBtn').disabled"))
         await page.click("#undoBtn"); await page.wait_for_timeout(900)
-        check("the Undo button undoes", await cards(page) == 0)
+        check("the Undo item undoes and closes the menu", await cards(page) == 0 and await page.evaluate("document.getElementById('toolsMenu').classList.contains('hidden')"))
         await page.keyboard.press("Control+y"); await page.wait_for_timeout(900)
         check("Ctrl+Y redoes as well", await cards(page) == 1)
 

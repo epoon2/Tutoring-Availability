@@ -33,10 +33,11 @@ async def main():
         page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
 
         await page.goto(CAL, wait_until="networkidle")
-        check("no Settings button for visitors", await page.evaluate("document.getElementById('settingsBtn').classList.contains('hidden')"))
+        check("no gear menu (and so no Settings) for visitors", await page.evaluate("document.getElementById('toolsMenuWrap').classList.contains('hidden')"))
         await page.click("#adminBtn"); await page.fill("#adminPasswordInput", "t")
         await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
-        check("Settings appears in the admin banner", not await page.evaluate("document.getElementById('settingsBtn').classList.contains('hidden')"))
+        check("the gear appears on the toolbar, with Settings inside", not await page.evaluate("document.getElementById('toolsMenuWrap').classList.contains('hidden')")
+              and await page.evaluate("document.getElementById('toolsMenu').contains(document.getElementById('settingsBtn'))"))
 
         # seed a block of each kind
         await page.evaluate("""async () => {

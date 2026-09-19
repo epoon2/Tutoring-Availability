@@ -514,6 +514,8 @@
       label_blocked: 'Blocked Session',
       label_person: 'student',
       label_people: 'students',
+      how_to_edit: 'How to edit',
+      calendar_tools: 'Calendar tools',
       wd: [ 'S', 'M', 'T', 'W', 'T', 'F', 'S' ]
     },
 
@@ -997,6 +999,8 @@
       label_blocked: 'Sesión ocupada',
       label_person: 'estudiante',
       label_people: 'estudiantes',
+      how_to_edit: 'Cómo editar',
+      calendar_tools: 'Herramientas del calendario',
       wd: [ 'D', 'L', 'M', 'X', 'J', 'V', 'S' ]
     },
 
@@ -1480,6 +1484,8 @@
       label_blocked: '已占用',
       label_person: '学生',
       label_people: '学生',
+      how_to_edit: '如何编辑',
+      calendar_tools: '日历工具',
       wd: [ '日', '一', '二', '三', '四', '五', '六' ]
     },
 
@@ -1963,6 +1969,8 @@
       label_blocked: 'Séance occupée',
       label_person: 'élève',
       label_people: 'élèves',
+      how_to_edit: 'Comment modifier',
+      calendar_tools: 'Outils du calendrier',
       wd: [ 'D', 'L', 'M', 'M', 'J', 'V', 'S' ]
     },
 
@@ -2446,6 +2454,8 @@
       label_blocked: '예약됨',
       label_person: '학생',
       label_people: '학생',
+      how_to_edit: '편집 방법',
+      calendar_tools: '캘린더 도구',
       wd: [ '일', '월', '화', '수', '목', '금', '토' ]
     },
 
@@ -2929,6 +2939,8 @@
       label_blocked: 'Đã đặt',
       label_person: 'học sinh',
       label_people: 'học sinh',
+      how_to_edit: 'Cách chỉnh sửa',
+      calendar_tools: 'Công cụ lịch',
       wd: [ 'CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7' ]
     }
   };

@@ -79,11 +79,14 @@ async def main():
         await page.click("#adminBtn"); await page.wait_for_timeout(200)
         check("the log-in dialog (admin password, first calendar) is in French", await text(page, "#loginTitle") == "Accès admin" and await text(page, "#loginSubmitBtn") == "Entrer en mode admin")
         await page.fill("#adminPasswordInput", "t"); await page.click("#loginSubmitBtn"); await page.wait_for_timeout(700)
-        check("so are the admin banner, toolbar and switch", "Mode admin" in await text(page, "#adminBanner") and await text(page, "#addBtn") == "+ Ajouter un événement"
-              and await text(page, "#backToAdminBtn") == "Vue admin" and await text(page, "#historyBtn") == "Historique des versions")
+        check("so are the admin banner, toolbar and switch", "Comment modifier" in await text(page, "#adminBanner") and await text(page, "#addBtn") == "+ Ajouter un événement"
+              and await text(page, "#backToAdminBtn") == "Vue admin" and await text(page, "#historyBtn") == "Historique des versions", (await text(page, "#adminBanner"))[:40] + " | " + await text(page, "#backToAdminBtn"))
         check("and the weekly summary", await text(page, "#summaryHoursLabel") == "heures occupées cette semaine")
         await page.click("#profileBtn"); await page.wait_for_timeout(100)
-        check("and the profile menu", await text(page, "#settingsBtn") == "Réglages" and await text(page, "#signOutBtn") == "Se déconnecter" and await text(page, "#profileMenuMode") == "Mode admin")
+        check("and the profile menu, with the role", await text(page, "#signOutBtn") == "Se déconnecter" and await text(page, "#profileMenuMode") == "Mode admin", await text(page, "#profileMenuMode"))
+        await page.click("#portalTitle"); await page.wait_for_timeout(100)
+        await page.click("#gearBtn"); await page.wait_for_timeout(100)
+        check("and the gear menu", await text(page, "#settingsBtn") == "Réglages" and await page.get_attribute("#gearBtn", "title") == "Outils du calendrier", await page.get_attribute("#gearBtn", "title"))
         await page.click("#settingsBtn"); await page.wait_for_timeout(500)
         check("Settings is in French and offers a default language for visitors, English", await page.evaluate("document.getElementById('settingLanguage').value") == "en"
               and await text(page, "#settingsModal h2") == "Réglages" and await text(page, "#saveSettingsBtn") == "Enregistrer les réglages")

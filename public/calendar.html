@@ -258,15 +258,6 @@
               All accounts
             </a>
             <button
-              id="settingsBtn"
-              class="menu-item hidden"
-              role="menuitem"
-              title="Title, display name, address, hours, time zone, colors, wording, notifications"
-              data-i18n="settings"
-            >
-              Settings
-            </button>
-            <button
               id="changePasswordBtn"
               class="menu-item hidden"
               role="menuitem"
@@ -295,8 +286,8 @@
 
       <div>
 
-        <strong data-i18n="admin_mode">
-          Admin mode
+        <strong data-i18n="how_to_edit">
+          How to edit
         </strong>
 
         <span data-i18n="admin_banner">
@@ -307,36 +298,6 @@
 
       </div>
 
-      <div class="admin-banner-actions">
-
-        <button
-          id="undoBtn"
-          class="text-btn hidden"
-          title="Undo (Ctrl+Z)"
-          disabled
-          data-i18n="undo"
-        >
-          Undo
-        </button>
-
-        <button
-          id="redoBtn"
-          class="text-btn hidden"
-          title="Redo (Ctrl+Shift+Z)"
-          disabled
-          data-i18n="redo"
-        >
-          Redo
-        </button>
-        <button
-          id="historyBtn"
-          class="text-btn hidden"
-          title="Every version of the schedule, newest first - restore any of them"
-          data-i18n="history"
-        >
-          Version history
-        </button>
-      </div>
     </section>
 
 
@@ -539,6 +500,65 @@
         >
           Public view
         </button>
+      </div>
+      <div
+        id="toolsMenuWrap"
+        class="tools-menu-wrap hidden"
+      >
+        <button
+          id="gearBtn"
+          class="icon-btn gear-btn"
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          data-i18n-title="calendar_tools"
+          title="Calendar tools"
+          aria-label="Calendar tools"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <div
+          id="toolsMenu"
+          class="tools-menu hidden"
+          role="menu"
+        >
+          <button
+            id="undoBtn"
+            class="menu-item"
+            role="menuitem"
+            title="Undo (Ctrl+Z)"
+            disabled
+          >
+            <span data-i18n="undo">Undo</span><kbd>Ctrl+Z</kbd>
+          </button>
+          <button
+            id="redoBtn"
+            class="menu-item"
+            role="menuitem"
+            title="Redo (Ctrl+Y)"
+            disabled
+          >
+            <span data-i18n="redo">Redo</span><kbd>Ctrl+Y</kbd>
+          </button>
+          <button
+            id="historyBtn"
+            class="menu-item"
+            role="menuitem"
+            title="Every version of the schedule, newest first - restore any of them"
+            data-i18n="history"
+          >
+            Version history
+          </button>
+          <button
+            id="settingsBtn"
+            class="menu-item"
+            role="menuitem"
+            title="Title, display name, address, hours, time zone, colors, wording, notifications"
+            data-i18n="settings"
+          >
+            Settings
+          </button>
+        </div>
       </div>
       <div
         id="calendarsSwitch"

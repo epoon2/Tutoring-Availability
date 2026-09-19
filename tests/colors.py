@@ -297,7 +297,7 @@ async def main():
         await page.keyboard.press("Escape"); await page.wait_for_timeout(200)
 
         # ---- undo puts the Mondays (and their colors) back
-        await page.click("#undoBtn"); await page.wait_for_timeout(900)
+        await page.evaluate("document.getElementById('undoBtn').click()"); await page.wait_for_timeout(900)
         colors = await card_colors(page)
         check("undo restores the Mondays with their colors", colors.get("1") not in (None, "", "#1d4ed8"), str(colors))
 

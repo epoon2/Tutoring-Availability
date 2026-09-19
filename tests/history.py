@@ -138,8 +138,8 @@ async def main():
 
         await page.click("#closeHistoryDrawerBtn"); await page.wait_for_timeout(300)
         await page.evaluate("document.getElementById('exitAdminBtn').click()"); await page.wait_for_timeout(400)
-        check("leaving admin hides the Version history button",
-              await page.evaluate("document.getElementById('historyBtn').classList.contains('hidden')"))
+        check("leaving admin hides the gear menu that holds Version history",
+              await page.evaluate("document.getElementById('toolsMenuWrap').classList.contains('hidden')"))
 
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
         check("no page errors", not real, str(real[:3]))

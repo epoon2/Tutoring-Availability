@@ -733,6 +733,7 @@
       'click',
       () => {
         closeCalendarsMenu();
+        closeToolsMenu();
       }
     );
     $('savePasswordBtn')
@@ -831,15 +832,23 @@
         );
     }
     /*
-      Any choice closes the menu; so does a click anywhere else.
+      The gear menu: any choice closes it, as does a click elsewhere.
     */
-    [ 'settingsBtn' ]
+    $('gearBtn')
+      .addEventListener(
+        'click',
+        (clickEvent) => {
+          clickEvent.stopPropagation();
+          toggleToolsMenu();
+        }
+      );
+    [ 'undoBtn', 'redoBtn', 'historyBtn', 'settingsBtn' ]
       .forEach(
         (id) => {
           $(id)
             .addEventListener(
               'click',
-              closeProfileMenu
+              closeToolsMenu
             );
         }
       );
@@ -3444,34 +3453,15 @@
       );
 
 
-    $('undoBtn')
+    $('toolsMenuWrap')
       .classList
       .toggle(
         'hidden',
         !state.isAdmin
       );
-
-
-    $('redoBtn')
-      .classList
-      .toggle(
-        'hidden',
-        !state.isAdmin
-      );
-
-
-    $('historyBtn')
-      .classList
-      .toggle(
-        'hidden',
-        !state.isAdmin
-      );
-    $('settingsBtn')
-      .classList
-      .toggle(
-        'hidden',
-        !state.isAdmin
-      );
+    if ( !state.isAdmin ) {
+      closeToolsMenu();
+    }
     /*
       Signed in is either admin mode or a remembered device looking at
       the visitor view; either way the chip stands in for the Log in
@@ -13966,6 +13956,20 @@
   function closeCalendarsMenu() {
     $('calendarsMenu').classList.add( 'hidden' );
     $('calendarsBtn').setAttribute( 'aria-expanded', 'false' );
+  }
+
+
+  function toggleToolsMenu() {
+    const open =
+      $('toolsMenu').classList.contains( 'hidden' );
+    $('toolsMenu').classList.toggle( 'hidden', !open );
+    $('gearBtn').setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+  }
+
+
+  function closeToolsMenu() {
+    $('toolsMenu').classList.add( 'hidden' );
+    $('gearBtn').setAttribute( 'aria-expanded', 'false' );
   }
 
 

@@ -3301,10 +3301,50 @@ body.calendar-missing .header-actions {
   text-decoration: underline;
 }
 
-/* the download icon */
+/*
+  The gear: undo, redo, the version history and Settings, in one menu
+  at the end of the toolbar.
+*/
+.tools-menu-wrap {
+  position: relative;
+  margin-left: auto;
+}
+
+.gear-btn svg,
 .download-btn svg {
   display: block;
   margin: 0 auto;
+}
+
+.tools-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px var(--shadow);
+}
+
+.tools-menu .menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.tools-menu .menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tools-menu kbd {
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
 }
 
 /*
