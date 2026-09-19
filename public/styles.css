@@ -3301,6 +3301,12 @@ body.calendar-missing .header-actions {
   text-decoration: underline;
 }
 
+/* the download icon */
+.download-btn svg {
+  display: block;
+  margin: 0 auto;
+}
+
 /*
   A block from another calendar of the same owner: its own colors,
   a dashed edge so it reads as borrowed, and a tag with the

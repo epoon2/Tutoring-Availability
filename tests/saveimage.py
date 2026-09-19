@@ -48,8 +48,11 @@ async def main():
         name = dl.suggested_filename
         path = await dl.path()
         data = open(path, "rb").read()
-        check("the download is a png named for the weekly view",
-              name.startswith("scheduleweekly") and name.endswith(".png"), name)
+        expected = await page.evaluate("""(() => { const cols = [...document.querySelectorAll('.day-column')].map(c => c.dataset.date);
+            const md = (s) => { const d = new Date(s + 'T12:00'); return (d.getMonth() + 1) + '.' + d.getDate(); };
+            return 'ethans_tutoring_availability ' + md(cols[0]) + '-' + md(cols[cols.length - 1]) + '.png'; })()""")
+        check("the download is a png named calendar + week, e.g. ethans_tutoring_availability 9.13-9.19.png",
+              name == expected, f"{name} != {expected}")
         check("it really is a PNG", data[:8] == b"\x89PNG\r\n\x1a\n", str(data[:8]))
         check("it is a full-size image, not a thumbnail", len(data) > 20000, f"{len(data)} bytes")
         status = await page.text_content("#status")

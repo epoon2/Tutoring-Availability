@@ -3787,9 +3787,17 @@
     );
 
 
+    /*
+      The download icon keeps its picture; its tooltip names the view
+      it will save, and the file gets the same name (see downloadName).
+    */
+    const saveLabel =
+      t( 'screenshot_view', { view: t( 'view_' + VIEW_WORD[ state.view ] ) } );
     $('saveWeekBtn')
-      .textContent =
-        t( 'screenshot_view', { view: t( 'view_' + VIEW_WORD[ state.view ] ) } );
+      .title =
+        saveLabel;
+    $('saveWeekBtn')
+      .setAttribute( 'aria-label', saveLabel );
 
   }
 
@@ -7330,35 +7338,64 @@
           ctx.stroke();
 
 
+          /*
+            Text stays inside the card, as on the page: two lines when
+            there is room, otherwise one line with the title cut to
+            leave the time whole - "Tutorin… 7:45 – 8 PM".
+          */
+          ctx.save();
+          roundRectPath(
+            ctx,
+            x + 3,
+            top + 1,
+            COL_W - 6,
+            cardH - 2,
+            5
+          );
+          ctx.clip();
           ctx.fillStyle =
             shades.ink;
-          ctx.font = font( 11, '700' );
-          ctx.fillText(
-            clipCanvasText(
-              ctx,
-              event.title ||
-              labelFor( blocked ? 'BLOCKED' : 'AVAILABLE' ),
-              COL_W - 16
-            ),
-            x + 9,
-            top + 14
-          );
-
-
+          const title =
+            event.title ||
+            labelFor( blocked ? 'BLOCKED' : 'AVAILABLE' );
+          const range =
+            formatMinuteRange( from, to );
           if ( cardH >= 28 ) {
-
+            ctx.font = font( 11, '700' );
+            ctx.fillText(
+              clipCanvasText( ctx, title, COL_W - 16 ),
+              x + 9,
+              top + 14
+            );
             ctx.font = font( 10 );
             ctx.fillText(
-              clipCanvasText(
-                ctx,
-                formatMinuteRange( from, to ),
-                COL_W - 16
-              ),
+              clipCanvasText( ctx, range, COL_W - 16 ),
               x + 9,
               top + 27
             );
-
+          } else {
+            const size =
+              cardH >= 18 ? 10 : 9;
+            const baseline =
+              top + cardH / 2 + size * 0.36;
+            ctx.font = font( size );
+            const rangeWidth =
+              ctx.measureText( range ).width;
+            ctx.font = font( size, '700' );
+            const gap = 8;
+            const titleText =
+              clipCanvasText( ctx, title, Math.max( 0, COL_W - 16 - rangeWidth - gap ) );
+            ctx.fillText( titleText, x + 9, baseline );
+            const titleWidth =
+              ctx.measureText( titleText ).width;
+            ctx.font = font( size );
+            ctx.fillText(
+              range,
+              x + 9 + titleWidth + ( titleText ? gap : 0 ),
+              baseline
+            );
           }
+          ctx.restore();
 
         }
       );
@@ -7436,10 +7473,8 @@
         link.href =
           url;
 
-        link.download =
-          'schedule' +
-          VIEW_WORD[ state.view ] +
-          formatDate( visibleRange().start ).replace( /-/g, '' ) +
+                link.download =
+          downloadName() +
           '.png';
 
         document.body.appendChild( link );
@@ -14043,6 +14078,9 @@
     if ( state.loginMode ) {
       setLoginMode( state.loginMode );
     }
+    if ( state.view && $('saveWeekBtn') ) {
+      applyView();
+    }
   }
 
 
@@ -17815,6 +17853,33 @@
 
 
     /*
+    "ethans_tutoring_availability 9.13-9.19": the title as a file
+    name, then the dates on screen.
+  */
+  function downloadName() {
+    const title =
+      ( state.config.portalTitle || 'calendar' )
+        .toLowerCase()
+        .replace( /['’]/g, '' )
+        .replace( /[^a-z0-9]+/g, '_' )
+        .replace( /^_+|_+$/g, '' ) || 'calendar';
+    const range =
+      visibleRange();
+    const md =
+      (date) => ( date.getMonth() + 1 ) + '.' + date.getDate();
+    const last =
+      addDays( range.start, range.days - 1 );
+    const when =
+      state.view === 'month'
+        ? ( range.start.getMonth() + 1 ) + '.' + range.start.getFullYear()
+        : range.days > 1
+          ? md( range.start ) + '-' + md( last )
+          : md( range.start );
+    return title + ' ' + when;
+  }
+
+
+  /*
     The clock is a setting: "2:30 PM" or "14:30". Every label on the
     page goes through the helpers below, so one flag changes them all.
     In a language other than English the browser writes the 12-hour
