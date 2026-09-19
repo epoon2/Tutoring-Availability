@@ -36,8 +36,11 @@ async def main():
               and await page.evaluate("getComputedStyle(document.querySelector('.home-top')).position") == "sticky")
         check("it is a long page with sections", await page.evaluate("document.body.scrollHeight") > 2000
               and await page.evaluate("['how','features','visitors','faq'].every(id => document.getElementById(id))"))
-        check("the footer points to the first calendar's address, and the hero to a live one", "/ethan" in (await page.text_content("#footNote"))
-              and await page.get_attribute("#exampleLink", "href") == "/ethan")
+        check("the footer points to the first calendar's address; no live-calendar link on the page", "/ethan" in (await page.text_content("#footNote"))
+              and await page.evaluate("!document.getElementById('exampleLink')")
+              and await page.evaluate("[...document.querySelectorAll('a')].every(a => a.getAttribute('href') !== '/ethan' || a.closest('#footNote'))"))
+        check("the sections are full-width bands", await page.evaluate("document.querySelectorAll('section.band').length") >= 5
+              and await page.evaluate("Math.abs(document.querySelector('section.band').getBoundingClientRect().width - window.innerWidth) < 2"))
         await page.click("#topLoginBtn"); await page.wait_for_timeout(200)
         check("Log in opens the dialog on Log in", not await hidden(page, "#authModal") and not await hidden(page, "#loginPanel") and await hidden(page, "#signupPanel"))
         await page.keyboard.press("Escape"); await page.wait_for_timeout(100)

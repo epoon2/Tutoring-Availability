@@ -47,9 +47,9 @@
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      max-width: 1100px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 12px 24px;
+      padding: 12px 5vw;
     }
 
     .home-brand {
@@ -91,13 +91,28 @@
     }
 
     .home {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 24px 60px;
+      padding: 0 0 40px;
     }
 
-    .home section {
-      padding: 56px 0 8px;
+    /*
+      Each part of the page is a full-width band with its own tone,
+      its content held to a comfortable measure inside.
+    */
+    .band {
+      padding: 72px 5vw;
+    }
+
+    .band-alt {
+      background: var(--surface-2);
+    }
+
+    .band-tint {
+      background: var(--accent-tint);
+    }
+
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
     }
 
     .home h2 {
@@ -108,15 +123,22 @@
 
     .home-hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
-      gap: 40px;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 620px);
+      gap: 56px;
       align-items: center;
-      padding-top: 64px;
+    }
+
+    .band-hero {
+      background:
+        radial-gradient(60% 70% at 85% 30%, var(--accent-tint), transparent 70%),
+        var(--bg);
+      padding-top: 88px;
+      padding-bottom: 88px;
     }
 
     .home-hero h1 {
       margin: 8px 0 14px;
-      font-size: clamp(32px, 4.6vw, 52px);
+      font-size: clamp(34px, 4.8vw, 60px);
       line-height: 1.08;
       letter-spacing: -0.02em;
     }
@@ -260,8 +282,8 @@
 
     .home-features {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
       margin: 0;
       padding: 0;
       list-style: none;
@@ -386,10 +408,6 @@
     }
 
     .home-ready {
-      margin-top: 56px;
-      padding: 40px 24px;
-      background: var(--accent-tint);
-      border-radius: 20px;
       text-align: center;
     }
 
@@ -403,11 +421,17 @@
     }
 
     .home-foot {
-      margin-top: 40px;
-      padding-top: 20px;
+      padding: 24px 5vw 0;
       border-top: 1px solid var(--line);
       color: var(--muted);
       font-size: 13px;
+    }
+
+    .home-foot .wrap {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
     }
 
     .home-foot p {
@@ -529,6 +553,10 @@
         display: none;
       }
 
+      .home-features {
+        grid-template-columns: 1fr;
+      }
+
       .home-preview-grid {
         grid-template-columns: repeat(3, 1fr);
       }
@@ -537,8 +565,13 @@
         display: none;
       }
 
-      .home section {
-        padding-top: 40px;
+      .band {
+        padding: 44px 5vw;
+      }
+
+      .band-hero {
+        padding-top: 48px;
+        padding-bottom: 48px;
       }
     }
   </style>
@@ -571,16 +604,16 @@
 
   <main class="home">
 
-    <section class="home-hero">
+    <section class="band band-hero">
+    <div class="wrap home-hero">
       <div>
         <h1 data-i18n="home_tagline">Share when you're free, at a link of your own.</h1>
         <p class="lede" data-i18n="home_lede">A weekly calendar of your open and booked time. Visitors see what is open, ask for a session with their contact details, and you get an email. Everything else - hours, colors, wording, time zone, language - is yours to set.</p>
         <div class="home-cta">
           <button id="heroSignupBtn" class="btn primary" type="button" data-i18n="home_cta_signup">Create your calendar</button>
           <button id="heroLoginBtn" class="btn secondary" type="button" data-i18n="home_cta_login">Log in</button>
-          <a id="exampleLink" class="btn secondary hidden" href="/" data-i18n="home_cta_example">See a live calendar</a>
         </div>
-        <p class="home-free" data-i18n="home_free">Free. No app to install. Works on any phone.</p>
+        <p class="home-free" data-i18n="home_free">Free. No app to install. Works on any device.</p>
       </div>
       <div class="home-preview" aria-hidden="true">
         <div class="home-preview-bar"><strong>Ethan's Tutoring</strong><span class="home-preview-pill">Request a session</span></div>
@@ -592,18 +625,22 @@
           <div class="home-preview-day"><small>Fri</small><span class="home-preview-block open">Available all day</span></div>
         </div>
       </div>
+    </div>
     </section>
 
-    <section id="how">
+    <section id="how" class="band">
+    <div class="wrap">
       <h2 data-i18n="home_how">How it works</h2>
       <div class="home-steps">
         <div class="home-step"><strong data-i18n="home_step1_t">Set your hours</strong><span data-i18n="home_step1_d">Mark the times you are open each week, once or repeating. Booked time goes in beside it, in any color you like.</span></div>
         <div class="home-step"><strong data-i18n="home_step2_t">Share your link</strong><span id="step2Text" data-i18n="home_step2_d">Your calendar lives at {host}/you. Send the link to anyone - a parent, a student, a client. They need no account.</span></div>
         <div class="home-step"><strong data-i18n="home_step3_t">Get requests by email</strong><span data-i18n="home_step3_d">A visitor picks an open time and leaves their name, email and phone. You get an email, and you accept or decline in one click.</span></div>
       </div>
+    </div>
     </section>
 
-    <section id="features">
+    <section id="features" class="band band-alt">
+    <div class="wrap">
       <h2 data-i18n="home_features">Everything included</h2>
       <ul class="home-features">
         <li><strong data-i18n="home_f1_t">Your own address</strong><span data-i18n="home_f1_d"></span></li>
@@ -616,9 +653,11 @@
         <li><strong data-i18n="home_f8_t">Version history</strong><span data-i18n="home_f8_d"></span></li>
         <li><strong data-i18n="home_f9_t">Six languages</strong><span data-i18n="home_f9_d"></span></li>
       </ul>
+    </div>
     </section>
 
-    <section id="visitors" class="home-visitors">
+    <section id="visitors" class="band">
+    <div class="wrap home-visitors">
       <div>
         <h2 data-i18n="home_visitors">What your visitors see</h2>
         <p data-i18n="home_visitors_d"></p>
@@ -636,34 +675,43 @@
         <div class="home-phone-day"><small>Thursday</small><span class="home-preview-block open">Available · 3 – 6 PM</span><span class="home-preview-block booked">Booked · 6 – 7 PM</span></div>
         <div class="home-phone-btn" data-i18n="request">Request a session</div>
       </div>
+    </div>
     </section>
 
-    <section id="madefor">
+    <section id="madefor" class="band band-alt">
+    <div class="wrap">
       <h2 data-i18n="home_madefor">Made for</h2>
       <div class="home-chips">
         <span data-i18n="home_m1"></span><span data-i18n="home_m2"></span><span data-i18n="home_m3"></span>
         <span data-i18n="home_m4"></span><span data-i18n="home_m5"></span><span data-i18n="home_m6"></span>
       </div>
+    </div>
     </section>
 
-    <section id="faq" class="home-faq">
+    <section id="faq" class="band home-faq">
+    <div class="wrap">
       <h2 data-i18n="home_faq">Questions</h2>
       <details><summary data-i18n="home_q1"></summary><p data-i18n="home_a1"></p></details>
       <details><summary data-i18n="home_q2"></summary><p data-i18n="home_a2"></p></details>
       <details><summary data-i18n="home_q3"></summary><p data-i18n="home_a3"></p></details>
       <details><summary data-i18n="home_q4"></summary><p data-i18n="home_a4"></p></details>
       <details><summary data-i18n="home_q5"></summary><p data-i18n="home_a5"></p></details>
+    </div>
     </section>
 
-    <div class="home-ready">
+    <section class="band band-tint home-ready">
+    <div class="wrap">
       <h2 data-i18n="home_ready">Ready when you are.</h2>
       <p data-i18n="home_ready_d"></p>
       <button id="readySignupBtn" class="btn primary" type="button" data-i18n="home_cta_signup">Create your calendar</button>
     </div>
+    </section>
 
     <footer class="home-foot">
+    <div class="wrap">
       <p><span id="footSite"></span> · <span data-i18n="home_footer"></span></p>
       <p id="footNote"></p>
+    </div>
     </footer>
 
   </main>
@@ -1057,10 +1105,6 @@
         $('siteName').textContent = data.name;
         $('footSite').textContent = data.name;
         $('claimRow').classList.toggle('hidden', data.claimed);
-        if (data.mainSlug) {
-          $('exampleLink').href = '/' + data.mainSlug;
-          $('exampleLink').classList.remove('hidden');
-        }
         applyLanguage();
       }).catch(function () {});
 
