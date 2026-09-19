@@ -3232,25 +3232,32 @@ body.calendar-missing .header-actions {
    SEVERAL CALENDARS IN ONE VIEW
 ----------------------------- */
 
-.calendars-switch {
-  position: relative;
-  margin-left: 4px;
+/*
+  The owner's other calendars sit in a panel to the left of the grid,
+  each with a switch, the way one calendar app shows several. On a
+  narrow screen the panel folds away behind a Calendars button.
+*/
+.calendar-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
 }
 
-.calendars-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 30;
-  min-width: 260px;
-  padding: 8px;
+.calendar-body.with-panel {
+  grid-template-columns: 250px minmax(0, 1fr);
+}
+
+.calendars-panel {
+  position: sticky;
+  top: 12px;
+  padding: 10px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px var(--shadow);
+  border-radius: 14px;
 }
 
-.calendars-menu-head {
+.calendars-panel-head {
   padding: 6px 10px 8px;
   color: var(--muted);
   font-size: 12px;
@@ -3266,14 +3273,11 @@ body.calendar-missing .header-actions {
   padding: 7px 10px;
   border-radius: 8px;
   font-size: 14px;
+  cursor: pointer;
 }
 
 .calendar-row:hover {
   background: var(--accent-soft);
-}
-
-.calendar-row input {
-  margin: 0;
 }
 
 .calendar-row .calendar-dot {
@@ -3299,6 +3303,72 @@ body.calendar-missing .header-actions {
 
 .calendar-row a:hover {
   text-decoration: underline;
+}
+
+/* the switch */
+.calendar-row input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  background: var(--line);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.calendar-row input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+
+.calendar-row input:checked {
+  background: var(--accent);
+}
+
+.calendar-row input:checked::after {
+  transform: translateX(14px);
+}
+
+.calendar-row input:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.calendars-toggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .calendar-body.with-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calendars-panel {
+    position: static;
+  }
+
+  .calendar-body.with-panel .calendars-panel {
+    display: none;
+  }
+
+  .calendar-body.with-panel.panel-open .calendars-panel {
+    display: block;
+  }
+
+  .calendars-toggle {
+    display: inline-block;
+  }
 }
 
 /*

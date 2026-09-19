@@ -560,43 +560,15 @@
           </button>
         </div>
       </div>
-      <div
-        id="calendarsSwitch"
-        class="calendars-switch hidden"
+      <button
+        id="calendarsBtn"
+        class="btn secondary small calendars-toggle hidden"
+        type="button"
+        aria-expanded="false"
+        data-i18n="calendars_btn"
       >
-        <button
-          id="calendarsBtn"
-          class="btn secondary small"
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded="false"
-          data-i18n="calendars_btn"
-        >
-          Calendars
-        </button>
-        <div
-          id="calendarsMenu"
-          class="calendars-menu hidden"
-          role="menu"
-        >
-          <div
-            class="calendars-menu-head"
-            data-i18n="calendars_show"
-          >
-            Show on this calendar
-          </div>
-          <div id="calendarsList"></div>
-          <a
-            id="calendarsDashboardLink"
-            class="menu-item"
-            role="menuitem"
-            href="/dashboard"
-            data-i18n="my_calendars"
-          >
-            My calendars
-          </a>
-        </div>
-      </div>
+        Calendars
+      </button>
     </section>
 
 
@@ -685,10 +657,37 @@
     </div>
 
 
-    <div
-      id="calendar"
-      class="calendar"
-    ></div>
+    <div class="calendar-body">
+
+      <!-- OTHER CALENDARS OF THE SAME OWNER -->
+
+      <aside
+        id="calendarsPanel"
+        class="calendars-panel hidden"
+      >
+        <div
+          class="calendars-panel-head"
+          data-i18n="calendars_btn"
+        >
+          Calendars
+        </div>
+        <div id="calendarsList"></div>
+        <a
+          id="calendarsDashboardLink"
+          class="menu-item"
+          href="/dashboard"
+          data-i18n="my_calendars"
+        >
+          My calendars
+        </a>
+      </aside>
+
+      <div
+        id="calendar"
+        class="calendar"
+      ></div>
+
+    </div>
 
 
     <div

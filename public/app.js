@@ -720,22 +720,17 @@
     $('calendarsBtn')
       .addEventListener(
         'click',
-        (clickEvent) => {
-          clickEvent.stopPropagation();
-          toggleCalendarsMenu();
-        }
-      );
-    $('calendarsMenu')
-      .addEventListener(
-        'click',
-        (clickEvent) => {
-          clickEvent.stopPropagation();
+        () => {
+          const body =
+            document.querySelector( '.calendar-body' );
+          const open =
+            body.classList.toggle( 'panel-open' );
+          $('calendarsBtn').setAttribute( 'aria-expanded', open ? 'true' : 'false' );
         }
       );
     document.addEventListener(
       'click',
       () => {
-        closeCalendarsMenu();
         closeToolsMenu();
       }
     );
@@ -13896,9 +13891,15 @@
       state.isAdmin &&
       state.session &&
       ( others.length > 0 || ( state.account && state.account.master ) );
-    $('calendarsSwitch')
+    $('calendarsPanel')
       .classList
       .toggle( 'hidden', !show );
+    $('calendarsBtn')
+      .classList
+      .toggle( 'hidden', !show );
+    document.querySelector( '.calendar-body' )
+      .classList
+      .toggle( 'with-panel', show );
     if ( !show ) {
       return;
     }
@@ -13920,12 +13921,14 @@
           document.createElement( 'input' );
         box.type =
           'checkbox';
+        box.setAttribute( 'role', 'switch' );
         const isHere =
           here && calendar.slug === here.slug;
         box.checked =
           isHere || shown.includes( calendar.slug );
         box.disabled =
           Boolean( isHere );
+        box.setAttribute( 'aria-checked', box.checked ? 'true' : 'false' );
         box.addEventListener(
           'change',
           () => {
@@ -13963,20 +13966,6 @@
         list.appendChild( row );
       }
     );
-  }
-
-
-  function toggleCalendarsMenu() {
-    const open =
-      $('calendarsMenu').classList.contains( 'hidden' );
-    $('calendarsMenu').classList.toggle( 'hidden', !open );
-    $('calendarsBtn').setAttribute( 'aria-expanded', open ? 'true' : 'false' );
-  }
-
-
-  function closeCalendarsMenu() {
-    $('calendarsMenu').classList.add( 'hidden' );
-    $('calendarsBtn').setAttribute( 'aria-expanded', 'false' );
   }
 
 
