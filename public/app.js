@@ -9319,7 +9319,8 @@
 
 
   async function saveSeriesEditWithScope(
-    formEvent
+    formEvent,
+    chosenScope
   ) {
 
     const series =
@@ -9379,6 +9380,7 @@
       }
     }
     const scope =
+      chosenScope ||
       await siteDialog({
         title:
           t( 'edit_recurring' ),
@@ -9448,15 +9450,35 @@
 
     } catch (error) {
 
+      /*
+        An overlap is the admin's call, as it is for a one-off: the
+        form shows which sessions clash and offers Save anyway, which
+        re-runs this same scope with the check waived.
+      */
+      if (
+        error?.data?.code ===
+        'BLOCKED_CONFLICT'
+      ) {
+
+        showConflictWarning(
+          error.data,
+          {
+            ...formEvent,
+            seriesScope:
+              scope
+          }
+        );
+
+
+        return false;
+
+      }
+
+
       $('eventError')
         .textContent =
-          error?.data?.code ===
-          'BLOCKED_CONFLICT'
-            ? t( 'not_saved_overlap' )
-            : (
-                error.message ||
-                t( 'change_failed' )
-              );
+          error.message ||
+          t( 'change_failed' );
 
 
       return false;
@@ -9512,6 +9534,8 @@
             'POST',
           body:
             JSON.stringify({
+              forceConflict:
+                formEvent.forceConflict === true,
               type:
                 formEvent.type,
               title:
@@ -9647,6 +9671,8 @@
             'POST',
           body:
             JSON.stringify({
+              forceConflict:
+                formEvent.forceConflict === true,
               type:
                 formEvent.type,
               title:
@@ -9774,6 +9800,8 @@
           'POST',
         body:
           JSON.stringify({
+            forceConflict:
+              formEvent.forceConflict === true,
             id:
               original.masterId ||
               original.id,
@@ -17042,6 +17070,39 @@
 
 
     try {
+
+      if ( event.seriesScope ) {
+
+        /*
+          A series edit that clashed: the same scope, this time with
+          the check waived.
+        */
+        const { seriesScope, ...formEvent } = event;
+        const outcome =
+          await saveSeriesEditWithScope(
+            {
+              ...formEvent,
+              forceConflict:
+                true
+            },
+            seriesScope
+          );
+        if ( !outcome ) {
+          return;
+        }
+        clearConflictWarning();
+        closeModal(
+          'eventModal'
+        );
+        await clearAcceptedRequest();
+        await loadWeek();
+        setStatus(
+          outcome
+        );
+        return;
+
+      }
+
 
       await api(
         '/events',

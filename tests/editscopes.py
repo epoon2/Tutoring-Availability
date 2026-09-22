@@ -175,7 +175,42 @@ async def main():
               starts(ev) == [dates["lastTue"] + "T14:00", dates["lastThu"] + "T14:00"],
               str(starts(ev)))
 
-        real = [e for e in errs if "fonts" not in e and "favicon" not in e]
+        # ---- Adding a weekday that clashes with another session warns, and Save anyway goes through.
+        this_wed = await page.evaluate("""(tue) => { const [y,m,d] = tue.split('-').map(Number);
+            return new Date(Date.UTC(y, m-1, d+1)).toISOString().slice(0,10); }""", dates["tue"])
+        await page.evaluate("""async (wed) => {
+            await fetch('/api/events', { method: 'POST',
+                headers: {'Content-Type': 'application/json', 'x-admin-password': 't'},
+                body: JSON.stringify({ type: 'BLOCKED', title: 'Leo - piano', start: wed + 'T14:00', end: wed + 'T15:00' }) });
+        }""", this_wed)
+        await rclick_weekday(page, 2)
+        await click_menu(page, "Edit")
+        await page.click("#weekdayPicker .weekday-btn[data-day='3']"); await page.wait_for_timeout(100)
+        await page.click("#saveEventBtn")
+        await choose_scope(page, "All events, past and future")
+        warned = await page.evaluate("""() => ({
+            open: !document.getElementById('eventModal').classList.contains('hidden'),
+            warning: !document.getElementById('conflictWarning').classList.contains('hidden'),
+            summary: document.getElementById('conflictWarningSummary').textContent.trim(),
+            items: [...document.querySelectorAll('#conflictWarningList .conflict-item')].map(i => i.textContent.replace(/\s+/g, ' ').trim()),
+            saveHidden: document.getElementById('saveEventBtn').classList.contains('hidden'),
+            anyway: !document.getElementById('saveAnywayBtn').classList.contains('hidden'),
+            error: document.getElementById('eventError').textContent.trim() })""")
+        check("a series edit that would overlap is a warning in the form, not a refusal",
+              warned["open"] and warned["warning"] and warned["error"] == "" and "overlaps" in warned["summary"], str(warned))
+        check("which names the session it clashes with and when", len(warned["items"]) == 1
+              and warned["items"][0].startswith("Leo - piano") and "2" in warned["items"][0] and "3" in warned["items"][0], str(warned["items"]))
+        check("and offers Save anyway in place of Save", warned["saveHidden"] and warned["anyway"], str(warned))
+        await page.click("#saveAnywayBtn"); await page.wait_for_timeout(1200)
+        status = await page.text_content("#status")
+        check("Save anyway saves the whole series with the new weekday", "whole series changed" in status
+              and await page.evaluate("document.getElementById('eventModal').classList.contains('hidden')"), status)
+        ev = await fetch_week(page, dates["weekStart"], dates["weekEnd"])
+        check("this week has the series on Tue and Wed at 2 PM (Thu still the 5 PM one-off), and Leo still on Wednesday",
+              starts(ev) == [dates["tue"] + "T14:00", this_wed + "T14:00", this_wed + "T14:00", dates["thu"] + "T17:00"], str(starts(ev)))
+
+        # the 409 the overlap check answers with is the browser logging a response, not a fault
+        real = [e for e in errs if "fonts" not in e and "favicon" not in e and "409" not in e]
         check("no console errors", not real, str(real[:3]))
 
         print(f"\n{len(oks)} passed, {len(fails)} failed")
