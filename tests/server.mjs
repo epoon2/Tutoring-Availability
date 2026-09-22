@@ -101,6 +101,7 @@ createServer(async (req, res) => {
   if (url.pathname.startsWith('/api/')) {
     const route = url.pathname.slice(4);
     if (route === '/sentmail') return json(res, 200, { sentMail });
+    if (route === '/googlestore') return json(res, 200, { events: [...googleStore.values()] });
     // a readiness probe some suites use
     if (route === '/config') {
       const probe = await handler(new Request(`http://localhost:${PORT}/api/events?start=2026-01-04&end=2026-01-10`));

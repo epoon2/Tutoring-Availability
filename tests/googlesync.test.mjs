@@ -38,6 +38,8 @@ eq('a one-off is a plain Tutoring event in Los Angeles time', g1, {
 });
 ok('no name or notes reach Google', !JSON.stringify(g1).includes('Maya') && !JSON.stringify(g1).includes('secret'));
 ok('an unpainted block sets no colorId', !('colorId' in g1));
+eq('a name the owner typed for Google is the summary instead', buildGoogleEvent({ ...oneOff, googleTitle: 'Algebra with M.' }).summary, 'Algebra with M.');
+eq('a blank one falls back to Tutoring', buildGoogleEvent({ ...oneOff, googleTitle: '   ' }).summary, 'Tutoring');
 
 // ---- colors: the nearest of Google's eleven
 eq('the portal palette lands on sensible Google colors',

@@ -941,6 +941,10 @@ export default async (req) => {
           nextEvent.color =
             stored.color;
         }
+        if ( !( "googleTitle" in incoming ) && stored.googleTitle ) {
+          nextEvent.googleTitle =
+            stored.googleTitle;
+        }
         if (
           nextEvent.recurrence &&
           stored.recurrence &&
@@ -954,6 +958,9 @@ export default async (req) => {
       }
       if ( !nextEvent.color ) {
         delete nextEvent.color;
+      }
+      if ( !nextEvent.googleTitle ) {
+        delete nextEvent.googleTitle;
       }
       if ( nextEvent.recurrence && nextEvent.recurrence.colorRules && !nextEvent.recurrence.colorRules.length ) {
         delete nextEvent.recurrence.colorRules;
@@ -4693,6 +4700,28 @@ function validateEvent(
           0,
           500
         ),
+
+    /*
+      The name the session gets on the owner's Google calendar. Left
+      out of the body, it is "whatever it was"; an empty string
+      clears it back to the mirror's plain "Tutoring".
+    */
+    ...(
+      "googleTitle" in event
+        ? {
+            googleTitle:
+              String(
+                event.googleTitle ||
+                ""
+              )
+                .trim()
+                .slice(
+                  0,
+                  100
+                )
+          }
+        : {}
+    ),
 
     recurrence
   };

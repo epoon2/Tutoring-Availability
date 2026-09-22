@@ -61,6 +61,9 @@ async def main():
             await login(page)
             check("without credentials the Sync button stays hidden", not await visible(page, "#googleSyncBtn"))
             await save_session(page)
+            await page.click(".event-card"); await page.wait_for_timeout(400)
+            check("and the editor never asks for a Google title", not await visible(page, "#googleTitleField"))
+            await page.evaluate("document.querySelector('#eventModal [data-close]').click()"); await page.wait_for_timeout(200)
             check("a save with sync off shows no notice", not await visible(page, "#syncNotice"))
             check("and the card is on the schedule", await page.locator(".event-card").count() == 1)
         finally:
@@ -107,6 +110,35 @@ async def main():
             check("a good result reads as good and hides Sync now",
                   await page.evaluate("document.getElementById('syncNotice').classList.contains('ok')")
                   and not await visible(page, "#syncNoticeRetryBtn"))
+            got = await page.evaluate("fetch('/api/googlestore').then(r => r.json()).then(d => d.events.map(e => e.summary))")
+            check("what Google got is called Tutoring, since no name was typed", got == ["Tutoring"], str(got))
+
+            # ---- the editor asks what the copy on Google should be called
+            await page.click(".event-card"); await page.wait_for_timeout(400)
+            check("a booked session's editor shows the Google title field, empty", await visible(page, "#googleTitleField")
+                  and await page.input_value("#eventGoogleTitle") == "" and await page.get_attribute("#eventGoogleTitle", "placeholder") == "Tutoring")
+            await page.select_option("#eventType", "AVAILABLE"); await page.wait_for_timeout(100)
+            check("open time never copies, so the field goes for it", not await visible(page, "#googleTitleField"))
+            await page.select_option("#eventType", "BLOCKED"); await page.wait_for_timeout(100)
+            await page.fill("#eventGoogleTitle", "Algebra with M.")
+            await page.click("#saveEventBtn"); await page.wait_for_timeout(900)
+            got = await page.evaluate("fetch('/api/googlestore').then(r => r.json()).then(d => d.events.map(e => e.summary))")
+            check("the typed name is what Google shows", got == ["Algebra with M."], str(got))
+            await page.click(".event-card"); await page.wait_for_timeout(400)
+            check("and the editor remembers it", await page.input_value("#eventGoogleTitle") == "Algebra with M.")
+            await page.evaluate("document.querySelector('#eventModal [data-close]').click()"); await page.wait_for_timeout(200)
+            await page.evaluate("""async () => { const card = document.querySelector('.event-card'); const id = card.dataset.id || card.dataset.eventId;
+                const ev = await fetch('/api/events?start=2020-01-01&end=2030-01-01', { headers: { 'x-admin-password': 't' } }).then(r => r.json()).then(d => d.events[0]);
+                await fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': 't' },
+                    body: JSON.stringify({ id: ev.id, type: ev.type, title: ev.title, start: ev.start, end: ev.end, notes: ev.notes }) }); }""")
+            await page.wait_for_timeout(600)
+            got = await page.evaluate("fetch('/api/googlestore').then(r => r.json()).then(d => d.events.map(e => e.summary))")
+            check("a save that says nothing about the name keeps it (a drag, say)", got == ["Algebra with M."], str(got))
+            await page.click(".event-card"); await page.wait_for_timeout(400)
+            await page.fill("#eventGoogleTitle", "")
+            await page.click("#saveEventBtn"); await page.wait_for_timeout(900)
+            got = await page.evaluate("fetch('/api/googlestore').then(r => r.json()).then(d => d.events.map(e => e.summary))")
+            check("clearing it goes back to Tutoring", got == ["Tutoring"], str(got))
 
             # ---- Settings: the Google calendar this one copies into, and the feed
             await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(600)

@@ -1241,6 +1241,7 @@
           renderEditorColorRow(
             $('eventType').value
           );
+          syncGoogleTitleField();
         }
       );
 
@@ -7906,6 +7907,8 @@
 
       notes:
         storedEvent.notes,
+      googleTitle:
+        storedEvent.googleTitle,
 
       start:
         newStart,
@@ -8469,6 +8472,8 @@
         copied.type,
       notes:
         copied.notes,
+      googleTitle:
+        copied.googleTitle,
       color:
         copied.color
     });
@@ -9113,6 +9118,8 @@
 
               notes:
                 original.notes,
+              googleTitle:
+                original.googleTitle,
 
               start:
                 masterStart,
@@ -9511,6 +9518,8 @@
                 formEvent.title,
               notes:
                 formEvent.notes,
+              googleTitle:
+                formEvent.googleTitle,
               start:
                 formEvent.start,
               end:
@@ -9644,6 +9653,8 @@
                 formEvent.title,
               notes:
                 formEvent.notes,
+              googleTitle:
+                formEvent.googleTitle,
               start:
                 formEvent.start,
               end:
@@ -9772,6 +9783,8 @@
               formEvent.title,
             notes:
               formEvent.notes,
+            googleTitle:
+              formEvent.googleTitle,
             start:
               newStart,
             end:
@@ -9833,6 +9846,8 @@
 
       notes:
         original.notes,
+      googleTitle:
+        original.googleTitle,
 
       start:
         original.seriesStart ||
@@ -10227,6 +10242,8 @@
 
                 notes:
                   original.notes,
+                googleTitle:
+                  original.googleTitle,
 
                 color:
                   normalizeHex( occurrence.color ) || null,
@@ -10507,6 +10524,8 @@
 
                 notes:
                   original.notes,
+                googleTitle:
+                  original.googleTitle,
 
                 color:
                   normalizeHex( occurrence.color ) || null,
@@ -10712,6 +10731,8 @@
 
               notes:
                 original.notes,
+              googleTitle:
+                original.googleTitle,
 
               start:
                 minuteKeyToLocalDateTime(
@@ -13724,6 +13745,24 @@
 
 
   /*
+    The name a booked session gets on the owner's Google calendar is
+    asked for only where it applies: a booked session, on a calendar
+    that mirrors to Google. Blank means the mirror's plain "Tutoring".
+  */
+  function syncGoogleTitleField() {
+    $('googleTitleField')
+      .classList
+      .toggle(
+        'hidden',
+        !(
+          state.config.googleSync &&
+          $('eventType').value === 'BLOCKED'
+        )
+      );
+  }
+
+
+  /*
     What the account is: the site's owner is the Admin, any other
     account the Owner of its calendars, and the site's admin password
     (before an account claimed the first calendar) counts as Admin.
@@ -16630,6 +16669,16 @@
         '';
 
 
+    $('eventGoogleTitle')
+      .value =
+        (
+          event &&
+          event.googleTitle
+        ) ||
+        '';
+    syncGoogleTitleField();
+
+
     $('eventError')
       .textContent =
         '';
@@ -17211,6 +17260,9 @@
       title,
       notes:
         $('eventNotes')
+          .value,
+      googleTitle:
+        $('eventGoogleTitle')
           .value,
       recurrence
     };

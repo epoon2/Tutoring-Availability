@@ -2,8 +2,9 @@
   Google Calendar mirror.
 
   Every booked session on the schedule is kept as a matching event on
-  one Google calendar, titled "Tutoring" and nothing more - no student
-  name, no notes. Availability is never mirrored.
+  one Google calendar, titled "Tutoring" unless the owner typed a name
+  for it in the editor (googleTitle) - never the student's name or the
+  notes by default. Availability is never mirrored.
 
   Setup is two environment variables on Netlify:
 
@@ -76,7 +77,7 @@ export function googleEventId(portalId) {
 
 export function buildGoogleEvent(event, timeZone = TIMEZONE_ID) {
   const body = {
-    summary: "Tutoring",
+    summary: String(event.googleTitle || "").trim() || "Tutoring",
     status: "confirmed",
     start: { dateTime: `${event.start}:00`, timeZone },
     end: { dateTime: `${event.end}:00`, timeZone },
