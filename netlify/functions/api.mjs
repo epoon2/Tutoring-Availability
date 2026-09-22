@@ -6878,56 +6878,20 @@ function buildPublicSchedule(
 
 
   /*
-    Only show blocked sessions publicly
-    where they overlap a period that was
-    marked as tutoring availability.
+    Every booked session is published (when the owner allows booked
+    time to show at all), whether or not it sits inside a period
+    marked as open. A session outside the open hours used to be left
+    out, which made the day look free where it was not.
 
-    Each session is published separately.
-    Merging back-to-back ones into a single
-    span would hide how many there are, and
-    that count is the honest signal of how
-    busy the day is.
+    Each session is published separately. Merging back-to-back ones
+    into a single span would hide how many there are, and that count
+    is the honest signal of how busy the day is.
   */
 
-    const publicBlocked =
-    [];
-  for (
-    const block of activeSettings.privacy.showBooked ? blockedSessions : []
-  ) {
-
-    for (
-      const availability of available
-    ) {
-
-      const start =
-        Math.max(
-          block[0],
-          availability[0]
-        );
-
-
-      const end =
-        Math.min(
-          block[1],
-          availability[1]
-        );
-
-
-      if (
-        start <
-        end
-      ) {
-
-        publicBlocked.push([
-          start,
-          end
-        ]);
-
-      }
-
-    }
-
-  }
+  const publicBlocked =
+    activeSettings.privacy.showBooked
+      ? blockedSessions.map( (block) => [ block[0], block[1] ] )
+      : [];
 
 
   const output =

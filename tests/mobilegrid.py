@@ -65,7 +65,8 @@ async def main():
         check("phones open in the grid by default",
               st["calendar"] == "grid" and st["agenda"] == "none", str(st))
         check("the toggle is offered on phones", st["toggle"] != "none", str(st))
-        check("the week's schedule shows as cards", st["cards"] == 3, str(st))
+        # Tuesday: open before, booked, open after; Thursday: the booked session alone
+        check("the week's schedule shows as cards", st["cards"] == 4, str(st))
 
         await phone.click("#viewListBtn"); await phone.wait_for_timeout(300)
         st = await view_state(phone)
@@ -81,7 +82,7 @@ async def main():
         await phone.click("#viewGridBtn"); await phone.wait_for_timeout(300)
         st = await view_state(phone)
         check("Grid brings the week grid back", st["calendar"] == "grid"
-              and st["agenda"] == "none" and st["cards"] == 3, str(st))
+              and st["agenda"] == "none" and st["cards"] == 4, str(st))
 
         # Admin on the phone still gets the grid with its extra card.
         await phone.click("#adminBtn"); await phone.fill("#adminPasswordInput", "t")

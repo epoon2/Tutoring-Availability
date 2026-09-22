@@ -45,6 +45,9 @@ async def main():
                 start: lastTue + 'T16:00', end: lastTue + 'T17:00' });
             await post({ type: 'AVAILABLE', title: 'Open',
                 start: tue + 'T15:00', end: tue + 'T18:00' });
+            // a booked session on a day with no open hours at all, next week
+            await post({ type: 'BLOCKED', title: 'Kai - piano',
+                start: shift(tue, 8) + 'T10:00', end: shift(tue, 8) + 'T11:00' });
         }""")
 
         # A fresh signed-out visitor.
@@ -56,6 +59,11 @@ async def main():
 
         cards_now = await pub.locator(".event-card").count()
         check("visitor sees this week's availability", cards_now >= 1, f"cards={cards_now}")
+        await pub.click("#nextWeekBtn"); await pub.wait_for_timeout(700)
+        next_cards = await pub.evaluate("[...document.querySelectorAll('.event-card')].map(c => c.textContent.replace(/\\s+/g, ' ').trim())")
+        check("a booked session outside any open hours still shows as booked, unnamed",
+              len(next_cards) == 1 and "Blocked Session" in next_cards[0] and "Kai" not in next_cards[0], str(next_cards))
+        await pub.click("#todayBtn"); await pub.wait_for_timeout(700)
 
         # The now line: present exactly when the portal clock sits in
         # the visible hours, and always in today's (portal) column.
