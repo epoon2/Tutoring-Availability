@@ -111,12 +111,13 @@ async def main():
                   await page.evaluate("document.getElementById('syncNotice').classList.contains('ok')")
                   and not await visible(page, "#syncNoticeRetryBtn"))
             got = await page.evaluate("fetch('/api/googlestore').then(r => r.json()).then(d => d.events.map(e => e.summary))")
-            check("what Google got is called Tutoring, since no name was typed", got == ["Tutoring"], str(got))
+            check("what Google got is called Blocked, since no name was typed", got == ["Blocked"], str(got))
 
             # ---- the editor asks what the copy on Google should be called
             await page.click(".event-card"); await page.wait_for_timeout(400)
-            check("a booked session's editor shows the Google title field, empty", await visible(page, "#googleTitleField")
-                  and await page.input_value("#eventGoogleTitle") == "" and await page.get_attribute("#eventGoogleTitle", "placeholder") == "Tutoring")
+            check("a booked session's editor shows the Google title field, empty, marked optional, saying what blank means", await visible(page, "#googleTitleField")
+                  and await page.input_value("#eventGoogleTitle") == "" and await page.get_attribute("#eventGoogleTitle", "placeholder") == "Blocked"
+                  and "optional" in (await page.text_content("#googleTitleField")) and "“Blocked”" in (await page.text_content("#googleTitleField")))
             await page.select_option("#eventType", "AVAILABLE"); await page.wait_for_timeout(100)
             check("open time never copies, so the field goes for it", not await visible(page, "#googleTitleField"))
             await page.select_option("#eventType", "BLOCKED"); await page.wait_for_timeout(100)
@@ -138,7 +139,7 @@ async def main():
             await page.fill("#eventGoogleTitle", "")
             await page.click("#saveEventBtn"); await page.wait_for_timeout(900)
             got = await page.evaluate("fetch('/api/googlestore').then(r => r.json()).then(d => d.events.map(e => e.summary))")
-            check("clearing it goes back to Tutoring", got == ["Tutoring"], str(got))
+            check("clearing it goes back to Blocked", got == ["Blocked"], str(got))
 
             # ---- Settings: the Google calendar this one copies into, and the feed
             await page.evaluate("document.getElementById('settingsBtn').click()"); await page.wait_for_timeout(600)

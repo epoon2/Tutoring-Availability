@@ -13775,7 +13775,7 @@
   /*
     The name a booked session gets on the owner's Google calendar is
     asked for only where it applies: a booked session, on a calendar
-    that mirrors to Google. Blank means the mirror's plain "Tutoring".
+    that mirrors to Google. Blank means the mirror's plain "Blocked".
   */
   function syncGoogleTitleField() {
     $('googleTitleField')
