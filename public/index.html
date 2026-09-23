@@ -47,7 +47,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      max-width: 1720px;
+      max-width: none;
       margin: 0 auto;
       padding: 12px 4vw;
     }
@@ -115,8 +115,13 @@
       background: var(--accent-tint);
     }
 
+    /*
+      No cap on the width: the page runs to the edges of whatever
+      screen it is on, with a gutter that scales with it (4vw), the
+      way the calendar itself does.
+    */
     .wrap {
-      max-width: 1720px;
+      max-width: none;
       margin: 0 auto;
     }
 
@@ -128,7 +133,7 @@
 
     .home-hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(320px, 760px);
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 46%);
       gap: 64px;
       align-items: center;
     }
@@ -561,8 +566,9 @@
     .feature-stage {
       position: sticky;
       top: 84px;
+      width: min(100%, 900px);
+      margin: 0 auto;
       aspect-ratio: 1 / 0.86;
-      max-height: 560px;
       border-radius: 28px;
       overflow: hidden;
       box-shadow: 0 30px 80px var(--shadow);
@@ -891,7 +897,7 @@
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 32px;
       align-items: center;
-      max-width: 760px;
+      max-width: min(900px, 60%);
       padding: 28px 32px;
       background: #fff;
       color: #0f172a;

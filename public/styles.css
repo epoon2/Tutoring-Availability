@@ -240,7 +240,7 @@ button {
 ----------------------------- */
 
 .app-shell {
-  max-width: 1920px;
+  max-width: none;
 
   margin: 0 auto;
 
