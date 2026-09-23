@@ -52,6 +52,7 @@ async def main():
         below = await page.evaluate("[...document.querySelectorAll('#features .reveal')].map(el => el.classList.contains('in'))")
         check("sections further down wait, unrevealed", below and not any(below), str(below))
         await page.evaluate("document.getElementById('features').scrollIntoView()"); await page.wait_for_timeout(900)
+        await page.evaluate("document.querySelector('#featureList .feature-item:last-child').scrollIntoView()"); await page.wait_for_timeout(900)
         below = await page.evaluate("[...document.querySelectorAll('#features .reveal')].map(el => el.classList.contains('in'))")
         check("scrolling to them reveals them", below and all(below), str(below))
         delays = await page.evaluate("[...document.querySelectorAll('#features li')].map(li => li.style.getPropertyValue('--d'))")
@@ -63,7 +64,47 @@ async def main():
         await page.select_option("#langSelect", "es"); await page.wait_for_timeout(300)
         texts = await page.evaluate("[...document.querySelectorAll('#homeChips span')].map(s => s.textContent)")
         check("a language change reaches every copy", texts[0] == "Tutores" and len(set(texts)) == 6 and texts[0] == texts[6] == texts[30], str(texts[:8]))
-        check("cards lift under the pointer", (await page.evaluate("getComputedStyle(document.querySelector('.home-features li')).transitionProperty")).startswith("transform"))
+        check("cards lift under the pointer", (await page.evaluate("getComputedStyle(document.querySelector('.home-step')).transitionProperty")).startswith("transform"))
+
+        # ---- Everything included: one feature open at a time, its scene on the stage
+        await page.select_option("#langSelect", "en"); await page.wait_for_timeout(200)
+        await page.evaluate("document.getElementById('features').scrollIntoView()"); await page.wait_for_timeout(300)
+        state = await page.evaluate("""() => ({
+            items: document.querySelectorAll('#featureList .feature-item').length,
+            active: [...document.querySelectorAll('#featureList .feature-item')].map(i => i.classList.contains('active')),
+            expanded: [...document.querySelectorAll('.feature-head')].map(b => b.getAttribute('aria-expanded')),
+            scene: document.getElementById('featureStage').getAttribute('data-scene'),
+            shown: [...document.querySelectorAll('.feature-stage .scene')].map(sc => getComputedStyle(sc).opacity),
+            gradient: getComputedStyle(document.querySelector('.feature-stage .s1')).backgroundImage.includes('gradient') })""")
+        which = state["active"].index(True) if True in state["active"] else -1
+        check("nine features, one open, its scene alone on a gradient stage", state["items"] == 9 and state["active"].count(True) == 1
+              and state["expanded"][which] == "true" and state["expanded"].count("true") == 1 and state["scene"] == str(which + 1)
+              and state["shown"][which] == "1" and all(o == "0" for i, o in enumerate(state["shown"]) if i != which) and state["gradient"], str(state))
+        was = await page.get_attribute("#featureStage", "data-scene")
+        seen = set()
+        for _ in range(8):
+            await page.wait_for_timeout(1000)
+            seen.add(await page.get_attribute("#featureStage", "data-scene"))
+        check("the next opens on its own after a few seconds", str(int(was) % 9 + 1) in seen, f"was {was}, then {sorted(seen)}")
+        await page.evaluate("[...document.querySelectorAll('.feature-head')][6].click()"); await page.wait_for_timeout(700)
+        state = await page.evaluate("""() => ({
+            scene: document.getElementById('featureStage').getAttribute('data-scene'),
+            active: [...document.querySelectorAll('#featureList .feature-item')].findIndex(i => i.classList.contains('active')),
+            body: getComputedStyle(document.querySelectorAll('.feature-body')[6]).maxHeight,
+            s7: getComputedStyle(document.querySelector('.feature-stage .s7')).opacity })""")
+        check("a click opens any of them at once, with its scene", state["scene"] == "7" and state["active"] == 6 and state["body"] != "0px" and state["s7"] == "1", str(state))
+        check("the scenes' pieces float", await page.evaluate("[...document.querySelectorAll('.feature-stage .s7 .tile')].every(t => getComputedStyle(t).animationName === 'bob')"))
+
+        # ---- What your visitors see: a gradient band with the card in the middle and pills around it
+        band = await page.evaluate("""() => { const b = document.getElementById('visitors'); const cs = getComputedStyle(b);
+            return { gradient: cs.backgroundImage.includes('gradient'), color: cs.color,
+                     pills: document.querySelectorAll('#visitors .story-pill').length,
+                     floating: [...document.querySelectorAll('#visitors .story-pill')].every(p => getComputedStyle(p).animationName === 'bob'),
+                     card: !!document.querySelector('#visitors .stories-card .home-phone') }; }""")
+        check("the visitors band is a gradient with white text, four floating pills and the card between them", band["gradient"] and band["color"] == "rgb(255, 255, 255)"
+              and band["pills"] == 4 and band["floating"] and band["card"], str(band))
+        check("the ready band is a gradient too, and the step numbers are not all one color", await page.evaluate("getComputedStyle(document.querySelector('.home-ready')).backgroundImage.includes('gradient')")
+              and await page.evaluate("new Set([...document.querySelectorAll('.home-step')].map(s => getComputedStyle(s, '::before').color)).size") == 3)
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
         check("no page errors", not real, str(real[:3]))
 
@@ -72,6 +113,9 @@ async def main():
         calm.on("pageerror", lambda e: errs.append(str(e)))
         await calm.goto(BASE + "/", wait_until="networkidle"); await calm.wait_for_timeout(400)
         check("with reduce motion every section is shown at once", await calm.evaluate("[...document.querySelectorAll('.reveal')].every(el => el.classList.contains('in'))"))
+        await calm.wait_for_timeout(5600)
+        check("and the features do not rotate on their own", await calm.get_attribute("#featureStage", "data-scene") == "1"
+              and await calm.evaluate("[...document.querySelectorAll('.feature-stage .tile, #visitors .story-pill')].every(t => getComputedStyle(t).animationName === 'none')"))
         check("the hero and the sample calendar stand still", await calm.evaluate("getComputedStyle(document.querySelector('.home-hero h1')).animationName") == "none"
               and await calm.evaluate("getComputedStyle(document.getElementById('homePreview')).animationName") == "none"
               and await calm.evaluate("getComputedStyle(document.getElementById('homeChips')).animationName") == "none")

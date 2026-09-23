@@ -329,13 +329,11 @@
       transform: none;
     }
 
-    .home-step,
-    .home-features li {
+    .home-step {
       transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.7s ease;
     }
 
-    .home-step:hover,
-    .home-features li:hover {
+    .home-step:hover {
       transform: translateY(-4px);
       border-color: var(--accent);
       box-shadow: 0 14px 34px var(--shadow);
@@ -407,6 +405,675 @@
       background: color-mix(in srgb, var(--bg) 88%, transparent);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+    }
+
+
+    /*
+      COLOR AND THE TWO SHOWCASES
+
+      The page carries more than one hue: a third blob behind the hero,
+      a color per step, a gradient band for what visitors see, a
+      gradient "ready" band, and a stage for the features that changes
+      hue with each one. Cards and tiles on the gradients are white
+      with dark ink in both themes, the way a photo is the same in
+      both; the gradients themselves stay saturated in both.
+    */
+    .blob-c {
+      top: 30%;
+      left: 40%;
+      width: 30vw;
+      height: 30vw;
+      background: rgba(244, 114, 182, 0.18);
+      animation-duration: 26s;
+      animation-delay: -15s;
+    }
+
+    .home-step:nth-child(1)::before { background: #e8eeff; color: #315efb; }
+    .home-step:nth-child(2)::before { background: #e3f5ea; color: #2f7d4a; }
+    .home-step:nth-child(3)::before { background: #f1e8ff; color: #6d28d9; }
+
+    .home-step:nth-child(1):hover { border-color: #315efb; }
+    .home-step:nth-child(2):hover { border-color: #2f7d4a; }
+    .home-step:nth-child(3):hover { border-color: #6d28d9; }
+
+    /* ---- Everything included: a list on the left, a stage on the right */
+    .home-features-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      grid-template-areas:
+        "title stage"
+        "list stage";
+      gap: 0 56px;
+      align-items: start;
+    }
+
+    .features-title {
+      grid-area: title;
+    }
+
+    .feature-list {
+      grid-area: list;
+    }
+
+    .feature-stage {
+      grid-area: stage;
+    }
+
+    .feature-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .feature-item {
+      position: relative;
+      border-top: 1px solid var(--line);
+    }
+
+    .feature-item:last-child {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .feature-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 16px 4px;
+      background: none;
+      border: 0;
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+      font-size: 17px;
+      text-align: left;
+      cursor: pointer;
+      opacity: 0.55;
+      transition: opacity 0.3s ease;
+    }
+
+    .feature-item.active .feature-head,
+    .feature-head:hover {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: var(--tone-soft, var(--accent-tint));
+      color: var(--tone, var(--accent));
+    }
+
+    .feature-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .feature-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    .feature-item.active .feature-body {
+      max-height: 160px;
+    }
+
+    .feature-body p {
+      margin: 0 0 16px 46px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .feature-progress {
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      height: 2px;
+      width: 0;
+      background: var(--tone, var(--accent));
+    }
+
+    .feature-item.active .feature-progress {
+      animation: fill var(--beat, 5s) linear forwards;
+    }
+
+    @keyframes fill {
+      to { width: 100%; }
+    }
+
+    .feature-item[data-scene="1"] { --tone: #315efb; --tone-soft: #e8eeff; }
+    .feature-item[data-scene="2"] { --tone: #0f766e; --tone-soft: #dcf5f0; }
+    .feature-item[data-scene="3"] { --tone: #c2410c; --tone-soft: #ffe8dc; }
+    .feature-item[data-scene="4"] { --tone: #1d4ed8; --tone-soft: #e2e9ff; }
+    .feature-item[data-scene="5"] { --tone: #be185d; --tone-soft: #fde4ef; }
+    .feature-item[data-scene="6"] { --tone: #6d28d9; --tone-soft: #efe6ff; }
+    .feature-item[data-scene="7"] { --tone: #334155; --tone-soft: #e6eaf0; }
+    .feature-item[data-scene="8"] { --tone: #a16207; --tone-soft: #fff1cc; }
+    .feature-item[data-scene="9"] { --tone: #2f7d4a; --tone-soft: #dff3e6; }
+
+    .feature-stage {
+      position: sticky;
+      top: 84px;
+      aspect-ratio: 1 / 0.86;
+      max-height: 560px;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 30px 80px var(--shadow);
+      background: #315efb;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transform: scale(1.02);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .feature-stage[data-scene="1"] .s1,
+    .feature-stage[data-scene="2"] .s2,
+    .feature-stage[data-scene="3"] .s3,
+    .feature-stage[data-scene="4"] .s4,
+    .feature-stage[data-scene="5"] .s5,
+    .feature-stage[data-scene="6"] .s6,
+    .feature-stage[data-scene="7"] .s7,
+    .feature-stage[data-scene="8"] .s8,
+    .feature-stage[data-scene="9"] .s9 {
+      opacity: 1;
+      transform: none;
+    }
+
+    .s1 { background: linear-gradient(135deg, #7aa2ff 0%, #315efb 55%, #6d28d9 100%); }
+    .s2 { background: linear-gradient(135deg, #5eead4 0%, #0f766e 60%, #1d4ed8 100%); }
+    .s3 { background: linear-gradient(135deg, #fdba74 0%, #f97316 50%, #db2777 100%); }
+    .s4 { background: linear-gradient(135deg, #93c5fd 0%, #1d4ed8 60%, #0f766e 100%); }
+    .s5 { background: linear-gradient(135deg, #f9a8d4 0%, #be185d 50%, #6d28d9 100%); }
+    .s6 { background: linear-gradient(135deg, #c4b5fd 0%, #6d28d9 55%, #315efb 100%); }
+    .s7 { background: linear-gradient(135deg, #94a3b8 0%, #334155 60%, #1e293b 100%); }
+    .s8 { background: linear-gradient(135deg, #fde68a 0%, #d97706 55%, #db2777 100%); }
+    .s9 { background: linear-gradient(135deg, #86efac 0%, #2f7d4a 55%, #1d4ed8 100%); }
+
+    .tile {
+      position: absolute;
+      padding: 12px 14px;
+      background: #fff;
+      color: #0f172a;
+      border-radius: 14px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+      font-size: 13px;
+      font-weight: 600;
+      animation: bob 6s ease-in-out infinite;
+    }
+
+    .tile.f2 { animation-delay: -2s; animation-duration: 7s; }
+    .tile.f3 { animation-delay: -4s; animation-duration: 8s; }
+
+    .tile small {
+      display: block;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .tile .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 5px 0;
+      border-top: 1px solid #eef0f4;
+      font-weight: 500;
+    }
+
+    .tile .row:first-of-type {
+      border-top: 0;
+    }
+
+    .tile .row b {
+      font-weight: 650;
+    }
+
+    .tile .btn-ish {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: #315efb;
+      color: #fff;
+      border-radius: 8px;
+      font-weight: 650;
+    }
+
+    .tile .btn-ish.ghost {
+      background: #eef2ff;
+      color: #315efb;
+    }
+
+    .tile .block {
+      display: block;
+      padding: 6px 8px;
+      margin-top: 6px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .tile .block.open { background: #2f7d4a; }
+    .tile .block.booked { background: #b42318; }
+
+    .chip {
+      position: absolute;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #0f172a;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+      animation: bob 5s ease-in-out infinite;
+    }
+
+    .chip.f2 { animation-delay: -1.5s; }
+    .chip.f3 { animation-delay: -3s; animation-duration: 6.5s; }
+
+    .chip.ok { background: #2f7d4a; color: #fff; }
+
+    /* scene 1: the address */
+    .tile-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 500;
+    }
+
+    .tile-bar .dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .tile-bar .dots i {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #e2e8f0;
+    }
+
+    .tile-bar b {
+      color: #315efb;
+    }
+
+    .caret {
+      display: inline-block;
+      width: 2px;
+      height: 14px;
+      margin-left: 1px;
+      vertical-align: -2px;
+      background: #0f172a;
+      animation: blink 1s steps(2) infinite;
+    }
+
+    @keyframes blink {
+      to { opacity: 0; }
+    }
+
+    /* scene 3: a request answered, again and again */
+    .s3 .chip.ok {
+      animation: pop 5s ease-in-out infinite;
+    }
+
+    @keyframes pop {
+      0%, 55% { opacity: 0; transform: translateY(10px) scale(0.9); }
+      65%, 90% { opacity: 1; transform: none; }
+      100% { opacity: 0; transform: translateY(-6px); }
+    }
+
+    /* scene 4: a session hops across to Google */
+    .hop {
+      animation: hop 4s ease-in-out infinite;
+    }
+
+    @keyframes hop {
+      0%, 20% { transform: translateX(0); }
+      50%, 70% { transform: translateX(var(--hop, 180px)); }
+      100% { transform: translateX(0); }
+    }
+
+    /* scene 5: a block tries on every color */
+    .swatches {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .swatches i {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    .tile .block.hue {
+      animation: hue 8s linear infinite;
+    }
+
+    @keyframes hue {
+      0%   { background: #b42318; }
+      20%  { background: #c2410c; }
+      40%  { background: #a16207; }
+      60%  { background: #1d4ed8; }
+      80%  { background: #6d28d9; }
+      100% { background: #b42318; }
+    }
+
+    /* scene 6: switches */
+    .sw {
+      display: inline-block;
+      width: 30px;
+      height: 17px;
+      border-radius: 999px;
+      background: #315efb;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    .sw::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 15px;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .sw.off { background: #cbd5e1; }
+    .sw.off::after { left: 2px; }
+
+    /* scene 7: a name that visitors never see */
+    .veil {
+      position: relative;
+      display: block;
+      margin-top: 6px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: #b42318;
+      color: #fff;
+      font-size: 12px;
+      overflow: hidden;
+    }
+
+    .veil span {
+      display: block;
+      animation: veil 5s ease-in-out infinite;
+    }
+
+    .veil span + span {
+      position: absolute;
+      inset: 6px 8px;
+      animation-delay: -2.5s;
+    }
+
+    @keyframes veil {
+      0%, 40% { opacity: 1; }
+      50%, 90% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    /* scene 8: earlier saves, stacked */
+    .stack .row {
+      align-items: center;
+    }
+
+    /* scene 9: one word in six languages */
+    .words {
+      position: relative;
+      height: 34px;
+      margin-top: 4px;
+      font-size: 22px;
+      font-weight: 750;
+      color: #2f7d4a;
+    }
+
+    .words span {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      animation: cycle6 12s linear infinite;
+      animation-delay: calc(var(--i) * -2s);
+    }
+
+    @keyframes cycle6 {
+      0%, 14% { opacity: 1; transform: none; }
+      17%, 97% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: none; }
+    }
+
+    /* ---- What your visitors see: a gradient band, a card in the middle, pills around it */
+    .band-stories {
+      background: linear-gradient(160deg, #315efb 0%, #7c3aed 45%, #f472b6 80%, #fdba74 100%);
+      color: #fff;
+    }
+
+    .band-stories h2,
+    .band-stories .stories-lede {
+      text-align: center;
+      color: #fff;
+    }
+
+    .band-stories .stories-lede {
+      max-width: 720px;
+      margin: -6px auto 36px;
+      font-size: 16px;
+      line-height: 1.55;
+      opacity: 0.9;
+    }
+
+    .stories-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+    }
+
+    .stories-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 32px;
+      align-items: center;
+      max-width: 760px;
+      padding: 28px 32px;
+      background: #fff;
+      color: #0f172a;
+      border-radius: 28px;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+    }
+
+    .stories-card ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .stories-card li {
+      position: relative;
+      margin: 0 0 12px;
+      padding-left: 28px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .stories-card li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      top: -1px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #dff3e6;
+      color: #2f7d4a;
+      text-align: center;
+      font-size: 12px;
+      line-height: 20px;
+      font-weight: 750;
+    }
+
+    .stories-card .home-phone {
+      background: #fff;
+      color: #0f172a;
+      border-color: #e5e7eb;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    }
+
+    .stories-card .home-phone-day small {
+      color: #64748b;
+    }
+
+    .story-pill {
+      flex: 0 0 auto;
+      padding: 7px;
+      background: #fff;
+      border-radius: 999px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+      animation: bob 7s ease-in-out infinite;
+    }
+
+    .story-pill.p-a { width: 74px; height: 190px; animation-delay: -1s; }
+    .story-pill.p-b { width: 100px; height: 320px; animation-delay: -3s; animation-duration: 8s; }
+    .story-pill.p-c { width: 100px; height: 320px; animation-delay: -5s; animation-duration: 9s; }
+    .story-pill.p-d { width: 74px; height: 190px; animation-delay: -2s; }
+
+    .pill-inner {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      height: 100%;
+      padding: 12px 8px;
+      border-radius: 999px;
+    }
+
+    .pill-inner i {
+      display: block;
+      height: 12px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .pill-inner i:nth-child(2) { width: 70%; }
+    .pill-inner i:nth-child(3) { width: 85%; }
+    .pill-inner i:nth-child(4) { width: 55%; }
+
+    .pill-inner.t-a { background: linear-gradient(180deg, #2f7d4a, #0f766e); }
+    .pill-inner.t-b { background: linear-gradient(180deg, #f97316, #db2777); }
+    .pill-inner.t-c { background: linear-gradient(180deg, #315efb, #6d28d9); }
+    .pill-inner.t-d { background: linear-gradient(180deg, #a16207, #b42318); }
+
+    /* ---- made for: chips of every color */
+    .home-chips span:nth-child(6n+1) { border-color: #315efb; color: #315efb; }
+    .home-chips span:nth-child(6n+2) { border-color: #2f7d4a; color: #2f7d4a; }
+    .home-chips span:nth-child(6n+3) { border-color: #c2410c; color: #c2410c; }
+    .home-chips span:nth-child(6n+4) { border-color: #6d28d9; color: #6d28d9; }
+    .home-chips span:nth-child(6n+5) { border-color: #be185d; color: #be185d; }
+    .home-chips span:nth-child(6n+6) { border-color: #0f766e; color: #0f766e; }
+
+    /* ---- questions: a colored edge on the open one */
+    .home-faq details {
+      border-left: 4px solid transparent;
+      transition: border-color 0.25s ease;
+    }
+
+    .home-faq details[open] {
+      border-left-color: #6d28d9;
+    }
+
+    /* ---- ready: a gradient band */
+    .band-ready {
+      background: linear-gradient(120deg, #1d4ed8 0%, #6d28d9 60%, #be185d 100%);
+      color: #fff;
+    }
+
+    .band-ready h2,
+    .band-ready p {
+      color: #fff;
+    }
+
+    .band-ready p {
+      opacity: 0.9;
+    }
+
+    .band-ready .btn.primary {
+      background: #fff;
+      color: #1d4ed8;
+      border-color: #fff;
+    }
+
+    @media (max-width: 1100px) {
+      .story-pill.p-a,
+      .story-pill.p-d {
+        display: none;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .home-features-wrap {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "title"
+          "stage"
+          "list";
+        gap: 20px 0;
+      }
+
+      .feature-stage {
+        position: static;
+        aspect-ratio: 1 / 0.9;
+      }
+
+      .story-pill {
+        display: none;
+      }
+
+      .stories-card {
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tile,
+      .chip,
+      .story-pill,
+      .caret,
+      .hop,
+      .tile .block.hue,
+      .veil span,
+      .words span,
+      .feature-item.active .feature-progress {
+        animation: none;
+      }
+
+      .words span:first-child,
+      .veil span:first-child {
+        opacity: 1;
+      }
+
+      .scene,
+      .feature-body,
+      .feature-head {
+        transition: none;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -576,62 +1243,10 @@
     }
 
     .home-step span,
-    .home-features span,
-    .home-visitors p,
     .home-faq p {
       color: var(--muted);
       font-size: 15px;
       line-height: 1.5;
-    }
-
-    .home-features {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .home-features li {
-      padding: 18px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-    }
-
-    .home-features strong {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 16px;
-    }
-
-    .home-visitors {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 36px;
-      align-items: center;
-    }
-
-    .home-visitors ul {
-      margin: 16px 0 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .home-visitors li {
-      position: relative;
-      margin: 0 0 10px;
-      padding-left: 26px;
-      font-size: 15px;
-    }
-
-    .home-visitors li::before {
-      content: '✓';
-      position: absolute;
-      left: 0;
-      color: #2f7d4a;
-      font-weight: 750;
     }
 
     .home-phone {
@@ -851,17 +1466,12 @@
     }
 
     @media (max-width: 860px) {
-      .home-hero,
-      .home-visitors {
+      .home-hero {
         grid-template-columns: 1fr;
       }
 
       .home-nav {
         display: none;
-      }
-
-      .home-features {
-        grid-template-columns: 1fr;
       }
 
       .home-preview-grid {
@@ -914,6 +1524,7 @@
     <section class="band band-hero">
     <span class="blob blob-a" aria-hidden="true"></span>
     <span class="blob blob-b" aria-hidden="true"></span>
+    <span class="blob blob-c" aria-hidden="true"></span>
     <div class="wrap home-hero">
       <div>
         <h1 class="hero-in" data-i18n="home_tagline">Share when you're free, at a link of your own.</h1>
@@ -952,40 +1563,134 @@
     </section>
 
     <section id="features" class="band band-alt">
-    <div class="wrap">
-      <h2 data-i18n="home_features">Everything included</h2>
-      <ul class="home-features">
-        <li><strong data-i18n="home_f1_t">Your own address</strong><span data-i18n="home_f1_d"></span></li>
-        <li><strong data-i18n="home_f2_t">Requests with contact details</strong><span data-i18n="home_f2_d"></span></li>
-        <li><strong data-i18n="home_f3_t">Email when someone asks</strong><span data-i18n="home_f3_d"></span></li>
-        <li><strong data-i18n="home_f4_t">Google Calendar</strong><span data-i18n="home_f4_d"></span></li>
-        <li><strong data-i18n="home_f5_t">Make it yours</strong><span data-i18n="home_f5_d"></span></li>
-        <li><strong data-i18n="home_f6_t">Rules for requests</strong><span data-i18n="home_f6_d"></span></li>
-        <li><strong data-i18n="home_f7_t">Privacy</strong><span data-i18n="home_f7_d"></span></li>
-        <li><strong data-i18n="home_f8_t">Version history</strong><span data-i18n="home_f8_d"></span></li>
-        <li><strong data-i18n="home_f9_t">Six languages</strong><span data-i18n="home_f9_d"></span></li>
-      </ul>
+    <div class="wrap home-features-wrap">
+        <h2 class="features-title" data-i18n="home_features">Everything included</h2>
+        <ol id="featureList" class="feature-list">
+        <li class="feature-item" data-scene="1">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span><strong data-i18n="home_f1_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f1_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="2">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><strong data-i18n="home_f2_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f2_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="3">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><strong data-i18n="home_f3_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f3_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="4">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><strong data-i18n="home_f4_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f4_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="5">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="10" r="1.2" fill="currentColor"/><path d="M12 12v9"/></svg></span><strong data-i18n="home_f5_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f5_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="6">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="16" r="3"/></svg></span><strong data-i18n="home_f6_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f6_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="7">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></span><strong data-i18n="home_f7_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f7_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="8">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg></span><strong data-i18n="home_f8_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f8_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        <li class="feature-item" data-scene="9">
+          <button type="button" class="feature-head" aria-expanded="false"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></span><strong data-i18n="home_f9_t"></strong></button>
+          <div class="feature-body"><p data-i18n="home_f9_d"></p></div>
+          <span class="feature-progress"></span>
+        </li>
+        </ol>
+      <div id="featureStage" class="feature-stage" data-scene="1" aria-hidden="true">
+        <div class="scene s1">
+          <div class="tile tile-bar" style="top: 22%; left: 12%; width: 70%"><span class="dots"><i></i><i></i><i></i></span><span>calendar.app/<b>maya</b><i class="caret"></i></span></div>
+          <div class="chip f2" style="top: 52%; left: 18%">Copy link</div>
+          <div class="chip f3" style="top: 60%; left: 50%">Sent to 12 parents</div>
+          <div class="tile f3" style="top: 70%; left: 30%"><small>Change it any time</small>calendar.app/<b style="color:#315efb">maya-tutoring</b></div>
+        </div>
+        <div class="scene s2">
+          <div class="tile" style="top: 14%; left: 14%; width: 60%"><small>Request a session</small><div class="row"><span>Name</span><b>Maya Chen</b></div><div class="row"><span>Email</span><b>maya@…</b></div><div class="row"><span>Phone</span><b>(626) 555-0142</b></div><div class="row"><span>Parent</span><b>Lin Chen</b></div><span class="btn-ish">Send request</span></div>
+          <div class="chip f2" style="top: 12%; left: 70%">Tue 4–5 PM</div>
+          <div class="chip f3 ok" style="top: 76%; left: 56%">Reply from your inbox</div>
+        </div>
+        <div class="scene s3">
+          <div class="tile f2" style="top: 18%; left: 12%; width: 66%"><small>New request</small><b>Maya Chen</b> · Tue 4–5 PM<div class="row"><span>maya@example.com</span></div><span class="btn-ish">Accept</span> <span class="btn-ish ghost">Decline</span></div>
+          <div class="chip ok" style="top: 66%; left: 30%">✓ Accepted · Maya was emailed</div>
+          <div class="chip f3" style="top: 78%; left: 62%">Requests · 1</div>
+        </div>
+        <div class="scene s4">
+          <div class="tile" style="top: 22%; left: 8%; width: 36%"><small>Your calendar</small><span class="block booked">Maya · 4–5 PM</span><span class="block open">Available 5–7</span></div>
+          <div class="tile f3" style="top: 22%; left: 56%; width: 36%"><small>Google Calendar</small><span class="block" style="background:#e2e8f0;color:#94a3b8">Blocked</span><span class="block" style="background:#e2e8f0;color:#94a3b8">Blocked</span></div>
+          <div class="chip hop" style="top: 62%; left: 14%; --hop: 200px">Blocked · Tue 4–5 PM →</div>
+          <div class="chip f2" style="top: 80%; left: 34%">+ a feed for any other app</div>
+        </div>
+        <div class="scene s5">
+          <div class="tile" style="top: 14%; left: 12%; width: 50%"><small>Colors</small><div class="swatches"><i style="background:#b42318"></i><i style="background:#c2410c"></i><i style="background:#a16207"></i><i style="background:#2f7d4a"></i><i style="background:#1d4ed8"></i><i style="background:#6d28d9"></i><i style="background:#be185d"></i></div><span class="block hue">Kai · piano</span></div>
+          <div class="chip f2" style="top: 22%; left: 68%">Monday weeks</div>
+          <div class="chip f3" style="top: 58%; left: 60%">24-hour clock</div>
+          <div class="tile f2" style="top: 62%; left: 10%"><small>Your words</small>“Open” · “Lesson” · “clients”</div>
+          <div class="chip" style="top: 82%; left: 46%">Pacific Time · Serif</div>
+        </div>
+        <div class="scene s6">
+          <div class="tile" style="top: 16%; left: 14%; width: 62%"><small>Rules for requests</small><div class="row"><span>Visitors can request</span><span class="sw"></span></div><div class="row"><span>Notice needed</span><b>24 h</b></div><div class="row"><span>How far ahead</span><b>8 weeks</b></div><div class="row"><span>Session length</span><b>30–120 min</b></div><div class="row"><span>Show the calendar only</span><span class="sw off"></span></div></div>
+          <div class="chip f3" style="top: 80%; left: 40%">Saved</div>
+        </div>
+        <div class="scene s7">
+          <div class="tile" style="top: 20%; left: 10%; width: 40%"><small>You see</small><span class="block booked">Maya · Algebra II</span><span class="block open">Available 5–7</span></div>
+          <div class="tile f3" style="top: 20%; left: 54%; width: 40%"><small>Visitors see</small><span class="veil"><span>Maya · Algebra II</span><span>Booked</span></span><span class="block open">Available 5–7</span></div>
+          <div class="chip f2" style="top: 72%; left: 28%">Names and notes never leave your view</div>
+        </div>
+        <div class="scene s8">
+          <div class="tile stack" style="top: 14%; left: 14%; width: 62%"><small>Version history</small><div class="row"><b>Today, 9:14 AM</b><span>moved Maya</span></div><div class="row"><b>Yesterday</b><span>added Kai</span></div><div class="row"><b>Sep 12</b><span>new series</span><span class="btn-ish ghost" style="margin:0">Restore</span></div></div>
+          <div class="chip f2" style="top: 72%; left: 20%">Undo · Ctrl+Z</div>
+          <div class="chip f3" style="top: 80%; left: 54%">Redo · Ctrl+Y</div>
+        </div>
+        <div class="scene s9">
+          <div class="tile" style="top: 22%; left: 14%; width: 56%"><small>Their browser picks</small><div class="words"><span style="--i:0">Available</span><span style="--i:1">Disponible</span><span style="--i:2">可预约</span><span style="--i:3">Disponible</span><span style="--i:4">예약 가능</span><span style="--i:5">Có thể đặt</span></div></div>
+          <div class="chip f2" style="top: 16%; left: 72%">English</div>
+          <div class="chip f3" style="top: 60%; left: 66%">Español</div>
+          <div class="chip" style="top: 74%; left: 18%">中文 · Français</div>
+          <div class="chip f2" style="top: 84%; left: 50%">한국어 · Tiếng Việt</div>
+        </div>
+      </div>
     </div>
     </section>
 
-    <section id="visitors" class="band">
-    <div class="wrap home-visitors">
-      <div>
-        <h2 data-i18n="home_visitors">What your visitors see</h2>
-        <p data-i18n="home_visitors_d"></p>
+    <section id="visitors" class="band band-stories">
+    <div class="wrap stories">
+      <h2 data-i18n="home_visitors">What your visitors see</h2>
+      <p class="stories-lede" data-i18n="home_visitors_d"></p>
+      <div class="stories-row">
+      <div class="story-pill p-a" aria-hidden="true"><div class="pill-inner t-a"><i></i><i></i><i></i></div></div>
+      <div class="story-pill p-b" aria-hidden="true"><div class="pill-inner t-b"><i></i><i></i><i></i><i></i></div></div>
+      <div class="stories-card">
         <ul>
           <li data-i18n="home_v1"></li>
           <li data-i18n="home_v2"></li>
           <li data-i18n="home_v3"></li>
           <li data-i18n="home_v4"></li>
         </ul>
-      </div>
       <div class="home-phone" aria-hidden="true">
         <p class="home-phone-head">Ethan's Tutoring</p>
         <div class="home-phone-day"><small>Tuesday</small><span class="home-preview-block booked">Booked · 3 – 4 PM</span><span class="home-preview-block open">Available · 4 – 8 PM</span></div>
         <div class="home-phone-day"><small>Wednesday</small><span class="home-preview-block open">Available · 5 – 9 PM</span></div>
         <div class="home-phone-day"><small>Thursday</small><span class="home-preview-block open">Available · 3 – 6 PM</span><span class="home-preview-block booked">Booked · 6 – 7 PM</span></div>
         <div class="home-phone-btn" data-i18n="request">Request a session</div>
+      </div>
+      </div>
+      <div class="story-pill p-c" aria-hidden="true"><div class="pill-inner t-c"><i></i><i></i><i></i><i></i></div></div>
+      <div class="story-pill p-d" aria-hidden="true"><div class="pill-inner t-d"><i></i><i></i><i></i></div></div>
       </div>
     </div>
     </section>
@@ -1013,7 +1718,7 @@
     </div>
     </section>
 
-    <section class="band band-tint home-ready">
+    <section class="band band-ready home-ready">
     <div class="wrap">
       <h2 data-i18n="home_ready">Ready when you are.</h2>
       <p data-i18n="home_ready_d"></p>
@@ -1227,7 +1932,7 @@
       window.I18N.apply();
 
       /* each part of the page rises into place as it scrolls into view */
-      var revealed = document.querySelectorAll('.home h2, .home-step, .home-features li, .home-visitors p, .home-visitors li, .home-phone, .home-marquee, .home-faq details, .home-ready p, #readySignupBtn');
+      var revealed = document.querySelectorAll('.home h2, .home-step, .feature-item, .feature-stage, .stories-lede, .stories-card, .story-pill, .home-marquee, .home-faq details, .home-ready p, #readySignupBtn');
       Array.prototype.forEach.call(revealed, function (el) {
         var index = Array.prototype.indexOf.call(el.parentNode.children, el);
         el.classList.add('reveal');
@@ -1263,6 +1968,48 @@
         };
         window.setTimeout(tick, beats[0]);
       }
+
+      /*
+        Everything included: one feature open at a time, its scene on
+        the stage beside it; the next opens on its own every few
+        seconds, and a click opens any of them at once.
+      */
+      var features = Array.prototype.slice.call(document.querySelectorAll('#featureList .feature-item'));
+      var stage = $('featureStage');
+      var featureTimer = null;
+      var BEAT = 5000;
+      function showFeature(index) {
+        features.forEach(function (item, i) {
+          var on = i === index;
+          item.classList.toggle('active', on);
+          item.querySelector('.feature-head').setAttribute('aria-expanded', on ? 'true' : 'false');
+          if (on) {
+            var bar = item.querySelector('.feature-progress');
+            bar.style.animation = 'none';
+            void bar.offsetWidth;
+            bar.style.animation = '';
+          }
+        });
+        stage.setAttribute('data-scene', String(index + 1));
+      }
+      function scheduleNext() {
+        if (still) return;
+        window.clearTimeout(featureTimer);
+        featureTimer = window.setTimeout(function () {
+          var current = features.findIndex(function (item) { return item.classList.contains('active'); });
+          showFeature((current + 1) % features.length);
+          scheduleNext();
+        }, BEAT);
+      }
+      features.forEach(function (item, i) {
+        item.style.setProperty('--beat', BEAT + 'ms');
+        item.querySelector('.feature-head').addEventListener('click', function () {
+          showFeature(i);
+          scheduleNext();
+        });
+      });
+      showFeature(0);
+      scheduleNext();
 
       /* the header casts a shadow once the page has scrolled */
       var top = document.querySelector('.home-top');
