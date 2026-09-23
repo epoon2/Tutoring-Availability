@@ -103,6 +103,7 @@
       its content held to a comfortable measure inside.
     */
     .band {
+      position: relative;
       padding: 72px 4vw;
     }
 
@@ -133,11 +134,310 @@
     }
 
     .band-hero {
-      background:
-        radial-gradient(60% 70% at 85% 30%, var(--accent-tint), transparent 70%),
-        var(--bg);
+      overflow: hidden;
+      background: var(--bg);
       padding-top: 96px;
       padding-bottom: 96px;
+    }
+
+    /*
+      MOTION
+
+      The page moves the way a product page does: soft color drifting
+      behind the hero, the hero rising into place, the sample calendar
+      playing a short loop (a slot opens, a visitor asks, the owner
+      accepts), each section revealing as it scrolls into view, the
+      "made for" row gliding, cards lifting under the pointer. All of
+      it is decoration: with "reduce motion" set on the device, the
+      page simply stands still and shows everything at once.
+    */
+    .blob {
+      position: absolute;
+      width: 46vw;
+      height: 46vw;
+      max-width: 720px;
+      max-height: 720px;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.55;
+      pointer-events: none;
+      animation: drift 22s ease-in-out infinite alternate;
+    }
+
+    .blob-a {
+      top: -18%;
+      right: -8%;
+      background: var(--accent-tint);
+    }
+
+    .blob-b {
+      bottom: -30%;
+      left: -10%;
+      background: rgba(47, 125, 74, 0.16);
+      animation-duration: 28s;
+      animation-delay: -9s;
+    }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to { transform: translate(6vw, 4vw) scale(1.12); }
+    }
+
+    .band-hero .wrap {
+      position: relative;
+    }
+
+    .hero-in {
+      animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      animation-delay: var(--d, 0ms);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .home-preview {
+      position: relative;
+      animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 250ms both, bob 7s ease-in-out 1.2s infinite;
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    /* the short loop the sample calendar plays */
+    .home-preview-block.ghost {
+      opacity: 0;
+      transform: scale(0.85);
+      transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    .home-preview[data-step="1"] .ghost-open,
+    .home-preview[data-step="2"] .ghost-open,
+    .home-preview[data-step="3"] .ghost-open,
+    .home-preview[data-step="4"] .ghost-open,
+    .home-preview[data-step="4"] .ghost-booked {
+      opacity: 1;
+      transform: none;
+    }
+
+    .home-preview-pill {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .home-preview[data-step="2"] .home-preview-pill {
+      transform: scale(1.08);
+      box-shadow: 0 0 0 6px var(--accent-tint);
+    }
+
+    .home-preview-cursor {
+      position: absolute;
+      top: 60%;
+      left: 40%;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--text);
+      opacity: 0;
+      box-shadow: 0 0 0 3px var(--card);
+      transition: top 0.8s cubic-bezier(0.4, 0, 0.2, 1), left 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .home-preview[data-step="1"] .home-preview-cursor,
+    .home-preview[data-step="2"] .home-preview-cursor {
+      opacity: 0.85;
+    }
+
+    .home-preview[data-step="2"] .home-preview-cursor {
+      top: 16px;
+      left: calc(100% - 44px);
+    }
+
+    .home-preview-request,
+    .home-preview-toast {
+      position: absolute;
+      left: 50%;
+      bottom: 22px;
+      transform: translate(-50%, 24px);
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .home-preview-request {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 2px 14px;
+      align-items: center;
+      min-width: 240px;
+      padding: 10px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 14px 40px var(--shadow);
+      font-size: 12px;
+    }
+
+    .home-preview-request strong {
+      font-size: 13px;
+    }
+
+    .home-preview-request span {
+      color: var(--muted);
+    }
+
+    .home-preview-request em {
+      grid-column: 2;
+      grid-row: 1 / 3;
+      padding: 6px 10px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-style: normal;
+      font-weight: 650;
+    }
+
+    .home-preview-toast {
+      padding: 8px 14px;
+      background: #2f7d4a;
+      color: #fff;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .home-preview[data-step="3"] .home-preview-request,
+    .home-preview[data-step="4"] .home-preview-toast {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    /* sections reveal as they scroll into view */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+      transition-delay: var(--d, 0ms);
+    }
+
+    .reveal.in {
+      opacity: 1;
+      transform: none;
+    }
+
+    .home-step,
+    .home-features li {
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.7s ease;
+    }
+
+    .home-step:hover,
+    .home-features li:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 14px 34px var(--shadow);
+    }
+
+    .home-step::before {
+      transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+    }
+
+    .home-step.reveal:not(.in)::before {
+      transform: scale(0.4);
+    }
+
+    .home-phone {
+      animation: bob 8s ease-in-out infinite;
+    }
+
+    .home-phone-btn {
+      position: relative;
+    }
+
+    .home-phone-btn::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 13px;
+      border: 2px solid var(--accent);
+      opacity: 0;
+      animation: ring 2.6s ease-out infinite;
+    }
+
+    @keyframes ring {
+      0% { opacity: 0.7; transform: scale(0.96); }
+      70%, 100% { opacity: 0; transform: scale(1.12); }
+    }
+
+    /* the "made for" row glides by */
+    .home-marquee {
+      overflow: hidden;
+      mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+      -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+    }
+
+    .home-chips-track {
+      display: flex;
+      gap: 10px;
+      width: max-content;
+      animation: glide 36s linear infinite;
+    }
+
+    .home-marquee:hover .home-chips-track {
+      animation-play-state: paused;
+    }
+
+    @keyframes glide {
+      to { transform: translateX(-50%); }
+    }
+
+    .home-faq details p {
+      animation: rise 0.35s ease both;
+    }
+
+    .home-top {
+      transition: box-shadow 0.25s ease, background 0.25s ease;
+    }
+
+    .home-top.scrolled {
+      box-shadow: 0 6px 24px var(--shadow);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .blob,
+      .hero-in,
+      .home-preview,
+      .home-phone,
+      .home-phone-btn::after,
+      .home-chips-track,
+      .home-faq details p {
+        animation: none;
+      }
+
+      .reveal,
+      .home-preview-block.ghost,
+      .home-preview-cursor,
+      .home-preview-request,
+      .home-preview-toast,
+      .home-preview-pill,
+      .home-step::before {
+        transition: none;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+
+      .home-step.reveal:not(.in)::before {
+        transform: none;
+      }
     }
 
     .home-hero h1 {
@@ -380,8 +680,11 @@
 
     .home-chips {
       display: flex;
-      flex-wrap: wrap;
       gap: 10px;
+    }
+
+    .home-chips span {
+      white-space: nowrap;
     }
 
     .home-chips span {
@@ -609,25 +912,30 @@
   <main class="home">
 
     <section class="band band-hero">
+    <span class="blob blob-a" aria-hidden="true"></span>
+    <span class="blob blob-b" aria-hidden="true"></span>
     <div class="wrap home-hero">
       <div>
-        <h1 data-i18n="home_tagline">Share when you're free, at a link of your own.</h1>
-        <p class="lede" data-i18n="home_lede">A weekly calendar of your open and booked time. Visitors see what is open, ask for a session with their contact details, and you get an email. Everything else - hours, colors, wording, time zone, language - is yours to set.</p>
-        <div class="home-cta">
+        <h1 class="hero-in" data-i18n="home_tagline">Share when you're free, at a link of your own.</h1>
+        <p class="lede hero-in" style="--d: 120ms" data-i18n="home_lede">A weekly calendar of your open and booked time. Visitors see what is open, ask for a session with their contact details, and you get an email. Everything else - hours, colors, wording, time zone, language - is yours to set.</p>
+        <div class="home-cta hero-in" style="--d: 240ms">
           <button id="heroSignupBtn" class="btn primary" type="button" data-i18n="home_cta_signup">Create your calendar</button>
           <button id="heroLoginBtn" class="btn secondary" type="button" data-i18n="home_cta_login">Log in</button>
         </div>
-        <p class="home-free" data-i18n="home_free">Free. No app to install. Works on any device.</p>
+        <p class="home-free hero-in" style="--d: 360ms" data-i18n="home_free">Free. No app to install. Works on any device.</p>
       </div>
-      <div class="home-preview" aria-hidden="true">
+      <div id="homePreview" class="home-preview" data-step="0" aria-hidden="true">
         <div class="home-preview-bar"><strong>Ethan's Tutoring</strong><span class="home-preview-pill">Request a session</span></div>
         <div class="home-preview-grid">
           <div class="home-preview-day"><small>Mon</small><span class="home-preview-block open">Available 4–7 PM</span></div>
-          <div class="home-preview-day"><small>Tue</small><span class="home-preview-block booked">Booked</span><span class="home-preview-block open">Available 6–8 PM</span></div>
-          <div class="home-preview-day"><small>Wed</small><span class="home-preview-block blue">Booked</span><span class="home-preview-block purple">Booked</span></div>
+          <div class="home-preview-day"><small>Tue</small><span class="home-preview-block booked">Booked</span><span class="home-preview-block open">Available 6–8 PM</span><span class="home-preview-block booked ghost ghost-booked">Maya · 6–7 PM</span></div>
+          <div class="home-preview-day"><small>Wed</small><span class="home-preview-block blue">Booked</span><span class="home-preview-block purple">Booked</span><span class="home-preview-block open ghost ghost-open">Available 5–7 PM</span></div>
           <div class="home-preview-day"><small>Thu</small><span class="home-preview-block open">Available 3–6 PM</span><span class="home-preview-block booked">Booked</span></div>
           <div class="home-preview-day"><small>Fri</small><span class="home-preview-block open">Available all day</span></div>
         </div>
+        <div class="home-preview-request"><strong>New request</strong><span>Maya · Tue 6–7 PM · maya@…</span><em>Accept</em></div>
+        <div class="home-preview-toast">✓ Confirmed · Maya, Tue 6–7 PM</div>
+        <span class="home-preview-cursor"></span>
       </div>
     </div>
     </section>
@@ -685,9 +993,11 @@
     <section id="madefor" class="band band-alt">
     <div class="wrap">
       <h2 data-i18n="home_madefor">Made for</h2>
-      <div class="home-chips">
-        <span data-i18n="home_m1"></span><span data-i18n="home_m2"></span><span data-i18n="home_m3"></span>
-        <span data-i18n="home_m4"></span><span data-i18n="home_m5"></span><span data-i18n="home_m6"></span>
+      <div class="home-marquee">
+        <div id="homeChips" class="home-chips home-chips-track">
+          <span data-i18n="home_m1"></span><span data-i18n="home_m2"></span><span data-i18n="home_m3"></span>
+          <span data-i18n="home_m4"></span><span data-i18n="home_m5"></span><span data-i18n="home_m6"></span>
+        </div>
       </div>
     </div>
     </section>
@@ -894,6 +1204,71 @@
       });
       window.I18N.set(window.I18N.detect('en'), false);
       applyLanguage();
+
+      /* ---------- motion ---------- */
+
+      var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      /*
+        The "made for" row is repeated (six times, an even number, so
+        the glide of half its width lands on an identical row) so it
+        can glide without a gap on any screen; the copies carry the
+        same data-i18n keys, so a language change reaches them too.
+      */
+      var chips = $('homeChips');
+      var set = Array.prototype.slice.call(chips.children);
+      for (var rep = 1; rep < 6; rep += 1) {
+        set.forEach(function (chip) {
+          var copy = chip.cloneNode(true);
+          copy.setAttribute('aria-hidden', 'true');
+          chips.appendChild(copy);
+        });
+      }
+      window.I18N.apply();
+
+      /* each part of the page rises into place as it scrolls into view */
+      var revealed = document.querySelectorAll('.home h2, .home-step, .home-features li, .home-visitors p, .home-visitors li, .home-phone, .home-marquee, .home-faq details, .home-ready p, #readySignupBtn');
+      Array.prototype.forEach.call(revealed, function (el) {
+        var index = Array.prototype.indexOf.call(el.parentNode.children, el);
+        el.classList.add('reveal');
+        el.style.setProperty('--d', Math.min(index, 8) * 70 + 'ms');
+      });
+      if (still || !('IntersectionObserver' in window)) {
+        Array.prototype.forEach.call(revealed, function (el) { el.classList.add('in'); });
+      } else {
+        var watcher = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in');
+              watcher.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+        Array.prototype.forEach.call(revealed, function (el) { watcher.observe(el); });
+      }
+
+      /*
+        The sample calendar plays a short loop: a slot opens, the
+        pointer finds "Request a session", a request arrives, the owner
+        accepts, and the slot is booked. Then it starts over.
+      */
+      var preview = $('homePreview');
+      if (!still) {
+        var step = 0;
+        var beats = [1600, 1800, 1600, 2600, 2600];
+        var tick = function () {
+          step = (step + 1) % 5;
+          preview.setAttribute('data-step', String(step));
+          window.setTimeout(tick, beats[step]);
+        };
+        window.setTimeout(tick, beats[0]);
+      }
+
+      /* the header casts a shadow once the page has scrolled */
+      var top = document.querySelector('.home-top');
+      var onScroll = function () { top.classList.toggle('scrolled', window.scrollY > 8); };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
 
       /* ---------- the dialog and its panels ---------- */
 
