@@ -2873,6 +2873,58 @@ body:not(.view-week).list-view .calendar {
   border-radius: 4px;
 }
 
+/* the per-category counts in the weekly summary */
+.week-summary-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.week-summary-category {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.week-summary-category strong {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.week-summary-category.none {
+  color: var(--muted);
+}
+
+.week-summary-category.none strong {
+  color: var(--muted);
+}
+
+/* the category list in Settings */
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.category-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 
 /* -----------------------------
    SETTINGS

@@ -631,6 +631,8 @@ export default async (req) => {
                   customColorsOf(
                     await readSettings()
                   ),
+                categories:
+                  activeSettings.categories,
                 mail:
                   mailStatus()
               }
@@ -945,6 +947,10 @@ export default async (req) => {
           nextEvent.googleTitle =
             stored.googleTitle;
         }
+        if ( !( "category" in incoming ) && stored.category ) {
+          nextEvent.category =
+            stored.category;
+        }
         if (
           nextEvent.recurrence &&
           stored.recurrence &&
@@ -961,6 +967,9 @@ export default async (req) => {
       }
       if ( !nextEvent.googleTitle ) {
         delete nextEvent.googleTitle;
+      }
+      if ( !nextEvent.category ) {
+        delete nextEvent.category;
       }
       if ( nextEvent.recurrence && nextEvent.recurrence.colorRules && !nextEvent.recurrence.colorRules.length ) {
         delete nextEvent.recurrence.colorRules;
@@ -3218,8 +3227,39 @@ function envDefaults() {
     privacy: {
       showBooked:
         true
-    }
+    },
+    /*
+      Kinds of booked time the owner wants counted apart in the
+      weekly summary - "Work", "Private tutoring" - named by the
+      owner, chosen on each session. Each keeps a short id so a
+      rename does not lose the sessions filed under it.
+    */
+    categories: []
   };
+}
+
+const CATEGORY_LIMITS = {
+  count: 12,
+  name: 30
+};
+
+function categoriesFrom(
+  list
+) {
+  if ( !Array.isArray( list ) ) return [];
+  const seen = new Set();
+  const out = [];
+  for ( const entry of list ) {
+    const id =
+      String( entry && entry.id || "" ).trim().slice( 0, 24 );
+    const name =
+      String( entry && entry.name || "" ).trim().slice( 0, CATEGORY_LIMITS.name );
+    if ( !id || !name || !/^[a-z0-9]+$/i.test( id ) || seen.has( id ) ) continue;
+    seen.add( id );
+    out.push({ id, name });
+    if ( out.length >= CATEGORY_LIMITS.count ) break;
+  }
+  return out;
 }
 
 const REQUEST_RULE_LIMITS = {
@@ -3326,6 +3366,8 @@ function settingsFrom(
       ...base.privacy,
       ...( record.privacy && typeof record.privacy.showBooked === "boolean" ? { showBooked: record.privacy.showBooked } : {} )
     },
+    categories:
+      categoriesFrom( record.categories ),
     colors: {
       ...base.colors,
       ...( record.colors && HEX_COLOR.test( record.colors.available || "" ) ? { available: record.colors.available } : {} ),
@@ -3508,6 +3550,29 @@ function validateSettings(
     next.privacy =
       { ...current.privacy };
     if ( "showBooked" in body.privacy ) next.privacy.showBooked = Boolean( body.privacy.showBooked );
+  }
+  if ( "categories" in body ) {
+    if ( !Array.isArray( body.categories ) ) bad( "Invalid categories." );
+    if ( body.categories.length > CATEGORY_LIMITS.count ) bad( `Up to ${ CATEGORY_LIMITS.count } categories.` );
+    const names = new Set();
+    const list = [];
+    for ( const entry of body.categories ) {
+      const name =
+        text( entry && entry.name, CATEGORY_LIMITS.name, "a name for each category" );
+      if ( names.has( name.toLowerCase() ) ) bad( `Two categories are both called "${ name }".` );
+      names.add( name.toLowerCase() );
+      const id =
+        String( entry && entry.id || "" ).trim();
+      list.push({
+        id:
+          /^[a-z0-9]{1,24}$/i.test( id )
+            ? id
+            : crypto.randomBytes( 6 ).toString( "hex" ),
+        name
+      });
+    }
+    next.categories =
+      categoriesFrom( list );
   }
   if ( "googleCalendarId" in body ) {
     const id =
@@ -4706,6 +4771,27 @@ function validateEvent(
       out of the body, it is "whatever it was"; an empty string
       clears it back to the mirror's plain "Tutoring".
     */
+    /*
+      The category the session is filed under, by id; unknown or
+      blank means none. Left out of the body, it is kept.
+    */
+    ...(
+      "category" in event
+        ? {
+            category:
+              String(
+                event.category ||
+                ""
+              )
+                .trim()
+                .slice(
+                  0,
+                  24
+                )
+          }
+        : {}
+    ),
+
     ...(
       "googleTitle" in event
         ? {

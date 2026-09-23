@@ -22,6 +22,15 @@
       [],
 
     /*
+      The kinds of booked time the owner counts apart - {id, name} -
+      and the copy of that list being edited in Settings.
+    */
+    categories:
+      [],
+    settingsCategories:
+      null,
+
+    /*
       The two default colours being edited in the settings dialog.
     */
     settingsColors:
@@ -928,6 +937,11 @@
         'click',
         openSettings
       );
+    $('addCategoryBtn')
+      .addEventListener(
+        'click',
+        addCategoryRow
+      );
     $('saveSettingsBtn')
       .addEventListener(
         'click',
@@ -1242,6 +1256,7 @@
             $('eventType').value
           );
           syncGoogleTitleField();
+          syncCategoryField();
         }
       );
 
@@ -3331,6 +3346,10 @@
             .map( normalizeHex )
             .filter( Boolean );
       }
+      if ( Array.isArray( data.categories ) ) {
+        state.categories =
+          data.categories;
+      }
       applyMailStatus(
         data.mail
       );
@@ -4170,6 +4189,10 @@
       new Map();
 
 
+    const byCategory =
+      new Map();
+
+
     let totalMinutes = 0;
 
 
@@ -4207,6 +4230,16 @@
 
 
             totalMinutes += minutes;
+
+
+            const categoryId =
+              categoryName( event.category )
+                ? event.category
+                : '';
+            byCategory.set(
+              categoryId,
+              ( byCategory.get( categoryId ) || 0 ) + minutes
+            );
 
 
             const name =
@@ -4259,6 +4292,11 @@
     $('summaryStudents')
       .textContent =
         String( byStudent.size );
+
+
+    renderSummaryCategories(
+      byCategory
+    );
 
 
     const list =
@@ -4411,6 +4449,59 @@
         }
       );
 
+  }
+
+
+  /*
+    One count per category the owner named, in the order named, and
+    "Uncategorized" for booked time filed under none - shown only
+    once there is at least one category to count apart.
+  */
+  function renderSummaryCategories(
+    byCategory
+  ) {
+    const box =
+      $('summaryCategories');
+    box.innerHTML = '';
+    if ( !state.categories.length ) {
+      box.classList.add( 'hidden' );
+      return;
+    }
+    box.classList.remove( 'hidden' );
+    const rows =
+      state.categories.map(
+        (category) => ({
+          name: category.name,
+          minutes: byCategory.get( category.id ) || 0,
+          none: false
+        })
+      );
+    if ( byCategory.get( '' ) ) {
+      rows.push({
+        name: t( 'summary_uncategorized' ),
+        minutes: byCategory.get( '' ),
+        none: true
+      });
+    }
+    rows.forEach(
+      (row) => {
+        const chip =
+          document.createElement( 'span' );
+        chip.className =
+          'week-summary-category' +
+          ( row.none ? ' none' : '' );
+        const number =
+          document.createElement( 'strong' );
+        number.textContent =
+          formatHours( row.minutes );
+        const label =
+          document.createElement( 'span' );
+        label.textContent =
+          t( 'category_hours', { name: row.name } );
+        chip.append( number, label );
+        box.appendChild( chip );
+      }
+    );
   }
 
 
@@ -7914,6 +8005,8 @@
         storedEvent.notes,
       googleTitle:
         storedEvent.googleTitle,
+      category:
+        storedEvent.category,
 
       start:
         newStart,
@@ -8479,6 +8572,8 @@
         copied.notes,
       googleTitle:
         copied.googleTitle,
+      category:
+        copied.category,
       color:
         copied.color
     });
@@ -9125,6 +9220,8 @@
                 original.notes,
               googleTitle:
                 original.googleTitle,
+              category:
+                original.category,
 
               start:
                 masterStart,
@@ -9549,6 +9646,8 @@
                 formEvent.notes,
               googleTitle:
                 formEvent.googleTitle,
+              category:
+                formEvent.category,
               start:
                 formEvent.start,
               end:
@@ -9686,6 +9785,8 @@
                 formEvent.notes,
               googleTitle:
                 formEvent.googleTitle,
+              category:
+                formEvent.category,
               start:
                 formEvent.start,
               end:
@@ -9818,6 +9919,8 @@
               formEvent.notes,
             googleTitle:
               formEvent.googleTitle,
+            category:
+              formEvent.category,
             start:
               newStart,
             end:
@@ -9881,6 +9984,8 @@
         original.notes,
       googleTitle:
         original.googleTitle,
+      category:
+        original.category,
 
       start:
         original.seriesStart ||
@@ -10277,6 +10382,8 @@
                   original.notes,
                 googleTitle:
                   original.googleTitle,
+                category:
+                  original.category,
 
                 color:
                   normalizeHex( occurrence.color ) || null,
@@ -10559,6 +10666,8 @@
                   original.notes,
                 googleTitle:
                   original.googleTitle,
+                category:
+                  original.category,
 
                 color:
                   normalizeHex( occurrence.color ) || null,
@@ -10766,6 +10875,8 @@
                 original.notes,
               googleTitle:
                 original.googleTitle,
+              category:
+                original.category,
 
               start:
                 minuteKeyToLocalDateTime(
@@ -13796,6 +13907,138 @@
 
 
   /*
+    The category is offered only for a booked session, and only once
+    the owner has named some in Settings.
+  */
+  function syncCategoryField() {
+    $('categoryField')
+      .classList
+      .toggle(
+        'hidden',
+        !(
+          state.categories.length &&
+          $('eventType').value === 'BLOCKED'
+        )
+      );
+  }
+
+
+  function fillCategorySelect(
+    chosen
+  ) {
+    const select =
+      $('eventCategory');
+    select.innerHTML = '';
+    const none =
+      document.createElement( 'option' );
+    none.value = '';
+    none.textContent =
+      t( 'e_category_none' );
+    select.appendChild( none );
+    state.categories.forEach(
+      (category) => {
+        const option =
+          document.createElement( 'option' );
+        option.value =
+          category.id;
+        option.textContent =
+          category.name;
+        select.appendChild( option );
+      }
+    );
+    select.value =
+      state.categories.some( (category) => category.id === chosen )
+        ? chosen
+        : '';
+  }
+
+
+  function categoryName(
+    id
+  ) {
+    const found =
+      state.categories.find(
+        (category) =>
+          category.id === id
+      );
+    return found
+      ? found.name
+      : '';
+  }
+
+
+  /*
+    The list of categories being edited in Settings: a name box and
+    a Remove for each, and a way to add one. Ids stay with their
+    rows, so renaming keeps the sessions filed under them.
+  */
+  function renderCategoryList() {
+    const list =
+      $('categoryList');
+    list.innerHTML = '';
+    ( state.settingsCategories || [] ).forEach(
+      (category, index) => {
+        const row =
+          document.createElement( 'div' );
+        row.className =
+          'category-row';
+        const input =
+          document.createElement( 'input' );
+        input.type = 'text';
+        input.maxLength = 30;
+        input.value =
+          category.name;
+        input.placeholder =
+          t( 's_category_name' );
+        input.setAttribute( 'aria-label', t( 's_category_name' ) );
+        input.addEventListener(
+          'input',
+          () => {
+            category.name =
+              input.value;
+          }
+        );
+        const remove =
+          document.createElement( 'button' );
+        remove.type = 'button';
+        remove.className =
+          'text-btn';
+        remove.textContent =
+          t( 's_category_remove' );
+        remove.addEventListener(
+          'click',
+          () => {
+            state.settingsCategories.splice( index, 1 );
+            renderCategoryList();
+          }
+        );
+        row.append( input, remove );
+        list.appendChild( row );
+      }
+    );
+  }
+
+
+  function addCategoryRow() {
+    state.settingsCategories =
+      state.settingsCategories || [];
+    if ( state.settingsCategories.length >= 12 ) {
+      return;
+    }
+    state.settingsCategories.push({
+      id: '',
+      name: ''
+    });
+    renderCategoryList();
+    const inputs =
+      $('categoryList').querySelectorAll( 'input' );
+    if ( inputs.length ) {
+      inputs[ inputs.length - 1 ].focus();
+    }
+  }
+
+
+  /*
     What the account is: the site's owner is the Admin, any other
     account the Owner of its calendars, and the site's admin password
     (before an account claimed the first calendar) counts as Admin.
@@ -14591,6 +14834,11 @@
     fillMinuteSelect( $('settingMaxMinutes'), requests.maxMinutes || 480 );
     $('settingShowBooked').checked =
       !settings.privacy || settings.privacy.showBooked !== false;
+    state.settingsCategories =
+      ( settings.categories || [] ).map(
+        (category) => ({ ...category })
+      );
+    renderCategoryList();
     $('settingWeekStart').value =
       String( settings.weekStart === 1 ? 1 : 0 );
     $('settingHourFormat').value =
@@ -14872,7 +15120,19 @@
       privacy: {
         showBooked:
           $('settingShowBooked').checked
-      }
+      },
+      categories:
+        ( state.settingsCategories || [] )
+          .map(
+            (category) => ({
+              id: category.id,
+              name: category.name.trim()
+            })
+          )
+          .filter(
+            (category) =>
+              category.name
+          )
     };
     if ( body.dayEnd <= body.dayStart ) {
       $('settingsError').textContent =
@@ -16710,6 +16970,10 @@
         ) ||
         '';
     syncGoogleTitleField();
+    fillCategorySelect(
+      ( event && event.category ) || ''
+    );
+    syncCategoryField();
 
 
     $('eventError')
@@ -17329,6 +17593,9 @@
           .value,
       googleTitle:
         $('eventGoogleTitle')
+          .value,
+      category:
+        $('eventCategory')
           .value,
       recurrence
     };

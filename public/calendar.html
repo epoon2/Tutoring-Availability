@@ -383,6 +383,11 @@
 
       </div>
 
+      <div
+        id="summaryCategories"
+        class="week-summary-categories hidden"
+      ></div>
+
       <ul
         id="summaryList"
         class="week-summary-list hidden"
@@ -1924,6 +1929,23 @@
         </span>
       </label>
 
+      <h3 class="settings-heading" data-i18n="s_categories">Categories</h3>
+
+      <p class="settings-help" data-i18n="s_categories_hint">
+        Kinds of booked time you want counted apart in the weekly summary - "Work", "Private tutoring". Name them here, then pick one on each booked session.
+      </p>
+
+      <div id="categoryList" class="category-list"></div>
+
+      <button
+        id="addCategoryBtn"
+        class="btn secondary small"
+        type="button"
+        data-i18n="s_category_add"
+      >
+        + Add a category
+      </button>
+
       <h3 class="settings-heading" data-i18n="s_google">Google Calendar</h3>
 
       <div id="googleSetup">
@@ -2537,6 +2559,27 @@
           maxlength="500"
           placeholder="Optional"
         ></textarea>
+
+      </label>
+
+      <!-- CATEGORY (BOOKED, WHEN THE OWNER HAS NAMED SOME) -->
+
+      <label
+        id="categoryField"
+        class="field hidden"
+      >
+
+        <span>
+
+          <span data-i18n="e_category">Category</span>
+
+          <small data-i18n="e_category_hint">
+            (counted apart in the weekly summary; the categories are named in Settings)
+          </small>
+
+        </span>
+
+        <select id="eventCategory"></select>
 
       </label>
 
