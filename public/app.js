@@ -5625,16 +5625,16 @@
 
           state.draggingOccurrence =
             recurring
-              ? event
+              ? wholeOccurrence( event )
               : null;
 
 
           state.draggingDuration =
             localDateTimeToMinuteKey(
-              event.end
+              wholeOccurrence( event ).end
             ) -
             localDateTimeToMinuteKey(
-              event.start
+              wholeOccurrence( event ).start
             );
 
 
@@ -5793,7 +5793,7 @@
             openEventModal(
               original,
               recurring
-                ? event
+                ? wholeOccurrence( event )
                 : original
             );
 
@@ -5810,7 +5810,7 @@
           handleCardContextMenu(
             menuEvent,
             original,
-            event
+            wholeOccurrence( event )
           );
 
         }
@@ -5823,6 +5823,35 @@
 
   }
 
+
+
+  /*
+    A fragment of open time - the part of one block left on either
+    side of a booked session - is a drawing, not a record. Whatever
+    edits, moves, copies or deletes it must act on the whole block
+    (the whole occurrence, for a series) it was cut from, or the
+    pieces on the other side of the booking would be lost.
+  */
+  function wholeOccurrence(
+    event
+  ) {
+    if ( !event || !event.displayId ) {
+      return event;
+    }
+    const id =
+      event.masterId ||
+      event.id;
+    const start =
+      localDateTimeToMinuteKey( event.start );
+    const end =
+      localDateTimeToMinuteKey( event.end );
+    return state.events.find(
+      (item) =>
+        ( item.masterId || item.id ) === id &&
+        localDateTimeToMinuteKey( item.start ) <= start &&
+        localDateTimeToMinuteKey( item.end ) >= end
+    ) || getOriginalEvent( event );
+  }
 
 
   function getOriginalEvent(
@@ -6072,7 +6101,7 @@
                       event
                     ),
                     event.masterId
-                      ? event
+                      ? wholeOccurrence( event )
                       : undefined
                   );
 
