@@ -2889,8 +2889,31 @@ body:not(.view-week).list-view .calendar {
   gap: 6px;
   padding: 4px 10px;
   background: var(--surface-2);
+  border: 1px solid transparent;
   border-radius: 999px;
+  color: var(--text);
+  font: inherit;
   font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.week-summary-category:hover {
+  border-color: var(--accent-line);
+}
+
+.week-summary-category[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.week-summary-category[aria-pressed="true"] strong {
+  color: #fff;
+}
+
+.week-summary-session {
+  line-height: 1.5;
 }
 
 .week-summary-category strong {
@@ -2904,6 +2927,12 @@ body:not(.view-week).list-view .calendar {
 
 .week-summary-category.none strong {
   color: var(--muted);
+}
+
+.week-summary-category.none[aria-pressed="true"] {
+  background: var(--muted);
+  border-color: var(--muted);
+  color: #fff;
 }
 
 /* the category list in Settings */

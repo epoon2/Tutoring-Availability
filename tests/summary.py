@@ -76,6 +76,9 @@ async def main():
                   f"{rows[0]['when']!r} vs {label1}/{label2}")
             check("Devon shows 2 hrs, 1 session",
                   rows[1]["hours"].startswith("2 hr") and "1 session" in rows[1]["hours"], rows[1]["hours"])
+            lines = await page.evaluate("""() => [...document.querySelectorAll('.week-summary-student')[0].querySelectorAll('.week-summary-session')]
+                .map(l => l.getBoundingClientRect().top)""")
+            check("each of Maya's sessions sits on its own line", len(lines) == 2 and lines[1] > lines[0] + 10, str(lines))
         check("the toggle reads Hide all students while the list is open, Show all students when closed",
               await page.text_content("#summaryToggleLabel") == "Hide all students"
               and (await page.click("#summaryToggle") or True) and await page.text_content("#summaryToggleLabel") == "Show all students")

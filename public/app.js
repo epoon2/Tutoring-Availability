@@ -31,6 +31,13 @@
       null,
 
     /*
+      Which category the weekly summary's rows are narrowed to:
+      'all', a category id, or 'none' for the uncategorized.
+    */
+    summaryCategory:
+      'all',
+
+    /*
       The two default colours being edited in the settings dialog.
     */
     settingsColors:
@@ -4185,15 +4192,14 @@
     }
 
 
-    const byStudent =
-      new Map();
+    /*
+      Every booked session of the week, once, with what the rows and
+      the counts need: who, how long, when, which category, what
+      color it is drawn in.
+    */
 
-
-    const byCategory =
-      new Map();
-
-
-    let totalMinutes = 0;
+    const sessions =
+      [];
 
 
     for ( let day = 0; day < 7; day++ ) {
@@ -4222,66 +4228,118 @@
             }
 
 
-            const minutes =
-              Math.max(
-                0,
-                endMin - startMin
-              );
-
-
-            totalMinutes += minutes;
-
-
-            const categoryId =
-              categoryName( event.category )
-                ? event.category
-                : '';
-            byCategory.set(
-              categoryId,
-              ( byCategory.get( categoryId ) || 0 ) + minutes
-            );
-
-
-            const name =
-              summaryStudentName( event );
-
-
-            if ( !byStudent.has( name ) ) {
-
-              byStudent.set(
-                name,
-                {
-                  name,
-                  minutes: 0,
-                  sessions: [],
-                  colors: new Map()
-                }
-              );
-            }
-            const record =
-              byStudent.get( name );
-            record.minutes += minutes;
-            record.sessions.push({
+            sessions.push({
+              name:
+                summaryStudentName( event ),
+              minutes:
+                Math.max( 0, endMin - startMin ),
               date,
               startMin,
-              endMin
+              endMin,
+              category:
+                categoryName( event.category )
+                  ? event.category
+                  : '',
+              hex:
+                normalizeHex( event.color ) ||
+                defaultColorFor( 'BLOCKED' )
             });
-            /*
-              The color most of this student's time is drawn in
-              marks their row; the default red counts as a color.
-            */
-            const hex =
-              normalizeHex( event.color ) ||
-              defaultColorFor( 'BLOCKED' );
-            record.colors.set(
-              hex,
-              ( record.colors.get( hex ) || 0 ) + minutes
-            );
 
           }
         );
 
     }
+
+
+    const totalMinutes =
+      sessions.reduce(
+        (sum, session) =>
+          sum + session.minutes,
+        0
+      );
+
+
+    const byCategory =
+      new Map();
+
+
+    sessions.forEach(
+      (session) => {
+        byCategory.set(
+          session.category,
+          ( byCategory.get( session.category ) || 0 ) + session.minutes
+        );
+      }
+    );
+
+
+    /*
+      The chosen category filters the rows below; "All" is the
+      default, and a category that no longer exists falls back to it.
+    */
+
+    if (
+      state.summaryCategory !== 'all' &&
+      state.summaryCategory !== 'none' &&
+      !categoryName( state.summaryCategory )
+    ) {
+
+      state.summaryCategory =
+        'all';
+
+    }
+
+
+    const chosen =
+      state.summaryCategory;
+
+
+    const shown =
+      chosen === 'all'
+        ? sessions
+        : sessions.filter(
+            (session) =>
+              session.category === ( chosen === 'none' ? '' : chosen )
+          );
+
+
+    const byStudent =
+      new Map();
+
+
+    shown.forEach(
+      (session) => {
+
+        if ( !byStudent.has( session.name ) ) {
+
+          byStudent.set(
+            session.name,
+            {
+              name: session.name,
+              minutes: 0,
+              sessions: [],
+              colors: new Map()
+            }
+          );
+
+        }
+
+
+        const record =
+          byStudent.get( session.name );
+        record.minutes += session.minutes;
+        record.sessions.push( session );
+        /*
+          The color most of this student's time is drawn in
+          marks their row; the default red counts as a color.
+        */
+        record.colors.set(
+          session.hex,
+          ( record.colors.get( session.hex ) || 0 ) + session.minutes
+        );
+
+      }
+    );
 
 
     $('summaryHours')
@@ -4291,11 +4349,12 @@
 
     $('summaryStudents')
       .textContent =
-        String( byStudent.size );
+        String( new Set( sessions.map( (session) => session.name ) ).size );
 
 
     renderSummaryCategories(
-      byCategory
+      byCategory,
+      totalMinutes
     );
 
 
@@ -4318,7 +4377,9 @@
 
 
       empty.textContent =
-        t( 'nothing_blocked_week' );
+        chosen === 'all'
+          ? t( 'nothing_blocked_week' )
+          : t( 'nothing_in_category', { name: chosen === 'none' ? t( 'summary_uncategorized' ) : categoryName( chosen ) } );
 
 
       list.appendChild( empty );
@@ -4419,6 +4480,11 @@
           head.appendChild( hours );
 
 
+          /*
+            One session to a line: a week of them read as a column,
+            not a run-on.
+          */
+
           const when =
             document
               .createElement( 'div' );
@@ -4428,15 +4494,23 @@
             'week-summary-sessions';
 
 
-          when.textContent =
-            record.sessions
-              .sort(
-                (a, b) =>
-                  a.date - b.date ||
-                  a.startMin - b.startMin
-              )
-              .map( summarySessionLabel )
-              .join( ' · ' );
+          record.sessions
+            .sort(
+              (a, b) =>
+                a.date - b.date ||
+                a.startMin - b.startMin
+            )
+            .forEach(
+              (session) => {
+                const line =
+                  document.createElement( 'div' );
+                line.className =
+                  'week-summary-session';
+                line.textContent =
+                  summarySessionLabel( session );
+                when.appendChild( line );
+              }
+            );
 
 
           item.appendChild( head );
@@ -4455,10 +4529,13 @@
   /*
     One count per category the owner named, in the order named, and
     "Uncategorized" for booked time filed under none - shown only
-    once there is at least one category to count apart.
+    once there is at least one category to count apart. "All" comes
+    first and is the default; each count is a button that narrows
+    the rows below to that category.
   */
   function renderSummaryCategories(
-    byCategory
+    byCategory,
+    totalMinutes
   ) {
     const box =
       $('summaryCategories');
@@ -4469,27 +4546,41 @@
     }
     box.classList.remove( 'hidden' );
     const rows =
-      state.categories.map(
-        (category) => ({
-          name: category.name,
-          minutes: byCategory.get( category.id ) || 0,
-          none: false
-        })
-      );
+      [
+        {
+          key: 'all',
+          name: t( 'summary_all' ),
+          minutes: totalMinutes
+        },
+        ...state.categories.map(
+          (category) => ({
+            key: category.id,
+            name: category.name,
+            minutes: byCategory.get( category.id ) || 0
+          })
+        )
+      ];
     if ( byCategory.get( '' ) ) {
       rows.push({
+        key: 'none',
         name: t( 'summary_uncategorized' ),
-        minutes: byCategory.get( '' ),
-        none: true
+        minutes: byCategory.get( '' )
       });
     }
     rows.forEach(
       (row) => {
         const chip =
-          document.createElement( 'span' );
+          document.createElement( 'button' );
+        chip.type = 'button';
         chip.className =
           'week-summary-category' +
-          ( row.none ? ' none' : '' );
+          ( row.key === 'none' ? ' none' : '' );
+        chip.dataset.category =
+          row.key;
+        chip.setAttribute(
+          'aria-pressed',
+          state.summaryCategory === row.key ? 'true' : 'false'
+        );
         const number =
           document.createElement( 'strong' );
         number.textContent =
@@ -4499,20 +4590,19 @@
         label.textContent =
           t( 'category_hours', { name: row.name } );
         chip.append( number, label );
+        chip.addEventListener(
+          'click',
+          () => {
+            state.summaryCategory =
+              row.key;
+            renderWeekSummary();
+          }
+        );
         box.appendChild( chip );
       }
     );
   }
 
-
-  /*
-    Titles are written as "Maya - Algebra II"
-    or "Maya (online)", so the name is what
-    comes before the first separator. An
-    untitled block is still time spent and is
-    grouped under one heading rather than
-    dropped.
-  */
 
   function summaryStudentName(
     event

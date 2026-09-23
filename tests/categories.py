@@ -67,7 +67,8 @@ async def main():
         check("Settings shows the two named, the blank one dropped", names == ["Work", "Private tutoring"], str(names))
         await page.evaluate("document.querySelector('#settingsModal [data-close]').click()"); await page.wait_for_timeout(200)
         check("with categories named, the summary counts them, all under none so far",
-              await chips(page) == ["0 h · Work", "0 h · Private tutoring", "3.5 h · Uncategorized"], str(await chips(page)))
+              await chips(page) == ["3.5 h · All", "0 h · Work", "0 h · Private tutoring", "3.5 h · Uncategorized"], str(await chips(page)))
+        check("All is pressed by default", await page.evaluate("[...document.querySelectorAll('#summaryCategories button')].map(b => b.getAttribute('aria-pressed'))") == ["true", "false", "false", "false"])
 
         # ---- filing sessions
         async def file_under(title, option):
@@ -86,7 +87,23 @@ async def main():
         await page.click("#saveEventBtn"); await page.wait_for_timeout(900)
         await file_under("Office", "Work")
         await file_under("Kai", "Private tutoring")
-        check("each category counts its own hours", await chips(page) == ["2 h · Work", "1.5 h · Private tutoring"], str(await chips(page)))
+        check("each category counts its own hours, All the total", await chips(page) == ["3.5 h · All", "2 h · Work", "1.5 h · Private tutoring"], str(await chips(page)))
+
+        # ---- choosing a category narrows the rows to it
+        await page.click("#summaryToggle"); await page.wait_for_timeout(300)
+        async def rows():
+            return await page.evaluate("[...document.querySelectorAll('#summaryList .week-summary-student strong')].map(s => s.textContent.trim())")
+        check("under All every student is listed", await rows() == ["Office", "Maya", "Kai"] or sorted(await rows()) == ["Kai", "Maya", "Office"], str(await rows()))
+        await page.click("#summaryCategories button[data-category]:nth-child(2)"); await page.wait_for_timeout(300)
+        check("choosing Work highlights it and lists only what is filed under Work", await page.evaluate("document.querySelector('#summaryCategories button:nth-child(2)').getAttribute('aria-pressed')") == "true"
+              and await page.evaluate("document.querySelector('#summaryCategories button:nth-child(1)').getAttribute('aria-pressed')") == "false"
+              and await rows() == ["Office"], str(await rows()))
+        await page.click("#summaryCategories button:nth-child(3)"); await page.wait_for_timeout(300)
+        check("Private tutoring lists Maya and Kai", sorted(await rows()) == ["Kai", "Maya"], str(await rows()))
+        check("while the totals above still count the whole week", await page.text_content("#summaryHours") == "3.5" and await page.text_content("#summaryStudents") == "3")
+        await page.click("#summaryCategories button:nth-child(1)"); await page.wait_for_timeout(300)
+        check("All brings every row back", len(await rows()) == 3)
+        await page.click("#summaryToggle"); await page.wait_for_timeout(200)
         await page.evaluate("[...document.querySelectorAll('.event-card')].find(c => c.textContent.includes('Kai')).click()"); await page.wait_for_timeout(400)
         check("the editor remembers the choice", await page.evaluate("document.getElementById('eventCategory').selectedOptions[0].textContent") == "Private tutoring")
         await page.evaluate("document.querySelector('#eventModal [data-close]').click()"); await page.wait_for_timeout(200)
@@ -97,17 +114,22 @@ async def main():
             await fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': 't' },
                 body: JSON.stringify({ id: ev.id, type: ev.type, title: ev.title, start: ev.start, end: ev.end.replace('15:30', '16:00'), notes: ev.notes }) }); }""")
         await page.evaluate("document.getElementById('refreshBtn').click()"); await page.wait_for_timeout(800)
-        check("a save without the field keeps the category", await chips(page) == ["2 h · Work", "2 h · Private tutoring"], str(await chips(page)))
+        check("a save without the field keeps the category", await chips(page) == ["4 h · All", "2 h · Work", "2 h · Private tutoring"], str(await chips(page)))
 
         # ---- renaming keeps the sessions; removing files them under none
         await open_settings(page)
         await page.fill("#categoryList .category-row:nth-child(2) input", "Tutoring")
         await page.click("#saveSettingsBtn"); await page.wait_for_timeout(900)
-        check("a rename keeps the sessions filed under it", await chips(page) == ["2 h · Work", "2 h · Tutoring"], str(await chips(page)))
+        check("a rename keeps the sessions filed under it", await chips(page) == ["4 h · All", "2 h · Work", "2 h · Tutoring"], str(await chips(page)))
         await open_settings(page)
         await page.click("#categoryList .category-row:nth-child(1) button")
         await page.click("#saveSettingsBtn"); await page.wait_for_timeout(900)
-        check("removing one files its sessions under none", await chips(page) == ["2 h · Tutoring", "2 h · Uncategorized"], str(await chips(page)))
+        check("removing one files its sessions under none", await chips(page) == ["4 h · All", "2 h · Tutoring", "2 h · Uncategorized"], str(await chips(page)))
+        await page.click("#summaryToggle"); await page.wait_for_timeout(200)
+        await page.click("#summaryCategories button:nth-child(3)"); await page.wait_for_timeout(300)
+        check("Uncategorized can be chosen too", await page.evaluate("[...document.querySelectorAll('#summaryList .week-summary-student strong')].map(s => s.textContent.trim())") == ["Office"])
+        await page.click("#summaryCategories button:nth-child(1)"); await page.wait_for_timeout(300)
+        await page.click("#summaryToggle"); await page.wait_for_timeout(200)
 
         # ---- the per-person rows wear their color plainly
         await page.click("#summaryToggle"); await page.wait_for_timeout(300)
