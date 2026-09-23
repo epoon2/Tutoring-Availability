@@ -4337,10 +4337,15 @@
                 (a, b) =>
                   b[1] - a[1]
               )[0];
+          const shades =
+            cardShades( dominant[0] );
           dot.style.setProperty(
             '--dot',
-            cardShades( dominant[0] ).ink
+            shades.ink
           );
+          item.style.setProperty( '--row-edge', shades.border );
+          item.style.setProperty( '--row-tint', shades.tint );
+          item.style.setProperty( '--row-ink', shades.ink );
           dot.title =
             colorName( dominant[0] );
           who.append(

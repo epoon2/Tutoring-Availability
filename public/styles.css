@@ -2385,13 +2385,6 @@ button.agenda-item:hover {
 
 .week-summary-student {
   padding: 8px 0;
-
-  border-bottom: 1px solid var(--border);
-}
-
-
-.week-summary-student:last-child {
-  border-bottom: 0;
 }
 
 
@@ -2848,14 +2841,36 @@ body:not(.view-week).list-view .calendar {
   The week summary marks each student with the colour their sessions
   are drawn in.
 */
+/*
+  Each person's row wears the color their time is drawn in, the way
+  the block does on the grid: a bar down the left, a tint behind, a
+  clear swatch beside the name. A ten-pixel dot was too easy to miss.
+*/
+.week-summary-student {
+  padding: 8px 10px 8px 12px;
+  border-left: 4px solid var(--row-edge, var(--blocked));
+  background: var(--row-tint, transparent);
+  border-radius: 0 8px 8px 0;
+}
+
+.week-summary-student + .week-summary-student {
+  margin-top: 6px;
+}
+
+.week-summary-student strong {
+  color: var(--row-ink, inherit);
+}
+
 .week-summary-dot {
   display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 7px;
-  vertical-align: 1px;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
   background: var(--dot, var(--blocked));
-  border-radius: 50%;
+  border: 2px solid var(--card);
+  box-shadow: 0 0 0 1px var(--row-edge, var(--blocked));
+  border-radius: 4px;
 }
 
 
