@@ -1155,7 +1155,7 @@
 
           $('summaryToggleLabel')
             .textContent =
-              t( nowHidden ? 'show_each' : 'hide_each', { noun: peopleWord( 1 ) } );
+              t( nowHidden ? 'show_all' : 'hide_all', { noun: peopleWord( 2 ) } );
 
 
           $('summaryToggle')
@@ -14688,7 +14688,7 @@
     setText( 'eventTypeAvailableOption', labelFor( 'AVAILABLE' ) );
     setText( 'summaryPeopleLabel', peopleWord( 2 ) );
     setText( 'summaryToggleLabel',
-      t( $('summaryList') && !$('summaryList').classList.contains( 'hidden' ) ? 'hide_each' : 'show_each', { noun: peopleWord( 1 ) } ) );
+      t( $('summaryList') && !$('summaryList').classList.contains( 'hidden' ) ? 'hide_all' : 'show_all', { noun: peopleWord( 2 ) } ) );
     setText( 'summaryHoursLabel', t( 'hours_blocked_week' ) );
     const requestRules =
       state.config.requests || {};

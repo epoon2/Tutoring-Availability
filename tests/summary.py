@@ -76,6 +76,10 @@ async def main():
                   f"{rows[0]['when']!r} vs {label1}/{label2}")
             check("Devon shows 2 hrs, 1 session",
                   rows[1]["hours"].startswith("2 hr") and "1 session" in rows[1]["hours"], rows[1]["hours"])
+        check("the toggle reads Hide all students while the list is open, Show all students when closed",
+              await page.text_content("#summaryToggleLabel") == "Hide all students"
+              and (await page.click("#summaryToggle") or True) and await page.text_content("#summaryToggleLabel") == "Show all students")
+        await page.click("#summaryToggle"); await page.wait_for_timeout(200)
 
         # An empty week
         await page.click("#nextWeekBtn"); await page.wait_for_timeout(700)
