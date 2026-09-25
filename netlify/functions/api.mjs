@@ -2295,7 +2295,9 @@ async function handleAccountRoute(
       mail:
         mailConfigured(),
       mainSlug:
-        await ensureMainSlug( store )
+        await ensureMainSlug( store ),
+      demo:
+        await demoSlug( store )
     });
   }
   const address =
@@ -2808,6 +2810,21 @@ function describeWait(
 */
 const DEFAULT_SITE_NAME =
   "MyOpenings";
+
+/*
+  The example calendar the home page links to, if the owner has made
+  one: whatever calendar sits at DEMO_SLUG (default "demo"). No such
+  calendar, no link.
+*/
+async function demoSlug(
+  store
+) {
+  const slug =
+    String( process.env.DEMO_SLUG || "demo" ).trim().toLowerCase();
+  return await calendarForSlug( store, slug )
+    ? slug
+    : null;
+}
 
 function siteName() {
   return process.env.SITE_NAME || DEFAULT_SITE_NAME;

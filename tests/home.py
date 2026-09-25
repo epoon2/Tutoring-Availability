@@ -3,7 +3,9 @@
 its loop, each section reveals as it scrolls into view, the "made
 for" row glides, the header casts a shadow once scrolled - and with
 "reduce motion" set on the device none of it moves and everything
-shows at once. The page also uses the width it has.
+shows at once. The bands run edge to edge while the content inside
+is held to a readable measure; a line along the header shows how
+far down the page the reader is.
 
     python3 tests/home.py
 """
@@ -30,7 +32,12 @@ async def main():
             page: window.innerWidth,
             wrap: document.querySelector('.band-hero .wrap').getBoundingClientRect().width,
             preview: document.getElementById('homePreview').getBoundingClientRect().width })""")
-        check("on a wide screen the content uses most of it", widths["wrap"] >= widths["page"] * 0.9 and widths["preview"] >= 600, str(widths))
+        check("on a wide screen the content is held to a readable measure, centered", 1200 <= widths["wrap"] <= 1300 and widths["preview"] >= 600
+              and await page.evaluate("Math.abs(document.querySelector('.band-hero .wrap').getBoundingClientRect().left - (window.innerWidth - document.querySelector('.band-hero .wrap').getBoundingClientRect().width) / 2) < 2"), str(widths))
+        check("while the bands behind it run edge to edge", await page.evaluate("document.querySelector('.band-hero').getBoundingClientRect().width") == widths["page"])
+        check("the headline shades into the accent", await page.evaluate("getComputedStyle(document.querySelector('.home-hero h1')).backgroundImage.includes('gradient')"))
+        check("with no example calendar the link to one is hidden", await page.evaluate("document.getElementById('heroDemo').classList.contains('hidden') && document.getElementById('footDemo').classList.contains('hidden')"))
+        check("nothing on the page claims a made-up number", "Sent to 12" not in await page.content())
         check("the hero rises in, in steps", await page.evaluate("document.querySelectorAll('.band-hero .hero-in').length") == 4
               and await page.evaluate("getComputedStyle(document.querySelector('.home-hero h1')).animationName") == "rise"
               and await page.evaluate("document.querySelector('.home-cta').style.getPropertyValue('--d')") == "240ms")
@@ -58,6 +65,10 @@ async def main():
         delays = await page.evaluate("[...document.querySelectorAll('#features li')].map(li => li.style.getPropertyValue('--d'))")
         check("the cards come in one after another", delays[:3] == ["0ms", "70ms", "140ms"], str(delays))
         check("and the header now casts a shadow", await page.evaluate("document.querySelector('.home-top').classList.contains('scrolled')"))
+        read = float(await page.evaluate("document.querySelector('.home-top').style.getPropertyValue('--read')") or 0)
+        check("the line along the header shows how far down the reader is", 0.05 < read < 0.95
+              and await page.evaluate("getComputedStyle(document.querySelector('.home-progress')).backgroundImage.includes('gradient')"), str(read))
+        check("a heading's rule draws in once it has arrived", await page.evaluate("getComputedStyle(document.querySelector('#features h2'), '::after').transform") == "matrix(1, 0, 0, 1, 0, 0)")
         chips = await page.evaluate("document.querySelectorAll('#homeChips span').length")
         check("the made-for row is repeated so it can glide without a gap", chips == 36
               and await page.evaluate("getComputedStyle(document.getElementById('homeChips')).animationName") == "glide", str(chips))
@@ -105,6 +116,13 @@ async def main():
               and band["pills"] == 4 and band["floating"] and band["card"], str(band))
         check("the ready band is a gradient too, and the step numbers are not all one color", await page.evaluate("getComputedStyle(document.querySelector('.home-ready')).backgroundImage.includes('gradient')")
               and await page.evaluate("new Set([...document.querySelectorAll('.home-step')].map(s => getComputedStyle(s, '::before').color)).size") == 3)
+        check("and its words read white on the color", await page.evaluate("getComputedStyle(document.querySelector('.home-ready p')).color") == "rgb(255, 255, 255)")
+        await page.evaluate("document.getElementById('footLoginBtn').scrollIntoView()"); await page.wait_for_timeout(200)
+        check("the footer names the site and offers the questions and a way in", await page.evaluate("document.getElementById('footSite').textContent") == "MyOpenings"
+              and await page.evaluate("document.querySelector('.home-foot-links a[href=\"#faq\"]').textContent") == "Questions")
+        await page.click("#footLoginBtn"); await page.wait_for_timeout(300)
+        check("and its Log in opens the dialog", not await page.evaluate("document.getElementById('authModal').classList.contains('hidden')"))
+        await page.click("#authClose"); await page.wait_for_timeout(200)
         real = [e for e in errs if "fonts" not in e and "favicon" not in e]
         check("no page errors", not real, str(real[:3]))
 

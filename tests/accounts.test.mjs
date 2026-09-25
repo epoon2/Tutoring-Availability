@@ -286,6 +286,14 @@ ok('and can overlay any calendar', r.data.overlays && r.data.overlays.ethan && r
 r = await call('GET', '/settings?calendar=maya', { 'x-session': ethan });
 ok("another account's calendar never falls back to the site's Google calendar - only its own", r.data.google.calendarId === 'maya-cal@group.calendar.google.com' && r.data.google.fromSite === false && r.data.google.calendarId !== 'ethan-site@group.calendar.google.com');
 
+// the example calendar: whatever sits at /demo, once something does
+r = await call('GET', '/site');
+ok('the site names itself and, with no calendar at /demo, points at no example', r.data.name === 'Test Calendar' && r.data.demo === null, JSON.stringify(r.data));
+r = await call('PUT', '/settings?calendar=maya', { 'x-session': mayaNow }, { slug: 'demo' });
+ok('an address can be demo', r.status === 200 && r.data.slug === 'demo');
+r = await call('GET', '/site');
+ok('and the site then points the home page at it', r.data.demo === 'demo', JSON.stringify(r.data));
+
 fake.close();
 console.log(fails.length ? '\nFAILED:\n  ' + fails.join('\n  ') : `\naccounts: all ${ran} checks passed`);
 process.exit(fails.length ? 1 : 0);

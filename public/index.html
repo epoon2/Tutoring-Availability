@@ -47,7 +47,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      max-width: none;
+      max-width: 1280px;
       margin: 0 auto;
       padding: 12px 4vw;
     }
@@ -116,25 +116,66 @@
     }
 
     /*
-      No cap on the width: the page runs to the edges of whatever
-      screen it is on, with a gutter that scales with it (4vw), the
-      way the calendar itself does.
+      The bands run to the edges of whatever screen the page is on;
+      what sits in them is held to a readable measure and centered.
+      The calendar itself keeps the whole width - a week wants every
+      pixel - but a landing page's cards and questions do not.
     */
     .wrap {
-      max-width: none;
+      max-width: 1280px;
       margin: 0 auto;
     }
 
     .home h2 {
+      position: relative;
+      display: inline-block;
       margin: 0 0 20px;
       font-size: clamp(24px, 3vw, 32px);
       letter-spacing: -0.01em;
     }
 
+    /* a gradient rule draws itself under each heading as it arrives */
+    .home h2::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -8px;
+      width: 48px;
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #315efb, #6d28d9, #be185d);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s;
+    }
+
+    .home h2.in::after,
+    .home h2:not(.reveal)::after {
+      transform: scaleX(1);
+    }
+
+    .band-stories h2::after,
+    .band-ready h2::after {
+      background: #fff;
+    }
+
+    /* how far down the page the reader is, as a line along the header */
+    .home-progress {
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      height: 3px;
+      width: 100%;
+      transform: scaleX(var(--read, 0));
+      transform-origin: left;
+      background: linear-gradient(90deg, #315efb, #6d28d9, #be185d, #f59e0b);
+      pointer-events: none;
+    }
+
     .home-hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(320px, 46%);
-      gap: 64px;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 680px);
+      gap: 48px;
       align-items: center;
     }
 
@@ -1118,6 +1159,29 @@
       font-size: clamp(34px, 4.8vw, 60px);
       line-height: 1.08;
       letter-spacing: -0.02em;
+      background: linear-gradient(100deg, var(--text) 0%, var(--text) 45%, #315efb 80%, #6d28d9 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: var(--text);
+    }
+
+    .home-demo {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent);
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .home-demo::after {
+      content: "→";
+      transition: transform 0.2s ease;
+    }
+
+    .home-demo:hover::after {
+      transform: translateX(4px);
     }
 
     .home-hero .lede {
@@ -1345,7 +1409,6 @@
 
     .home-ready p {
       margin: 0 0 18px;
-      color: var(--muted);
     }
 
     .home-foot {
@@ -1364,6 +1427,29 @@
 
     .home-foot p {
       margin: 6px 0;
+    }
+
+    .home-foot-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      margin: 6px 0;
+    }
+
+    .home-foot-links a,
+    .home-foot-links button {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--muted);
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .home-foot-links a:hover,
+    .home-foot-links button:hover {
+      color: var(--text);
     }
 
     /* ---- the way in */
@@ -1503,6 +1589,7 @@
 <body>
 
   <header class="home-top">
+    <span class="home-progress" aria-hidden="true"></span>
     <div class="home-top-inner">
       <a class="home-brand" href="/">
         <img src="/icon-192.png" alt="">
@@ -1539,7 +1626,7 @@
           <button id="heroSignupBtn" class="btn primary" type="button" data-i18n="home_cta_signup">Create your calendar</button>
           <button id="heroLoginBtn" class="btn secondary" type="button" data-i18n="home_cta_login">Log in</button>
         </div>
-        <p class="home-free hero-in" style="--d: 360ms" data-i18n="home_free">Free. No app to install. Works on any device.</p>
+        <p class="home-free hero-in" style="--d: 360ms"><span data-i18n="home_free">Free. No app to install. Works on any device.</span> <a id="heroDemo" class="home-demo hidden" href="/demo" data-i18n="home_demo">See an example calendar</a></p>
       </div>
       <div id="homePreview" class="home-preview" data-step="0" aria-hidden="true">
         <div class="home-preview-bar"><strong>Ethan's Tutoring</strong><span class="home-preview-pill">Request a session</span></div>
@@ -1622,7 +1709,7 @@
         <div class="scene s1">
           <div class="tile tile-bar" style="top: 22%; left: 12%; width: 70%"><span class="dots"><i></i><i></i><i></i></span><span>calendar.app/<b>maya</b><i class="caret"></i></span></div>
           <div class="chip f2" style="top: 52%; left: 18%">Copy link</div>
-          <div class="chip f3" style="top: 60%; left: 50%">Sent to 12 parents</div>
+          <div class="chip f3" style="top: 60%; left: 50%" data-i18n="home_sent_anywhere">Sent from any device</div>
           <div class="tile f3" style="top: 70%; left: 30%"><small>Change it any time</small>calendar.app/<b style="color:#315efb">maya-tutoring</b></div>
         </div>
         <div class="scene s2">
@@ -1735,6 +1822,11 @@
     <footer class="home-foot">
     <div class="wrap">
       <p><span id="footSite"></span> · <span data-i18n="home_footer"></span></p>
+      <nav class="home-foot-links">
+        <a id="footDemo" class="hidden" href="/demo" data-i18n="home_demo"></a>
+        <a href="#faq" data-i18n="home_faq"></a>
+        <button type="button" id="footLoginBtn" data-i18n="auth_login"></button>
+      </nav>
       <p id="footNote"></p>
     </div>
     </footer>
@@ -2017,9 +2109,16 @@
       showFeature(0);
       scheduleNext();
 
-      /* the header casts a shadow once the page has scrolled */
+      /*
+        The header casts a shadow once the page has scrolled, and a
+        line along its foot shows how far down the reader is.
+      */
       var top = document.querySelector('.home-top');
-      var onScroll = function () { top.classList.toggle('scrolled', window.scrollY > 8); };
+      var onScroll = function () {
+        top.classList.toggle('scrolled', window.scrollY > 8);
+        var room = document.documentElement.scrollHeight - window.innerHeight;
+        top.style.setProperty('--read', room > 0 ? Math.min(1, window.scrollY / room).toFixed(4) : 0);
+      };
       window.addEventListener('scroll', onScroll, { passive: true });
       onScroll();
 
@@ -2046,6 +2145,7 @@
       $('tabSignup').addEventListener('click', function () { show('signupPanel'); });
       $('topLoginBtn').addEventListener('click', function () { show('loginPanel'); });
       $('heroLoginBtn').addEventListener('click', function () { show('loginPanel'); });
+      $('footLoginBtn').addEventListener('click', function () { show('loginPanel'); });
       $('topSignupBtn').addEventListener('click', function () { show('signupPanel'); });
       $('heroSignupBtn').addEventListener('click', function () { show('signupPanel'); });
       $('readySignupBtn').addEventListener('click', function () { show('signupPanel'); });
@@ -2237,6 +2337,11 @@
         $('siteName').textContent = data.name;
         $('footSite').textContent = data.name;
         $('claimRow').classList.toggle('hidden', data.claimed);
+        /* the example calendar, when the owner has made one */
+        ['heroDemo', 'footDemo'].forEach(function (id) {
+          $(id).classList.toggle('hidden', !data.demo);
+          if (data.demo) $(id).href = '/' + data.demo;
+        });
         applyLanguage();
       }).catch(function () {});
 
