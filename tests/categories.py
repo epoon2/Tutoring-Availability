@@ -129,6 +129,8 @@ async def main():
         await page.click("#summaryToggle"); await page.wait_for_timeout(200)
         await page.click("#summaryCategories button:nth-child(3)"); await page.wait_for_timeout(300)
         check("Uncategorized can be chosen too", await page.evaluate("[...document.querySelectorAll('#summaryList .week-summary-student strong')].map(s => s.textContent.trim())") == ["Office"])
+        pressed = await page.evaluate("(() => { const c = document.querySelector('#summaryCategories button:nth-child(3)'); return [getComputedStyle(c).backgroundColor, getComputedStyle(c.querySelector('strong')).color]; })()")
+        check("and its number reads white on the gray, not gray on gray", pressed[1] == "rgb(255, 255, 255)" and pressed[0] != pressed[1], str(pressed))
         await page.click("#summaryCategories button:nth-child(1)"); await page.wait_for_timeout(300)
         await page.click("#summaryToggle"); await page.wait_for_timeout(200)
 

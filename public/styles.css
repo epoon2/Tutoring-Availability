@@ -2935,6 +2935,10 @@ body:not(.view-week).list-view .calendar {
   color: #fff;
 }
 
+.week-summary-category.none[aria-pressed="true"] strong {
+  color: #fff;
+}
+
 /* omitted time sits apart from the counts, struck through */
 .week-summary-category.omitted {
   color: var(--muted);
