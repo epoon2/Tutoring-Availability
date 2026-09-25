@@ -3565,7 +3565,7 @@ function validateSettings(
         String( entry && entry.id || "" ).trim();
       list.push({
         id:
-          /^[a-z0-9]{1,24}$/i.test( id )
+          /^[a-z0-9]{1,24}$/i.test( id ) && id !== "omitted"
             ? id
             : crypto.randomBytes( 6 ).toString( "hex" ),
         name
@@ -4773,7 +4773,8 @@ function validateEvent(
     */
     /*
       The category the session is filed under, by id; unknown or
-      blank means none. Left out of the body, it is kept.
+      blank means none, and "omitted" leaves it out of the weekly
+      summary's count. Left out of the body, it is kept.
     */
     ...(
       "category" in event

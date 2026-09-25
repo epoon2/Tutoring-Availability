@@ -1,5 +1,14 @@
 (() => {
 
+  /*
+    A built-in category beside the owner's own: the session stays on
+    the calendar, but the weekly summary leaves it out of its count.
+    Named categories get hex ids, so this never clashes with one.
+  */
+  const OMITTED =
+    'omitted';
+
+
   const state = {
 
     view:
@@ -32,7 +41,8 @@
 
     /*
       Which category the weekly summary's rows are narrowed to:
-      'all', a category id, or 'none' for the uncategorized.
+      'all', a category id, 'none' for the uncategorized, or
+      OMITTED for the sessions left out of the count.
     */
     summaryCategory:
       'all',
@@ -4237,6 +4247,7 @@
               startMin,
               endMin,
               category:
+                event.category === OMITTED ||
                 categoryName( event.category )
                   ? event.category
                   : '',
@@ -4251,8 +4262,20 @@
     }
 
 
+    /*
+      Omitted sessions stay on the calendar but out of the count:
+      not in the total, the students, or the rows under "All".
+    */
+
+    const counted =
+      sessions.filter(
+        (session) =>
+          session.category !== OMITTED
+      );
+
+
     const totalMinutes =
-      sessions.reduce(
+      counted.reduce(
         (sum, session) =>
           sum + session.minutes,
         0
@@ -4281,6 +4304,7 @@
     if (
       state.summaryCategory !== 'all' &&
       state.summaryCategory !== 'none' &&
+      state.summaryCategory !== OMITTED &&
       !categoryName( state.summaryCategory )
     ) {
 
@@ -4296,7 +4320,7 @@
 
     const shown =
       chosen === 'all'
-        ? sessions
+        ? counted
         : sessions.filter(
             (session) =>
               session.category === ( chosen === 'none' ? '' : chosen )
@@ -4349,7 +4373,7 @@
 
     $('summaryStudents')
       .textContent =
-        String( new Set( sessions.map( (session) => session.name ) ).size );
+        String( new Set( counted.map( (session) => session.name ) ).size );
 
 
     renderSummaryCategories(
@@ -4379,7 +4403,7 @@
       empty.textContent =
         chosen === 'all'
           ? t( 'nothing_blocked_week' )
-          : t( 'nothing_in_category', { name: chosen === 'none' ? t( 'summary_uncategorized' ) : categoryName( chosen ) } );
+          : t( 'nothing_in_category', { name: chosen === 'none' ? t( 'summary_uncategorized' ) : chosen === OMITTED ? t( 'summary_omitted' ) : categoryName( chosen ) } );
 
 
       list.appendChild( empty );
@@ -4531,7 +4555,8 @@
     "Uncategorized" for booked time filed under none - shown only
     once there is at least one category to count apart. "All" comes
     first and is the default; each count is a button that narrows
-    the rows below to that category.
+    the rows below to that category. "Omitted" comes last, apart
+    from the total, whenever the week has any.
   */
   function renderSummaryCategories(
     byCategory,
@@ -4540,7 +4565,10 @@
     const box =
       $('summaryCategories');
     box.innerHTML = '';
-    if ( !state.categories.length ) {
+    if (
+      !state.categories.length &&
+      !byCategory.get( OMITTED )
+    ) {
       box.classList.add( 'hidden' );
       return;
     }
@@ -4560,11 +4588,21 @@
           })
         )
       ];
-    if ( byCategory.get( '' ) ) {
+    if (
+      state.categories.length &&
+      byCategory.get( '' )
+    ) {
       rows.push({
         key: 'none',
         name: t( 'summary_uncategorized' ),
         minutes: byCategory.get( '' )
+      });
+    }
+    if ( byCategory.get( OMITTED ) ) {
+      rows.push({
+        key: OMITTED,
+        name: t( 'summary_omitted' ),
+        minutes: byCategory.get( OMITTED )
       });
     }
     rows.forEach(
@@ -4574,7 +4612,8 @@
         chip.type = 'button';
         chip.className =
           'week-summary-category' +
-          ( row.key === 'none' ? ' none' : '' );
+          ( row.key === 'none' ? ' none' : '' ) +
+          ( row.key === OMITTED ? ' omitted' : '' );
         chip.dataset.category =
           row.key;
         chip.setAttribute(
@@ -14027,7 +14066,8 @@
 
   /*
     The category is offered only for a booked session, and only once
-    the owner has named some in Settings.
+    the owner has named some in Settings - or when the session is
+    already omitted, so it can be counted again.
   */
   function syncCategoryField() {
     $('categoryField')
@@ -14035,7 +14075,10 @@
       .toggle(
         'hidden',
         !(
-          state.categories.length &&
+          (
+            state.categories.length ||
+            $('eventCategory').value === OMITTED
+          ) &&
           $('eventType').value === 'BLOCKED'
         )
       );
@@ -14065,7 +14108,15 @@
         select.appendChild( option );
       }
     );
+    const omitted =
+      document.createElement( 'option' );
+    omitted.value =
+      OMITTED;
+    omitted.textContent =
+      t( 'e_category_omitted' );
+    select.appendChild( omitted );
     select.value =
+      chosen === OMITTED ||
       state.categories.some( (category) => category.id === chosen )
         ? chosen
         : '';

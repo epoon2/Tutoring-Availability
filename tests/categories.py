@@ -2,7 +2,8 @@
 """Categories for booked time: the owner names them in Settings, picks
 one on each booked session, and the weekly summary counts each apart
 (plus what is filed under none). A rename keeps the sessions; a
-removal files them under none. The per-person rows in the summary
+removal files them under none. "Omitted" keeps a session out of the
+count altogether. The per-person rows in the summary
 wear their block's color plainly.
 
     python3 tests/categories.py
@@ -78,7 +79,7 @@ async def main():
             await page.click("#saveEventBtn"); await page.wait_for_timeout(900)
         await page.evaluate("[...document.querySelectorAll('.event-card')].find(c => c.textContent.includes('Maya')).click()"); await page.wait_for_timeout(400)
         options = await page.evaluate("[...document.querySelectorAll('#eventCategory option')].map(o => o.textContent)")
-        check("a booked session's editor offers the categories, none chosen", not await hidden(page, "#categoryField") and options == ["No category", "Work", "Private tutoring"]
+        check("a booked session's editor offers the categories, none chosen", not await hidden(page, "#categoryField") and options == ["No category", "Work", "Private tutoring", "Omitted (not counted in the summary)"]
               and await page.input_value("#eventCategory") == "", str(options))
         await page.select_option("#eventType", "AVAILABLE"); await page.wait_for_timeout(100)
         check("open time has no category", await hidden(page, "#categoryField"))
@@ -130,6 +131,31 @@ async def main():
         check("Uncategorized can be chosen too", await page.evaluate("[...document.querySelectorAll('#summaryList .week-summary-student strong')].map(s => s.textContent.trim())") == ["Office"])
         await page.click("#summaryCategories button:nth-child(1)"); await page.wait_for_timeout(300)
         await page.click("#summaryToggle"); await page.wait_for_timeout(200)
+
+        # ---- an omitted session stays on the calendar but out of the count
+        await file_under("Maya", "Omitted (not counted in the summary)")
+        check("an omitted session is left out of the total, All and the students",
+              await page.text_content("#summaryHours") == "3" and await page.text_content("#summaryStudents") == "2"
+              and await chips(page) == ["3 h · All", "1 h · Tutoring", "2 h · Uncategorized", "1 h · Omitted"], str(await chips(page)))
+        check("it is still drawn on the calendar", await page.evaluate("[...document.querySelectorAll('.event-card')].some(c => c.textContent.includes('Maya'))"))
+        await page.click("#summaryToggle"); await page.wait_for_timeout(300)
+        check("under All its student is not listed", sorted(await page.evaluate("[...document.querySelectorAll('#summaryList .week-summary-student strong')].map(s => s.textContent.trim())")) == ["Kai", "Office"])
+        await page.click("#summaryCategories button[data-category='omitted']"); await page.wait_for_timeout(300)
+        check("choosing Omitted lists what was left out", await page.evaluate("[...document.querySelectorAll('#summaryList .week-summary-student strong')].map(s => s.textContent.trim())") == ["Maya"]
+              and await page.text_content("#summaryHours") == "3")
+        await page.click("#summaryCategories button:nth-child(1)"); await page.wait_for_timeout(300)
+        await page.click("#summaryToggle"); await page.wait_for_timeout(200)
+
+        # ---- with every category removed, an omitted session can still be counted again
+        await open_settings(page)
+        await page.click("#categoryList .category-row:nth-child(1) button")
+        await page.click("#saveSettingsBtn"); await page.wait_for_timeout(900)
+        check("with no categories left, the Omitted count still shows", await chips(page) == ["3 h · All", "1 h · Omitted"], str(await chips(page)))
+        await page.evaluate("[...document.querySelectorAll('.event-card')].find(c => c.textContent.includes('Maya')).click()"); await page.wait_for_timeout(400)
+        check("and its editor still offers the choice", not await hidden(page, "#categoryField") and await page.input_value("#eventCategory") == "omitted")
+        await page.select_option("#eventCategory", label="No category")
+        await page.click("#saveEventBtn"); await page.wait_for_timeout(900)
+        check("filed under none, it counts again", await page.text_content("#summaryHours") == "4" and await hidden(page, "#summaryCategories"))
 
         # ---- the per-person rows wear their color plainly
         await page.click("#summaryToggle"); await page.wait_for_timeout(300)
