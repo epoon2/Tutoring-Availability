@@ -2935,6 +2935,28 @@ body:not(.view-week).list-view .calendar {
   color: #fff;
 }
 
+/* omitted time sits apart from the counts, struck through */
+.week-summary-category.omitted {
+  color: var(--muted);
+  border-style: dashed;
+  border-color: var(--line);
+}
+
+.week-summary-category.omitted strong {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.week-summary-category.omitted[aria-pressed="true"] {
+  background: var(--muted);
+  border-color: var(--muted);
+  color: #fff;
+}
+
+.week-summary-category.omitted[aria-pressed="true"] strong {
+  color: #fff;
+}
+
 /* the category list in Settings */
 .category-list {
   display: flex;
