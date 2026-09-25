@@ -14496,9 +14496,9 @@
     }
     const manifest = {
       name:
-        'Calendar',
+        'MyOpenings',
       short_name:
-        'Calendar',
+        'MyOpenings',
       start_url:
         '/' + state.calendarSlug,
       scope:
@@ -14618,9 +14618,9 @@
     $('missingText').textContent =
       t( reason.unpublished ? 'unpublished_text' : 'missing_text' );
     $('portalTitle').textContent =
-      'Calendar';
+      'MyOpenings';
     document.title =
-      'Calendar';
+      'MyOpenings';
     $('updatedLabel').textContent =
       '';
     setStatus( '' );

@@ -2289,7 +2289,7 @@ async function handleAccountRoute(
     }
     return json({
       name:
-        siteName( url ),
+        siteName(),
       claimed:
         Boolean( activeRecord.ownerId ),
       mail:
@@ -2655,8 +2655,8 @@ async function handleAccountRoute(
           to:
             user.email,
           fromName:
-            siteName( url ),
-          ...resetEmail({ displayName: user.displayName, link, siteName: siteName( url ), hours: RESET_HOURS })
+            siteName(),
+          ...resetEmail({ displayName: user.displayName, link, siteName: siteName(), hours: RESET_HOURS })
         });
       } catch ( error ) {
         console.error( "Reset email failed", error );
@@ -2804,25 +2804,13 @@ function describeWait(
 
 /*
   What the site calls itself in emails and on the home page: SITE_NAME
-  if set, else the host made readable - ethan-calendar.netlify.app
-  becomes "Ethan Calendar".
+  if set, else MyOpenings.
 */
-function siteName(
-  url
-) {
-  if ( process.env.SITE_NAME ) {
-    return process.env.SITE_NAME;
-  }
-  const host =
-    url.hostname.replace( /\.netlify\.app$/, "" ).replace( /^www\./, "" );
-  if ( /^(localhost|127\.0\.0\.1|\d+(\.\d+){3})$/.test( host ) ) {
-    return "Calendar";
-  }
-  return host
-    .split( /[-.]/ )
-    .filter( Boolean )
-    .map( (part) => part.charAt( 0 ).toUpperCase() + part.slice( 1 ) )
-    .join( " " );
+const DEFAULT_SITE_NAME =
+  "MyOpenings";
+
+function siteName() {
+  return process.env.SITE_NAME || DEFAULT_SITE_NAME;
 }
 
 
@@ -3121,7 +3109,7 @@ async function sendVerification(
   const link =
     `${ origin }/?verify=${ token }`;
   const name =
-    siteName( new URL( origin ) );
+    siteName();
   try {
     await sendMail({
       to:

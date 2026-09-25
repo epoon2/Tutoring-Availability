@@ -185,7 +185,7 @@ function escapeHtml(value) {
 }
 
 export function verificationEmail({ displayName, link, siteName, hours }) {
-  const site = siteName || "the calendar site";
+  const site = siteName || "MyOpenings";
   const text = [
     `Hi ${displayName},`,
     "",
@@ -207,7 +207,7 @@ export function verificationEmail({ displayName, link, siteName, hours }) {
 }
 
 export function resetEmail({ displayName, link, siteName, hours }) {
-  const site = siteName || "the calendar site";
+  const site = siteName || "MyOpenings";
   const text = [
     `Hi ${displayName},`,
     "",
